@@ -1,0 +1,79 @@
+{
+  "run_key": "2026-08-28T19:33:59+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "adaptive-synthetic-monitor-frequency-optimizer",
+    "name": "Adaptive synthetic-monitor frequency optimizer",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 2,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 5,
+      "integration_friction": 4,
+      "distribution_burden": 2,
+      "build_simplicity": 3
+    },
+    "state_transition": "fixed synthetic-check schedule -> operational risk state changes -> current cadence becomes over-provisioned -> reduce eligible frequency/locations within explicit detection guardrails -> avoid billable synthetic runs -> restore higher cadence when deployment/incident/traffic state changes",
+    "why_survived": "The intervention is technically programmable without owning application traffic. New Relic currently exposes monitor period as an API-updatable field across discrete frequencies from every minute through daily, so a third-party authorized optimizer can change cadence non-invasively. Synthetic run cost remains directly tied to execution volume. However, this run failed to find strong evidence that dynamic retuning creates large incremental savings beyond one-time static cleanup, so leakage magnitude was reduced from 3 to 2.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      {
+        "claim": "New Relic NerdGraph can update the period of an existing scripted API synthetic monitor, with intervals from every minute to every day.",
+        "source": "https://docs.newrelic.com/docs/apis/nerdgraph/examples/synthetics-api/scripted-api-monitor/"
+      },
+      {
+        "claim": "New Relic synthetic monitoring best practices expose period and monitoring locations as explicit monitor configuration dimensions.",
+        "source": "https://docs.newrelic.com/docs/new-relic-solutions/best-practices-guides/full-stack-observability/synthetic-monitoring-best-practices-guide/"
+      },
+      {
+        "claim": "Prior Taskman evidence found direct per-run synthetic pricing and incumbent movement toward traffic-driven adaptive synthetic configuration, so exact automatic frequency optimization remains plausible but absorption risk is material.",
+        "source": "Taskman prior runs 2026-08-28T17:39:30+05:30 and 2026-08-28T18:40:26+05:30"
+      }
+    ],
+    "closest_threat": "Observability vendors already expose all primitives needed to build the feature themselves, and Kentik has already demonstrated traffic-driven adaptive synthetic configuration at another dimension. The more serious economic threat is that one-time manual/static frequency tuning may capture most available savings.",
+    "smallest_intervention": "Read synthetic definitions, periods, locations, run history, deploy/incident state and an explicit maximum detection-latency policy. Recommend a period change first; optionally use authorized provider APIs to update monitor.period. Maintain a counterfactual ledger of baseline runs versus optimized runs and automatically restore cadence on deployment, incident or risk escalation.",
+    "monetization": "Per optimized monitor-month or capped percentage of verified avoided run spend, only while pre-agreed detection-latency/reliability guardrails remain satisfied.",
+    "biggest_unresolved_risk": "No strong public evidence was found in this run showing that dynamic cadence changes save materially more than a one-time static synthetic-monitor cleanup. If the incremental dynamic savings are small, Gate 2 and Gate 6 fail even though the technical integration is clean.",
+    "next_research_test": "Search for enterprise synthetic estates with disclosed run counts/costs or obtain a realistic workload dataset; compare current configuration against best static tuning and adaptive tuning. Require meaningful incremental adaptive savings after static cleanup. In parallel continue searching unrelated rails so the observability family does not persist by inertia."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "reason": "Still structurally strong and broadly applicable, but no new specific vertical in this run showed a clearer movable workload with high overage economics."},
+    {"rank": 3, "id": "corporate-promised-refund-settlement-watchdog", "score": 44, "reason": "Excellent machine-readable settlement delta and performance-fee attribution, but broad reconciliation products remain close and aggregate missing-refund leakage is still unquantified."},
+    {"rank": 4, "id": "subscription-grace-period-cost-recovery-optimizer", "score": 44, "reason": "Real provider-native state transition and economic tradeoff, but app-wide infrequent configuration weakens recurring monetization and attribution."}
+  ],
+  "cross_family_tests": [
+    {"family": "software licensing", "result": "demoted", "finding": "Current license-management products already continuously identify idle seats, auto-harvest licenses and right-size renewals, neutralizing generic unused-seat wedges."},
+    {"family": "commercial property CAM", "result": "demoted", "finding": "Current lease/CAM systems and specialized tenant audit tools already compare lease clauses to charges and generate dispute-ready findings."},
+    {"family": "payments authorization residuals", "result": "not_promoted", "finding": "Card gateways already expose authorization expiry, partial capture, voiding and authorization-adjustment functionality; an adjacent optimizer risks sitting too close to mature first-party payment controls."},
+    {"family": "automotive warranty reimbursement", "result": "uncertain", "finding": "Annual warranty labor-rate increases are a real value event, but evidence in this pass was insufficient on machine-readable OEM rules, repeatable cross-OEM APIs and incumbent whitespace to outrank the leader."},
+    {"family": "telecom expense optimization", "result": "not_promoted", "finding": "Search did not uncover a narrow new trigger that clearly escapes established telecom-expense-management optimization."},
+    {"family": "app/platform payout reconciliation", "result": "not_promoted", "finding": "No clean new micro-event with both large leakage and competitive whitespace was established in this run."}
+  ],
+  "promotions": [],
+  "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:47->46"],
+  "rejections": [],
+  "new_search_rules": [
+    "Do not treat technical writability of a configuration as proof of economic leakage; require incremental savings beyond best static configuration.",
+    "For recurring configuration optimizers, separate total theoretical savings from the marginal savings created by continuous adaptation.",
+    "When first-party APIs expose the exact control variable, increase incumbent-absorption penalty even if the exact optimizer product is not yet named.",
+    "Keep a broad runner-up alive when the current vertical leader weakens, but do not promote a broad family until one precise vertical proves the economics."
+  ],
+  "persistence_status": "saved_to_github_run_file"
+}

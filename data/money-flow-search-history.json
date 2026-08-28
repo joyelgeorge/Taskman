@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "updated_at": "2026-08-28T12:44:00+05:30",
+  "schema_version": 2,
+  "updated_at": "2026-08-28T13:50:47+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -26,90 +26,120 @@
     "persistence_rule": "Every scheduled or manual run must append its normalized result, candidate scores, gate changes, evidence, rejected reasons, current leader and next research test to Taskman persistence before the run is considered complete."
   },
   "conversation_history": [
-    {
-      "seq": 1,
-      "type": "strategy_evolution",
-      "summary": "Opportunity search was narrowed away from tenders, jobs, freelance lead hunting, buyer/seller matchmaking, manufacturer sourcing and generic demand creation toward programmable interventions in existing private money flows."
-    },
-    {
-      "seq": 2,
-      "type": "decision_protocol",
-      "summary": "The search adopted eight strict build gates and the lifecycle SEARCH -> ATTACK -> FROZEN-BUILD."
-    },
-    {
-      "seq": 3,
-      "type": "rejection",
-      "candidate": "Delay-tolerant LLM Batch/Flex optimization",
-      "summary": "Rejected after attack because the trigger was customer-created, the intervention sat on the prompt/request path, first-party cheaper lanes already existed, gateways were close substitutes and percentage-of-savings pricing was weak."
-    },
-    {
-      "seq": 4,
-      "type": "search_framework_enhancement",
-      "summary": "The search was enhanced so runs can no longer end with only no outcome. A two-level standard was added: always report a best surviving hypothesis while keeping the final build threshold strict. Search breadth was widened across many money-flow families and search now drills from flow to state transition to micro-decision."
-    },
-    {
-      "seq": 5,
-      "type": "leader_run",
-      "candidate": "Expiring payment authorization protection",
-      "score": 45,
-      "max_score": 60,
-      "status": "demoted",
-      "summary": "Authorization creation plus fulfillment plus expiry created a clean machine trigger and measurable protected revenue. Later research found first-party reauthorization/capture features and payment-orchestration systems already monitoring expiry, so competitive whitespace weakened."
-    },
-    {
-      "seq": 6,
-      "type": "leader_run",
-      "candidate": "Cross-vendor commitment shortfall prevention",
-      "score": 46,
-      "max_score": 60,
-      "status": "demoted",
-      "summary": "Minimum-spend contracts plus live usage created a strong shortfall event and measurable avoided true-up. Cloud commitment managers and SaaS/procurement platforms increasingly cover monitoring and allocation, narrowing whitespace."
-    },
-    {
-      "seq": 7,
-      "type": "candidate_attack",
-      "candidate": "Take-or-pay make-up-right expiry prevention",
-      "status": "rejected_obvious_implementation",
-      "summary": "Deficiency payment creates a future make-up credit with a contractual expiry, producing excellent machine economics. A current system was found reconciling volume commitments, deficiency payments and make-up rights, so the obvious implementation failed competition."
-    },
-    {
-      "seq": 8,
-      "type": "search_insight",
-      "summary": "A stronger structural pattern emerged: two legitimate future uses of money already exist and a contractual state elsewhere changes which use is economically optimal. The opportunity is to detect that state before the decision and redirect existing activity rather than merely recover money afterward."
-    },
-    {
-      "seq": 9,
-      "type": "leader_run",
-      "candidate": "Expiring enterprise messaging-capacity allocator",
-      "score": 43,
-      "max_score": 60,
-      "status": "current_leader",
-      "summary": "Prepaid messaging credits can expire while already-planned outbound messages exist. A read-only allocator could recommend consuming the balance closest to forfeiture where sender identity, geography, deliverability and compliance allow. The critical uncertainty is whether enough enterprise messaging value actually expires unused and whether balances/queues are accessible without becoming the message rail."
-    },
-    {
-      "seq": 10,
-      "type": "anchor_requirement",
-      "summary": "Because the strategy is evolving, GitHub/Taskman was selected as the permanent anchor so search state, evidence, rejected paths, scores, task results and conversation-derived knowledge can be reloaded in future sessions."
-    }
+    {"seq":1,"type":"strategy_evolution","summary":"Opportunity search narrowed away from tenders, jobs, freelance lead hunting, buyer/seller matchmaking, manufacturer sourcing and generic demand creation toward programmable interventions in existing private money flows."},
+    {"seq":2,"type":"decision_protocol","summary":"Adopted eight strict build gates and lifecycle SEARCH -> ATTACK -> FROZEN-BUILD."},
+    {"seq":3,"type":"rejection","candidate":"Delay-tolerant LLM Batch/Flex optimization","summary":"Rejected after attack because trigger was customer-created, intervention sat on the request path, first-party cheaper lanes and gateways existed, and performance pricing was weak."},
+    {"seq":4,"type":"search_framework_enhancement","summary":"Added two-level standard: every run must return a best surviving hypothesis while final build threshold stays strict; search breadth widened and now drills flow -> state transition -> micro-decision."},
+    {"seq":5,"type":"leader_run","candidate":"Expiring payment authorization protection","score":45,"status":"demoted","summary":"Clean authorization/fulfillment/expiry trigger, later weakened by first-party capture/reauthorization features and payment orchestration."},
+    {"seq":6,"type":"leader_run","candidate":"Cross-vendor commitment shortfall prevention","score":46,"status":"demoted","summary":"Strong minimum-spend shortfall economics, later weakened by cloud commitment managers and procurement/SaaS allocation tooling."},
+    {"seq":7,"type":"candidate_attack","candidate":"Take-or-pay make-up-right expiry prevention","status":"rejected_obvious_implementation","summary":"Excellent economics but current systems reconcile volume commitments, deficiency payments and make-up rights."},
+    {"seq":8,"type":"search_insight","summary":"Promising pattern: two legitimate future uses already exist and a contractual or quota state changes which is economically optimal; detect before the decision and redirect existing activity."},
+    {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted_2026-08-28","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers, increasing feature-absorption risk."},
+    {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
+    {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
+    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"current_leader","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist and overage/PAYG cost is avoidable. Buyer-side timing/allocation around the billing boundary appears less directly served than seller-side billing, data-enrichment waterfall routing, or messaging orchestration."}
   ],
   "current_leader": {
-    "id": "expiring-enterprise-messaging-capacity-allocator",
-    "name": "Expiring enterprise messaging-capacity allocator",
-    "score": 43,
+    "id": "quota-boundary-workload-timing-optimizer",
+    "name": "Quota-boundary workload timing optimizer",
+    "score": 45,
     "max_score": 60,
-    "state_transition": "prepaid messaging credits exist -> ordinary future messages are already scheduled -> credit pool approaches expiry -> shift eligible existing sends toward expiring pool -> prevent forfeiture",
-    "why_survived": "The trigger can be independent and machine-readable, the intervention can start read-only, the financial delta can be measured from projected expired value versus actual expired value, and no exact dominant cross-provider optimizer was confirmed in the latest pass.",
+    "component_scores": {
+      "flow_scale": 4,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 4,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 5,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 2
+    },
+    "state_transition": "included/prepaid usage quota exists -> real system exposes remaining quota and reset/billing boundary -> already-planned non-urgent workload exists -> continuing now would create overage or leave other paid capacity unused -> schedule/allocate eligible work across the boundary -> avoid incremental spend while consuming already-paid capacity",
+    "why_survived": "The quota/reset event is independently machine-readable; many APIs expose remaining quota and reset timestamps; the intervention can begin as a read-only recommendation against existing job queues; the financial delta can be computed as avoided overage/PAYG minus any execution cost; current search found many seller-side metering/billing products but no dominant buyer-side cross-SaaS workload timing optimizer for arbitrary quotas.",
     "gates": {
       "money_flow_scale": "pass",
       "recurring_leakage": "uncertain",
       "independent_trigger": "pass",
-      "permission_non_invasive": "uncertain",
+      "permission_non_invasive": "pass",
       "measurable_delta": "pass",
       "monetization": "uncertain",
       "no_transaction_ownership": "pass",
       "competitive_whitespace": "uncertain"
     },
-    "next_research_test": "Quantify how much prepaid enterprise SMS/CPaaS value expires unused each year and verify whether balances, expiry dates and existing outbound queues can be accessed through APIs without forcing the product onto the message path."
+    "strongest_evidence": [
+      "Multiple current SaaS/API products expose quota remaining and reset dates or explicitly state that unused credits reset/expire each billing cycle.",
+      "Apollo credits expire at the end of the billing cycle; Coresignal and other data APIs use recurring credit pools; several APIs expose usage endpoints or quota headers.",
+      "Usage-based SaaS billing products confirm that allowances plus overages are widespread, making the boundary economically meaningful."
+    ],
+    "closest_threat": "A broad SaaS spend-management platform or provider-native workload scheduler could add buyer-side quota-aware timing. Narrow verticals such as data enrichment already have waterfall routers, so the wedge must avoid categories where routing itself is mature.",
+    "smallest_intervention": "Read quota/balance/reset data plus an existing job queue or batch schedule; classify jobs by deadline and provider/capability eligibility; recommend RUN-NOW, DEFER-UNTIL-RESET, or USE-ALREADY-PAID-CAPACITY. Do not proxy requests initially.",
+    "monetization": "Per verified boundary-saving event or a small percentage of objectively avoided overage/PAYG spend; if percentage pricing is weak, charge a small fee only when a recommendation produces a measured avoided charge.",
+    "biggest_unresolved_risk": "The exact annual buyer-side leakage pool is not yet quantified, and arbitrary cross-SaaS workload interchangeability may be too heterogeneous. If most useful workloads cannot be delayed or reassigned without sitting on the request path, the candidate fails structurally.",
+    "next_research_test": "Find one high-volume non-AI, non-data-enrichment SaaS/API family where (a) included quota expires/resets, (b) overage or alternative PAYG spend is material, (c) queued work has machine-readable deadlines, and (d) no existing product performs buyer-side quota-boundary scheduling. Quantify real avoided dollars per account and test whether read-only recommendations are enough to capture value."
+  },
+  "latest_run": {
+    "run_key": "2026-08-28T13:50:47+05:30",
+    "mode": "SEARCH",
+    "threshold_crossed": false,
+    "current_leader": "quota-boundary-workload-timing-optimizer",
+    "score": 45,
+    "promotions": ["quota-boundary-workload-timing-optimizer"],
+    "demotions": ["expiring-enterprise-messaging-capacity-allocator"],
+    "rejections_or_failed_attacks": [
+      {
+        "candidate": "data-enrichment credit expiry allocator",
+        "reason": "Apollo and other waterfall enrichment systems already connect multiple providers, meter per-source credit usage and route requests; exact vertical is too occupied."
+      },
+      {
+        "candidate": "partial-fulfillment payment capture optimizer",
+        "reason": "Shopify now provides automatic capture per fulfillment for Plus and a current Shopify app automatically captures shipped amounts across split fulfillments; Stripe and Adyen expose mature multicapture semantics. Gate 8 is too threatened."
+      }
+    ],
+    "runner_ups": [
+      {
+        "rank": 2,
+        "id": "expiring-enterprise-messaging-capacity-allocator",
+        "score": 40,
+        "reason": "Expiry remains real, but current multi-provider SMS orchestration layers already optimize cost, reliability and routing across existing provider accounts, making expiry-awareness an absorbable feature."
+      },
+      {
+        "rank": 3,
+        "id": "partial-fulfillment-capture-preservation",
+        "score": 39,
+        "reason": "Strong machine events and exact payment delta, but native Shopify per-fulfillment capture and a live split-fulfillment capture app materially weaken whitespace."
+      },
+      {
+        "rank": 4,
+        "id": "cross-provider-data-api-credit-allocator",
+        "score": 37,
+        "reason": "Balances and reset dates are clean, but Apollo waterfall enrichment and other multi-provider enrichment tools already perform the key routing decision."
+      }
+    ],
+    "new_search_rules": [
+      "Do not treat multi-provider routing as whitespace merely because it lacks an expiry variable; if an incumbent already owns the routing decision, expiry-awareness is likely a feature rather than a business.",
+      "Prefer timing/allocation wedges that can operate from read-only quota state plus an existing queue, so the first version does not sit on the request path.",
+      "When a candidate relies on expiring credits, verify whether the adjacent category already has a router/orchestrator before spending time quantifying expiry leakage."
+    ],
+    "source_references": [
+      "https://knowledge.apollo.io/hc/en-us/articles/34071089002509-Waterfall-Enrichment-Overview",
+      "https://knowledge.apollo.io/hc/en-us/articles/9527776320781-What-Are-Credits",
+      "https://developers.theorg.com/api/get-started",
+      "https://www.apiverve.com/pricing",
+      "https://www.gong.io/docs/about-gong-credits",
+      "https://docs.enterprise.appier.com/docs/account-usage-usage-dashboard",
+      "https://www.coresignal.com/pricing/",
+      "https://docs.stripe.com/payments/multicapture",
+      "https://docs.adyen.com/online-payments/capture/",
+      "https://help.shopify.com/en/manual/payments/payment-authorization",
+      "https://apps.shopify.com/ship-capture",
+      "https://www.symphonyroute.com/",
+      "https://www.contexa.in/",
+      "https://www.fyno.io/cost-optimisation"
+    ]
   },
   "known_rejected_or_demoted": [
     "expiring contractual financial entitlements broad family",
@@ -142,6 +172,8 @@
     "cloud-specific commitment allocation",
     "obvious take-or-pay make-up-right reconciliation",
     "generic supplier rebate threshold optimization",
-    "generic security-deposit release automation"
+    "generic security-deposit release automation",
+    "data-enrichment cross-provider credit routing as a standalone wedge",
+    "partial-fulfillment payment capture automation as a standalone wedge"
   ]
 }

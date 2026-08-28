@@ -1,116 +1,36 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-28T19:33:59+05:30",
+  "updated_at": "2026-08-28T20:36:24+05:30",
   "scenario_id": "programmable-money-flow-search",
-  "task": {
-    "stable_key": "money-flow-wedge-scout",
-    "title": "Money Flow Wedge Scout",
-    "objective": "Discover the strongest tiny programmable software/AI intervention inside an existing large private-sector money flow, continuously rank a best surviving hypothesis, attack it when all build gates appear satisfied, and persist every run so future runs continue from accumulated evidence rather than restarting.",
-    "status": "active",
-    "mode": "SEARCH",
-    "threshold_crossed": false
-  },
+  "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
   "history_archives": [
-    {
-      "type": "prior_anchor_git_blob",
-      "sha": "6343cc3c4f5e4ccc3b774361433e085ec4e36355",
-      "note": "Schema-v4 anchor containing full conversation_history, rejected/demoted families, scoring evolution and prior evidence. Preserved in Git history; schema-v5 keeps immutable run files as the operational history."
-    }
+    {"type":"prior_anchor_git_blob","sha":"6343cc3c4f5e4ccc3b774361433e085ec4e36355","note":"Schema-v4 full conversation/rejection archive."},
+    {"type":"prior_anchor_git_blob","sha":"bbe3044dc117562d09c7a81d13b9bd58cb4eec54","note":"Schema-v5 anchor through 2026-08-28T19:33:59+05:30; immutable run files preserve normalized history."}
   ],
-  "operating_protocol": {
-    "discovery_floor": "Every run must return at least one best surviving hypothesis even if some gates remain uncertain.",
-    "freeze_build_threshold": [
-      "huge existing money flow",
-      "recurring measurable leakage or unrealized value",
-      "independent machine-readable trigger",
-      "practical non-invasive permission to intervene",
-      "objectively measurable financial delta",
-      "credible tiny fee stronger than obvious self-serve or flat-fee alternatives",
-      "no need to own the core transaction or request path",
-      "no dominant or sufficiently close incumbent or first-party feature"
-    ],
-    "search_behavior": "Before threshold maintain a current leader and try to beat it. At threshold enter ATTACK and search for disconfirming evidence. If it survives, freeze and build; if it fails, record fatal flaw and promote the next candidate.",
-    "persistence_rule": "Every run appends an immutable normalized run file and updates this current-state anchor before completion."
-  },
+  "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
   "current_leader": {
-    "id": "adaptive-synthetic-monitor-frequency-optimizer",
-    "name": "Adaptive synthetic-monitor frequency optimizer",
-    "score": 46,
-    "max_score": 60,
-    "component_scores": {
-      "flow_scale": 5,
-      "leakage_magnitude": 2,
-      "trigger_independence": 5,
-      "permission_non_invasiveness": 5,
-      "delta_measurability": 5,
-      "monetization": 4,
-      "first_party_gap": 3,
-      "competitive_whitespace": 3,
-      "regulation": 5,
-      "integration_friction": 4,
-      "distribution_burden": 2,
-      "build_simplicity": 3
-    },
-    "state_transition": "fixed synthetic-check schedule -> operational risk state changes -> current cadence becomes over-provisioned -> reduce eligible frequency/locations within explicit detection guardrails -> avoid billable synthetic runs -> restore higher cadence when deployment/incident/traffic state changes",
-    "why_survived": "New Relic exposes monitor period as an API-updatable field, making cadence optimization technically feasible without proxying customer traffic. Exact adaptive-frequency optimization with verified avoided run spend still appears narrower than known incumbent functionality. The hypothesis weakened because no strong evidence was found that continuous adaptation saves materially more than one-time static tuning.",
-    "gates": {
-      "money_flow_scale": "pass",
-      "recurring_leakage": "uncertain",
-      "independent_trigger": "pass",
-      "permission_non_invasive": "pass",
-      "measurable_delta": "pass",
-      "monetization": "uncertain",
-      "no_transaction_ownership": "pass",
-      "competitive_whitespace": "uncertain"
-    },
-    "strongest_evidence": [
-      "New Relic NerdGraph supports updating an existing synthetic monitor's period, with intervals from every minute through every day.",
-      "New Relic best-practice documentation exposes monitor period and locations as normal configurable dimensions.",
-      "Prior runs established direct per-run synthetic pricing and incumbent movement toward traffic-driven adaptive synthetic configuration."
-    ],
-    "closest_threat": "Observability vendors already expose the primitives needed to add this feature, and Kentik has traffic-driven adaptive synthetic configuration at the location dimension. More importantly, one-time manual/static tuning may capture most of the savings.",
-    "smallest_intervention": "Read monitor definitions, periods, locations, run history, deployment/incident state and maximum detection-latency policy; recommend period changes first, then optionally update monitor.period via authorized provider API. Track baseline versus optimized run counts and auto-restore higher cadence on risk escalation.",
-    "monetization": "Per optimized monitor-month or capped share of verified avoided run spend while agreed reliability guardrails remain satisfied.",
-    "biggest_unresolved_risk": "Incremental dynamic savings beyond static cleanup are unproven; if small, recurring leakage and performance-fee economics fail.",
-    "next_research_test": "Find enterprise synthetic estates with disclosed run counts/costs or a realistic workload dataset and quantify current versus best-static versus adaptive cost. Require meaningful marginal savings from adaptation after static cleanup. Continue parallel cross-family search so this leader does not persist by inertia."
+    "id":"adaptive-synthetic-monitor-frequency-optimizer","name":"Adaptive synthetic-monitor frequency optimizer","score":45,"max_score":60,
+    "component_scores":{"flow_scale":5,"leakage_magnitude":2,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":3,"first_party_gap":3,"competitive_whitespace":3,"regulation":5,"integration_friction":4,"distribution_burden":2,"build_simplicity":3},
+    "state_transition":"fixed synthetic schedule -> operational risk changes -> reduce eligible cadence/coverage within detection guardrails -> avoid billable runs -> restore cadence when risk rises",
+    "why_survived":"Still the strongest precise surviving vertical because billing is usage-linked, schedule mutation is out-of-path, and savings are measurable. Repeated searches have not established large marginal adaptive savings beyond best static tuning, so monetization confidence is reduced and it is now tied with the broad quota-boundary hypothesis.",
+    "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
+    "closest_threat":"First-party observability vendors possess telemetry and schedule controls; static tuning may capture most savings.",
+    "smallest_intervention":"Read monitor definitions, periods, locations, run history and risk signals; recommend cadence changes; optionally mutate schedules via authorized provider API; measure avoided runs against best-static baseline.",
+    "monetization":"Per optimized monitor-month or capped share of verified savings incremental to best-static baseline.",
+    "biggest_unresolved_risk":"No strong public evidence that dynamic adaptation creates material recurring savings after static cleanup.",
+    "next_research_test":"Quantify marginal adaptive savings versus best-static using realistic enterprise synthetic estates; kill if increment is small. Search in parallel for a precise vertical exceeding 45/60."
   },
-  "latest_run": {
-    "run_key": "2026-08-28T19:33:59+05:30",
-    "mode": "SEARCH",
-    "threshold_crossed": false,
-    "current_leader": "adaptive-synthetic-monitor-frequency-optimizer",
-    "score": 46,
-    "run_file": "data/money-flow-runs/2026-08-28T193359+0530.json",
-    "promotions": [],
-    "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:47->46"],
-    "rejections": [],
-    "runner_ups": [
-      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Structurally strong but still lacks a better precise high-value vertical."},
-      {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution but aggregate leakage and competition remain unresolved."},
-      {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economic tradeoff but infrequent app-wide control weakens recurring monetization."}
-    ],
-    "new_search_rules": [
-      "Technical API writability is not economic proof; require savings incremental to best static configuration.",
-      "Separate total theoretical optimization savings from marginal savings created by continuous adaptation.",
-      "When first-party APIs expose the exact control variable, increase incumbent-absorption penalty even if the exact optimizer is not named.",
-      "Maintain broad runner-ups but do not promote them until a precise vertical proves economics."
-    ]
-  },
-  "run_history": [
+  "latest_run":{"run_key":"2026-08-28T20:36:24+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"run_file":"data/money-flow-runs/2026-08-28T203624+0530.json","demotions":["adaptive-synthetic-monitor-frequency-optimizer:46->45"],"rejections":["dormant-iot-sim-subscription-optimizer: exact/near-exact idle-SIM detection and lifecycle automation exists"],"runner_ups":[{"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44},{"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44}]},
+  "run_history":[
     {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
     {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
     {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"},
     {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"},
     {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"},
-    {"run_key":"2026-08-28T19:33:59+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-28T193359+0530.json"}
+    {"run_key":"2026-08-28T19:33:59+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T193359+0530.json"},
+    {"run_key":"2026-08-28T20:36:24+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"status":"current","run_file":"data/money-flow-runs/2026-08-28T203624+0530.json"}
   ],
-  "recent_cross_family_findings": [
-    "Software-license seat reclamation/right-sizing is occupied by current license-management products with continuous monitoring and automated harvesting.",
-    "Commercial CAM reconciliation is occupied by lease/CAM systems and specialized tenant audit products.",
-    "Payment authorization residual handling sits adjacent to mature gateway expiry, partial-capture, void and authorization-adjustment controls.",
-    "Automotive warranty labor-rate reimbursement remains an uncertain research branch: real annual value event, but insufficient evidence on machine-readable OEM rules, APIs and whitespace.",
-    "No telecom or app-platform payout micro-event found this run beat the leader."
-  ],
-  "known_rejected_or_demoted_summary": "Full list retained in schema-v4 anchor blob 6343cc3c4f5e4ccc3b774361433e085ec4e36355 and immutable prior run files. Includes Batch/Flex, broad contractual entitlements, carrier/FBA/835 recoveries, generic dunning/returns/chargebacks, freight/retail deductions, reserves/L2L3/payment residuals, construction retainage, marketplace/ad/demurrage/airline recoveries, commitment monitoring, make-up rights, rebates, deposits, partial capture, container scheduling, creator reconciliation, energy timing, unused shipping labels, prior-auth expiry, ECR, core deposits, hotel cancellation, vendor credits, security scan quotas, CI/CD timing and shipping API timing."
+  "recent_cross_family_findings":["Dormant IoT SIM cost control is real and programmable, but SIMWiser and CMP lifecycle automation neutralize the wedge.","Soracom exposes Standby/Suspended states that can eliminate eligible basic fees and supports API state changes; this proves the mechanism but also first-party programmability.","Toll/FASTag anomaly recovery remains occupied by GPS/toll reconciliation and dispute automation.","Commercial insurance premium-audit automation remains occupied by current AI audit and payroll-connected premium platforms."],
+  "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

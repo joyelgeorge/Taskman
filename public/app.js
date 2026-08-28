@@ -27,11 +27,37 @@ function renderBrain(brain) {
   `;
 }
 
+function renderScenarios(scenarios) {
+  const priority = { active: 0, building: 1, unvalidated: 2, active_manual: 3, supporting_only: 4, deprioritized: 5, rejected: 6 };
+  const ordered = [...scenarios].sort((a, b) =>
+    (priority[a.status] ?? 4) - (priority[b.status] ?? 4) || String(a.name).localeCompare(String(b.name))
+  );
+  $('#scenarioCount').textContent = `${ordered.length} rows`;
+  $('#scenarios').innerHTML = ordered.length ? ordered.map(s => {
+    const leader = s.current_leader;
+    const score = leader?.score_total ?? leader?.score ?? null;
+    const max = leader?.score_max ?? leader?.max_score ?? null;
+    const summary = s.current_best_path || s.goal || s.decision || '';
+    return `
+      <div class="task">
+        <div class="row">
+          <strong>${esc(s.name)}</strong>
+          <span class="pill">${esc(s.status)}</span>
+          ${score !== null ? `<span class="pill score">${esc(score)}${max ? `/${esc(max)}` : ''}</span>` : ''}
+        </div>
+        <div class="muted">${esc(summary)}</div>
+        ${leader?.scenario_id ? `<div class="muted"><strong>Leader:</strong> ${esc(leader.scenario_id)}</div>` : ''}
+      </div>
+    `;
+  }).join('') : '<p class="muted">No scenario rows found.</p>';
+}
+
 async function refresh() {
-  const [status, tasks, runs, brain] = await Promise.all([api('/api/status'), api('/api/tasks'), api('/api/runs'), api('/api/brain')]);
+  const [status, tasks, runs, brain, scenarios] = await Promise.all([api('/api/status'), api('/api/tasks'), api('/api/runs'), api('/api/brain'), api('/api/scenarios')]);
   $('#providers').innerHTML = status.providers.map(p => `<span class="pill">${esc(p.id)} · ${p.ready ? 'ready' : 'no key'}</span>`).join('');
   $('#usage').textContent = `${Number(status.usage.inputTokens || 0) + Number(status.usage.outputTokens || 0)} tokens tracked${status.database?.ok ? ' · PostgreSQL connected' : ' · local fallback'}`;
   $('#brainState').innerHTML = renderBrain(brain);
+  renderScenarios(scenarios);
 
   $('#tasks').innerHTML = tasks.length ? tasks.map(t => `
     <div class="task">
@@ -91,3 +117,4 @@ document.addEventListener('click', async e => {
 
 refresh();
 setInterval(refresh, 10000);
+

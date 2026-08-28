@@ -6,7 +6,7 @@ import { providerStatus, runWithFallback } from './providers.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
-import { seedScenarios, listScenarios } from './scenario-store.js';
+import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
@@ -205,9 +205,11 @@ const server = http.createServer(async (req, res) => {
 
 if (databaseEnabled) {
   const migration = await migrate();
-  const seeded = await seedScenarios();
-  console.log('Taskman database ready', { migration, seeded });
+  const scenarios = await seedScenarios();
+  const tasks = await seedCoreTasks();
+  console.log('Taskman database ready', { migration, scenarios, tasks });
 }
 await restoreSchedules();
 startBrainScheduler();
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));
+

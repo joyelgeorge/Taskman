@@ -1,0 +1,82 @@
+{
+  "schema_version": 3,
+  "run_key": "2026-08-28T15:45:00+05:30",
+  "scenario_id": "programmable-money-flow-search",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "corporate-promised-refund-settlement-watchdog",
+    "name": "Corporate promised-refund settlement watchdog",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 2,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 3,
+      "regulation": 5,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 3
+    },
+    "state_transition": "vendor or merchant promises a refund or credit -> expected receivable is created from email/ERP/card context -> card or bank credit does not arrive, arrives short, or arrives after expected window -> system detects mismatch before dispute/escalation deadline -> prepares or sends evidence-based recovery action -> recovered amount is measured",
+    "why_survived": "The event exists naturally in email, ERP, card and bank data; the intervention can be read-only until escalation; the financial delta is exact; performance pricing maps naturally to recovered money; consumer/single-merchant tools prove the pattern, while this run did not find a dominant cross-vendor B2B product whose narrow job is to convert refund promises into expected receivables, verify settlement across corporate accounts, and automatically escalate missing/short credits before issuer deadlines.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "pass_with_uncertainty",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "RefundIQ demonstrates automated matching of refund promises/communications against bank activity and escalation when refunds are missing, validating the event pattern in consumer finance.",
+      "Recoup Hero demonstrates bank matching and dispute-draft generation for missing refunds in a single-merchant context.",
+      "Enterprise reconciliation products such as Cointab and Phacet explicitly identify missing or mismatched refunds, proving the data can be reconciled at scale but also creating competitive pressure.",
+      "Corporate-card dispute processes commonly provide finite windows around 120 days and require supporting evidence, creating an external deadline for intervention."
+    ],
+    "closest_threat": "Broad enterprise reconciliation and spend-management platforms can already identify refund mismatches and could absorb promise-to-settlement tracking as a feature. The actual enterprise dollar pool of vendor-promised refunds that never or incorrectly settle is not yet quantified.",
+    "smallest_intervention": "Read authorized email/ERP/accounting/card/bank feeds; extract each vendor refund promise into an expected-refund receivable with amount, date and reference; match incoming credits including partial credits; flag overdue or short settlement; generate an evidence packet and escalation/dispute draft. Do not move money or sit on the payment path.",
+    "monetization": "Small percentage of objectively recovered missing/short refunds or a fixed fee per successfully recovered refund. Performance pricing is stronger here than for app-wide configuration optimization because each recovered receivable is individually attributable.",
+    "biggest_unresolved_risk": "Need evidence that missing or short corporate refunds are frequent and large enough outside ecommerce/platform-specific reconciliation, and that broad reconciliation/expense suites do not already neutralize the narrow promise-to-settlement workflow.",
+    "next_research_test": "Quantify enterprise vendor-refund leakage and search exact B2B software for expected-refund receivables: systems that ingest refund promises or credit memos, match them to corporate card/bank credits, track issuer/vendor deadlines, and recover missing/short refunds on a performance basis. Kill if broad spend/reconciliation incumbents already do this end-to-end or if leakage is economically trivial."
+  },
+  "promotions": ["corporate-promised-refund-settlement-watchdog"],
+  "demotions": ["subscription-grace-period-cost-recovery-optimizer"],
+  "rejections": [
+    {
+      "id": "unused-shipping-label-refund-recovery",
+      "reason": "Exact automation/performance-priced incumbents already identify unused labels and automatically obtain refunds or void labels."
+    },
+    {
+      "id": "prior-auth-expiry-before-service-watchdog",
+      "reason": "Current healthcare authorization systems already track expiration and explicitly flag authorizations that expire before scheduled service."
+    }
+  ],
+  "runner_ups": [
+    {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Excellent quota/reset trigger and measurable overage avoidance, but still lacks one proven high-value vertical with large recurring leakage and easy non-proxy scheduling."},
+    {"rank":3,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Apple recovery-by-day data proves a real cost/recovery tradeoff for high-variable-cost apps, but the setting is app-wide, infrequently changed, easy to approximate with a spreadsheet, and hard to attribute for performance pricing."},
+    {"rank":4,"id":"expiring-enterprise-messaging-capacity-allocator","score":40,"reason":"Real prepaid expiry exists, but mature routing platforms can absorb expiry-aware allocation."}
+  ],
+  "new_search_rules": [
+    "A financially non-trivial configuration choice is still a weak tollbooth if it changes only occasionally; favor repeated unit-level events with per-event attribution.",
+    "Cross-system promised-value versus actual-settlement events are attractive because an unstructured promise can be converted into a machine-readable receivable and matched to an objective cash/card event.",
+    "When exact recovery automation already exists in one narrow vertical, do not generalize the wedge without proving a different cross-system or cross-vendor mechanism and whitespace.",
+    "Finite dispute or claim deadlines strengthen intervention value only when the upstream expected-value event is independently machine-readable."
+  ],
+  "evidence": [
+    {"topic":"apple_grace_period_recovery_curve","url":"https://developer.apple.com/videos/play/tech-talks/110129/","finding":"Apple reports roughly 40% of successful recoveries within 3 days, 75% within 16 days, and 90% within 28 days, showing the grace-duration decision can be economically modeled."},
+    {"topic":"apple_billing_grace_period","url":"https://developer.apple.com/help/app-store-connect/manage-subscriptions/enable-billing-grace-period-for-auto-renewable-subscriptions/","finding":"Apple supports 3, 16 and 28 day grace periods and provider-native recovery."},
+    {"topic":"unused_label_refunds","url":"https://www.easypost.com/docs/api#refunds","finding":"Unused unscanned shipping labels can be programmatically refunded within carrier windows."},
+    {"topic":"shipping_label_competition","url":"https://www.optimumparcel.com/unused-label-refunds","finding":"Existing automation monitors unused UPS labels and shares recovered refunds, neutralizing the obvious wedge."},
+    {"topic":"prior_auth_api","url":"https://www.cms.gov/priorities/key-initiatives/burden-reduction/interoperability/final-rule-cms-0057-f","finding":"Upcoming payer APIs expose prior-authorization approval and end-date/circumstance, making expiration machine-readable."},
+    {"topic":"corporate_refund_reconciliation","url":"https://www.cointab.net/solutions/refund-reconciliation/","finding":"Enterprise reconciliation software already identifies refund mismatches, proving scale but creating adjacent competition."}
+  ],
+  "persistence_status": "repository_run_record_created"
+}

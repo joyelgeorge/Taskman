@@ -1,0 +1,456 @@
+{
+  "coverage": {
+    "families_surveyed": 30,
+    "passed_screening_for_scoring": 5,
+    "rejected_or_screened_out": 25,
+    "sectors": 11
+  },
+  "decision": {
+    "frozen_candidate": null,
+    "leader": "marketplace-payout-exception-autopilot",
+    "mode": "SEARCH",
+    "reason": "No candidate reached at least 52/60 while also keeping every gate at or above 70% after the incumbent/permission attack."
+  },
+  "exclusions_applied": [
+    "Do not build a new AI model; use the best available external models and APIs.",
+    "Prefer existing private money flows, APIs, platforms, workflows and transaction systems over creating new demand.",
+    "Prefer tasks that are immediately or quickly executable with available software/API interfaces.",
+    "A recurring task must learn from prior runs and should not restart from the original prompt alone.",
+    "Self-evolution may change the path, search, provider routing and execution strategy, but not silently change the user's goal.",
+    "Avoid opportunities that require holding customer funds or rebuilding underlying payment/marketplace infrastructure.",
+    "Avoid tenders, government procurement, generic buyer-seller matchmaking, generic business ideas and long lead-time sourcing as the core opportunity engine.",
+    "Do not treat individual people or specific companies as the primary opportunity target; focus on systems, rails, workflows and structural money flows.",
+    "Do not prioritize job-seeking, freelance gigs, cold-outreach service selling or other paths that depend mainly on waiting for a human buyer to respond.",
+    "A candidate that repeatedly requires new manual setup for each customer is weaker than a reusable one-time integration.",
+    "Immediate-revenue means the path to the first measurable economic event should be short and machine-executable, not merely theoretically monetizable.",
+    "Ethical correctness is a hard constraint: no deceptive or manipulative monetization path should be treated as acceptable."
+  ],
+  "executed_at": "2026-08-28T12:00:00Z",
+  "objective": "Find and execute repeatable AI-assisted money tasks that require minimal one-time setup, then improve them continuously from accumulated evidence.",
+  "ranked_candidates": [
+    {
+      "below_gate_floor": [
+        "intervention_permission",
+        "incumbent_whitespace"
+      ],
+      "freeze_threshold_crossed": false,
+      "name": "Marketplace payout exception autopilot",
+      "rank": 1,
+      "scenario_id": "marketplace-payout-exception-autopilot",
+      "score_max": 60,
+      "score_total": 50
+    },
+    {
+      "below_gate_floor": [
+        "intervention_permission",
+        "incumbent_whitespace"
+      ],
+      "freeze_threshold_crossed": false,
+      "name": "Marketplace transaction-fee liability drift controller",
+      "rank": 2,
+      "scenario_id": "marketplace-fee-liability-drift-controller",
+      "score_max": 60,
+      "score_total": 49
+    },
+    {
+      "below_gate_floor": [
+        "intervention_permission",
+        "incumbent_whitespace"
+      ],
+      "freeze_threshold_crossed": false,
+      "name": "Commercial-card enhanced-data quality autopilot",
+      "rank": 3,
+      "scenario_id": "cedp-commercial-card-data-quality-autopilot",
+      "score_max": 60,
+      "score_total": 48
+    },
+    {
+      "below_gate_floor": [
+        "intervention_permission",
+        "incumbent_whitespace"
+      ],
+      "freeze_threshold_crossed": false,
+      "name": "Usage-based SaaS overage governor",
+      "rank": 4,
+      "scenario_id": "usage-based-saas-overage-governor",
+      "score_max": 60,
+      "score_total": 47
+    },
+    {
+      "below_gate_floor": [
+        "objective_measurement",
+        "fee_mechanism",
+        "incumbent_whitespace"
+      ],
+      "freeze_threshold_crossed": false,
+      "name": "Returned-inventory unlock latency controller",
+      "rank": 5,
+      "scenario_id": "return-inventory-unlock-latency-controller",
+      "score_max": 60,
+      "score_total": 46
+    }
+  ],
+  "run_id": "wide-search-2026-08-28-01",
+  "run_type": "all_round_structural_money_flow_search",
+  "schema_version": 1,
+  "scoring_rubric": {
+    "freeze_threshold": {
+      "hard_rule": "Numeric total cannot override any failed gate. Freeze only after all eight gates survive adversarial validation.",
+      "minimum_each_gate_ratio": 0.7,
+      "minimum_total": 52
+    },
+    "gates": {
+      "fee_mechanism": {
+        "max": 7,
+        "question": "Can a tiny usage or performance fee be charged and attributed?"
+      },
+      "incumbent_whitespace": {
+        "max": 7,
+        "question": "Is there no dominant/native solution already doing substantially the same thing?"
+      },
+      "intervention_permission": {
+        "max": 8,
+        "question": "Can software intervene with realistic permission?"
+      },
+      "machine_trigger": {
+        "max": 8,
+        "question": "Is there a machine-readable event or state transition?"
+      },
+      "money_flow": {
+        "max": 8,
+        "question": "Is the existing private money flow large enough?"
+      },
+      "objective_measurement": {
+        "max": 7,
+        "question": "Can money recovered, saved or created be measured objectively?"
+      },
+      "recurring_leakage": {
+        "max": 8,
+        "question": "Is leakage/opportunity recurring and economically material?"
+      },
+      "transaction_independence": {
+        "max": 7,
+        "question": "Can it work without holding funds or owning the underlying transaction?"
+      }
+    },
+    "max_score": 60,
+    "version": "wide-search-v1"
+  },
+  "screening_filters": [
+    "existing private money flow",
+    "not a job/lead/person/company search",
+    "not tenders or government procurement",
+    "not buyer-seller matchmaking",
+    "does not require creating new demand",
+    "short path to measurable economic event",
+    "machine-readable trigger exists or is plausibly available",
+    "software/API permission is plausible",
+    "does not require holding funds",
+    "ethical and legally constrained execution",
+    "not structurally identical to a previously rejected family without new evidence"
+  ],
+  "search_axes": {
+    "analysis_unit": "flow -> state transition -> machine trigger -> allowed micro-intervention -> verified money event",
+    "money_conditions": [
+      "stuck",
+      "stranded",
+      "misapplied",
+      "over-reserved",
+      "under-released",
+      "duplicated",
+      "overpaid",
+      "under-collected",
+      "wrongly tiered",
+      "incorrectly surcharged",
+      "forfeited",
+      "unused",
+      "refundable",
+      "minimum-commit shortfall",
+      "stale authorization",
+      "orphan payout",
+      "timing mismatch"
+    ],
+    "sectors": [
+      "payments",
+      "marketplaces",
+      "commerce",
+      "SaaS/cloud",
+      "logistics",
+      "energy",
+      "travel/booking",
+      "advertising",
+      "accounting/tax",
+      "healthcare/insurance",
+      "telecom"
+    ]
+  },
+  "sources": [
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_payout_webhook",
+      "url": "https://docs.stripe.com/connect/webhooks"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_payouts",
+      "url": "https://docs.stripe.com/connect/payouts-connected-accounts"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "adyen_payout_webhooks",
+      "url": "https://docs.adyen.com/marketplaces/payout-webhooks"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "ipid_marketplace",
+      "url": "https://ipid.tech/use-case/ecommerce-marketplace"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "adyen_transaction_fees",
+      "url": "https://docs.adyen.com/marketplaces/transaction-fees"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_app_fees",
+      "url": "https://docs.stripe.com/connect/marketplace/tasks/app-fees"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_destination",
+      "url": "https://docs.stripe.com/connect/destination-charges"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_line_items",
+      "url": "https://docs.stripe.com/payments/payment-line-items"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "adyen_esd",
+      "url": "https://docs.adyen.com/payment-methods/cards/enhanced-scheme-data"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "nmi_level3",
+      "url": "https://www.nmi.com/blog/understanding-level-2-3-interchange-rates-an-essential-guide/"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "paytrace",
+      "url": "https://paytrace.net/interchange-optimization"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "datadog_usage_api",
+      "url": "https://docs.datadoghq.com/api/latest/usage-metering/"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "datadog_usage_metrics",
+      "url": "https://docs.datadoghq.com/account_management/billing/usage_metrics/"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "zylo_ubp",
+      "url": "https://zylo.com/blog/new-trend-saas-pricing-usage-based-model"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "shopify_returns",
+      "url": "https://shopify.dev/docs/apps/build/orders-fulfillment/returns-apps/migrate-to-return-processing"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "shopify_restock",
+      "url": "https://shopify.dev/docs/api/admin-graphql/latest/enums/RefundLineItemRestockType"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "shopify_webhooks",
+      "url": "https://shopify.dev/docs/api/webhooks/latest"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "stripe_auth_hold",
+      "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "adyen_auth_adjust",
+      "url": "https://docs.adyen.com/online-payments/adjust-authorisation"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "shopify_auth",
+      "url": "https://shopify.dev/docs/api/admin-rest/latest/resources/transaction"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "terminal49_dd",
+      "url": "https://terminal49.com/detention-demurrage-charges"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "project44_dd",
+      "url": "https://www.project44.com/press-releases/project44-launches-detention-demurrage-optimization-to-better-manage-risk-and-reduce-costs/"
+    },
+    {
+      "accessed_at": "2026-08-28",
+      "id": "dockflow_dd",
+      "url": "https://dockflow.com/platform/demurrage-tracking/"
+    }
+  ],
+  "surveyed_families": [
+    {
+      "family": "marketplace payout exceptions",
+      "outcome": "scored",
+      "scenario_id": "marketplace-payout-exception-autopilot"
+    },
+    {
+      "family": "marketplace transaction-fee liability drift",
+      "outcome": "scored",
+      "scenario_id": "marketplace-fee-liability-drift-controller"
+    },
+    {
+      "family": "commercial-card enhanced-data qualification drift",
+      "outcome": "scored",
+      "scenario_id": "cedp-commercial-card-data-quality-autopilot"
+    },
+    {
+      "family": "usage-based SaaS overage boundaries",
+      "outcome": "scored",
+      "scenario_id": "usage-based-saas-overage-governor"
+    },
+    {
+      "family": "returned inventory unavailable after receipt",
+      "outcome": "scored",
+      "scenario_id": "return-inventory-unlock-latency-controller"
+    },
+    {
+      "family": "expiring payment authorizations",
+      "outcome": "rejected",
+      "reason": "provider-native auto-capture/adjustment weakens whitespace"
+    },
+    {
+      "family": "subscription failed-payment recovery",
+      "outcome": "screened_out",
+      "reason": "dominant PSP-native dunning and specialist incumbents"
+    },
+    {
+      "family": "payment routing and soft-decline retry",
+      "outcome": "screened_out",
+      "reason": "crowded payment-orchestration category and requires payment path"
+    },
+    {
+      "family": "chargeback evidence automation",
+      "outcome": "screened_out",
+      "reason": "mature incumbent category"
+    },
+    {
+      "family": "return/refund retention offers",
+      "outcome": "screened_out",
+      "reason": "mature returns and retention platforms"
+    },
+    {
+      "family": "cross-border FX routing",
+      "outcome": "screened_out",
+      "reason": "requires owning transfer/payment path and introduces regulatory complexity"
+    },
+    {
+      "family": "orphan seller balances",
+      "outcome": "screened_out",
+      "reason": "payout exception candidate is the narrower actionable state"
+    },
+    {
+      "family": "marketplace KYC expiry",
+      "outcome": "screened_out",
+      "reason": "provider-native compliance workflows and unavoidable user action"
+    },
+    {
+      "family": "stale commerce inventory reservations",
+      "outcome": "screened_out",
+      "reason": "native commerce/WMS functions and weak direct attribution"
+    },
+    {
+      "family": "gift-card/store-credit expiry",
+      "outcome": "screened_out",
+      "reason": "regulatory/ethical variation and weak intervention permission"
+    },
+    {
+      "family": "unused promotions or ad credits",
+      "outcome": "screened_out",
+      "reason": "spending a credit is not necessarily value creation"
+    },
+    {
+      "family": "SaaS inactive-seat reclamation",
+      "outcome": "screened_out",
+      "reason": "mature SaaS-management/SCIM category and enterprise-gated APIs"
+    },
+    {
+      "family": "cloud reservation/Savings Plan optimization",
+      "outcome": "screened_out",
+      "reason": "provider-native tooling and strong FinOps incumbents"
+    },
+    {
+      "family": "container demurrage/free-time expiry",
+      "outcome": "rejected",
+      "reason": "multiple established D&D optimization products"
+    },
+    {
+      "family": "unused shipping-label refunds",
+      "outcome": "screened_out",
+      "reason": "belongs to rejected contractual-entitlement recovery family"
+    },
+    {
+      "family": "carrier late-delivery claims",
+      "outcome": "screened_out",
+      "reason": "belongs to rejected contractual-entitlement recovery family"
+    },
+    {
+      "family": "booking no-show/cancellation refill",
+      "outcome": "screened_out",
+      "reason": "requires demand matching and has mature vertical incumbents"
+    },
+    {
+      "family": "stale OTA/channel inventory",
+      "outcome": "screened_out",
+      "reason": "channel-manager and revenue-management incumbents"
+    },
+    {
+      "family": "energy demand-charge response",
+      "outcome": "screened_out",
+      "reason": "hardware/control integration and established demand-response vendors"
+    },
+    {
+      "family": "AP credits, duplicates and rebates",
+      "outcome": "screened_out",
+      "reason": "previously rejected entitlement/recovery family with incumbents"
+    },
+    {
+      "family": "tax-exemption certificate expiry",
+      "outcome": "screened_out",
+      "reason": "regulatory risk and mature tax-compliance incumbents"
+    },
+    {
+      "family": "healthcare underpayment recovery",
+      "outcome": "screened_out",
+      "reason": "previously rejected entitlement family plus regulatory burden"
+    },
+    {
+      "family": "insurance claim leakage",
+      "outcome": "screened_out",
+      "reason": "regulatory/human adjudication and incumbent claims systems"
+    },
+    {
+      "family": "telecom pooled-plan overage",
+      "outcome": "screened_out",
+      "reason": "restricted carrier APIs and weak autonomous permission"
+    },
+    {
+      "family": "perishable inventory markdown",
+      "outcome": "screened_out",
+      "reason": "requires POS/price authority and counterfactual value attribution"
+    }
+  ]
+}

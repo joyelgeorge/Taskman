@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "run_key": "2026-08-28T17:39:30+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "adaptive-synthetic-monitor-frequency-optimizer",
+    "name": "Adaptive synthetic-monitor frequency optimizer",
+    "score": 48,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 5,
+      "integration_friction": 4,
+      "distribution_burden": 2,
+      "build_simplicity": 2
+    },
+    "state_transition": "fixed synthetic-check schedule -> traffic/deployment/incident/risk state changes -> the same fixed frequency becomes unnecessarily expensive or insufficiently protective -> change test frequency/downtime through the provider API -> preserve required detection coverage with fewer billable checks -> verified monitoring spend avoided",
+    "why_survived": "Synthetic monitoring has an explicit per-check money meter, independently generated test schedules and usage records, and current provider APIs can modify monitor frequency or downtime without putting the product on the monitored request path. New Relic currently includes finite monthly synthetic-check allowances and charges $0.005 per additional check; its docs show monitor frequency multiplied by selected locations directly determines monthly check count. Datadog exposes estimated usage metrics and programmable Synthetics downtime. Fresh searches found usage dashboards, static budgets, calculators and manual interval-tuning guidance, but did not find a sufficiently close product whose narrow job is continuously adapting synthetic-test frequency to risk/activity while measuring avoided check spend.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      {"claim":"New Relic currently includes 500 synthetic checks on Free and sells additional synthetic checks beyond included amounts at $0.005 per check.","source":"https://newrelic.com/pricing"},
+      {"claim":"New Relic monitor configuration directly maps frequency and selected locations to monthly check count; three locations at 15-minute frequency is documented as 8,640 checks/month.","source":"https://docs.newrelic.com/docs/synthetics/synthetic-monitoring/using-monitors/add-edit-monitors/"},
+      {"claim":"New Relic provides APIs for managing synthetic monitors and scheduled downtimes, allowing a sidecar to change monitoring behavior without proxying application traffic.","source":"https://docs.newrelic.com/docs/apis/synthetics-rest-api/monitor-examples/manage-synthetics-monitors-rest-api/"},
+      {"claim":"Datadog exposes estimated synthetic API/browser test-run usage metrics specifically for billing-impact tracking and provides programmable Synthetics downtimes.","source":"https://docs.datadoghq.com/synthetics/guide/monitor-usage/"},
+      {"claim":"Current cost guidance shows check interval and number of locations can create large multiplicative monitoring bills, and manual interval optimization can cut checks materially.","source":"https://upticknow.com/blog/cost-optimization-monitoring-2026.html"}
+    ],
+    "closest_threat": "Observability vendors already expose usage alerts, static budgets, configurable frequencies, maintenance downtimes and cost guidance. A rational SRE team can manually reduce frequency. Gate 8 fails if first-party products add adaptive frequency or if existing observability-cost platforms already change synthetic schedules automatically rather than merely report spend.",
+    "smallest_intervention": "Read current synthetic monitor definitions, test-run usage, traffic/service criticality, deployment calendars, incident state and SLO requirements; calculate a minimum-safe check frequency per monitor; recommend frequency/downtime changes first, then optionally write them through the provider API. Keep a counterfactual ledger of baseline planned runs versus optimized runs and actual incidents detected.",
+    "monetization": "Small fixed fee per optimized monitor-month or capped share of verified avoided billable synthetic checks, with a reliability guardrail so savings are counted only when stated SLO/detection constraints remain satisfied.",
+    "biggest_unresolved_risk": "Need to prove that enough enterprises materially overspend on synthetic checks and that dynamic frequency changes can save meaningful dollars without increasing mean-time-to-detection or violating contractual/SLO monitoring requirements. Manual configuration may be good enough for many accounts.",
+    "next_research_test": "Attack exact competition and economics: search observability FinOps products for automatic synthetic-test frequency mutation; quantify realistic annual savings for 100-1000 browser/API monitors across multiple regions; test whether deployment/traffic/incident signals produce materially different optimal frequencies and whether New Relic/Datadog APIs permit all required updates safely. Kill if savings are usually sub-$1k/year or first-party adaptive scheduling already exists."
+  },
+  "runner_ups": [
+    {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains strong, but this run produced a cleaner named vertical with explicit billable events, usage metrics and write APIs."},
+    {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution, but aggregate leakage remains unquantified and reconciliation platforms already surface missing refunds."},
+    {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economics but infrequent app-wide control and weaker performance attribution."}
+  ],
+  "tested_families": [
+    "e-signature envelope allowances and overage",
+    "cybersecurity scan quotas",
+    "telecom/messaging prepaid capacity",
+    "creator payout thresholds",
+    "marketplace reserves/deferred payouts",
+    "cross-border fee and FX timing",
+    "CI/CD credits and build minutes",
+    "synthetic monitoring checks",
+    "shipping API label/call overages",
+    "SaaS/API reset quotas"
+  ],
+  "demotions": ["quota-boundary-workload-timing-optimizer"],
+  "rejections_or_non_promotions": [
+    {"candidate":"security-scan-quota-timing","reason":"Provider schedulers already queue around resets in some products, and deferring security scans creates risk; financial upside is less clean than synthetic monitoring."},
+    {"candidate":"CI-CD-boundary-build-timing","reason":"Build timing is frequently developer-critical, paid CircleCI credits can roll over for up to 12 months, and cost optimizers/caching/self-hosted alternatives reduce the narrow reset-boundary wedge."},
+    {"candidate":"shipping-API-overage-timing","reason":"Shipment timing is operationally constrained by fulfillment promises, so delaying labels/API calls to cross a billing boundary is usually not a legitimate low-risk intervention."},
+    {"candidate":"creator-payout-threshold-acceleration","reason":"Threshold balances commonly roll over rather than expire, so the financial delta is mostly timing/liquidity rather than recoverable loss."}
+  ],
+  "new_search_rules": [
+    "A quota vertical becomes much stronger when the provider charges explicitly per billable event and exposes both current usage and configuration APIs; this allows objective savings without request-path ownership.",
+    "Prefer adjustable recurring machine schedules over one-time contract settings because they create repeated monetizable decisions and stronger performance attribution.",
+    "For operational-safety wedges, savings must be conditioned on a non-financial guardrail such as SLO, detection latency or compliance coverage; otherwise the software is merely cutting service quality.",
+    "A provider's static budget/usage dashboard is an adjacent threat but not an exact Gate-8 killer if the proposed layer automatically changes future event frequency based on independent operational state."
+  ]
+}

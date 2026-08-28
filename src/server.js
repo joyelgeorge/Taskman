@@ -7,6 +7,7 @@ import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } fro
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
 import { seedScenarios, listScenarios } from './scenario-store.js';
+import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
@@ -17,6 +18,7 @@ const publicDir = join(__dirname, '..', 'public');
 const port = Number(process.env.PORT || 3000);
 const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
+let brainTimer = null;
 
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -118,6 +120,14 @@ async function restoreSchedules() {
   for (const task of tasks) schedule(task);
 }
 
+function startBrainScheduler() {
+  const minutes = Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return;
+  brainTimer = setInterval(() => executeBrainCycle('schedule').catch(console.error), minutes * 60_000);
+  brainTimer.unref();
+  console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -125,11 +135,24 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const db = await dbHealth();
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
-      return json(res, 200, { providers: providerStatus(), usage, database: db, structuredLearning: true });
+      return json(res, 200, {
+        providers: providerStatus(), usage, database: db,
+        structuredLearning: true,
+        autonomousBrain: true,
+        brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
+    if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
+    if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
+    if (req.method === 'POST' && url.pathname === '/api/brain/run') return json(res, 200, await executeBrainCycle('manual'));
+
+    const scenarioKnowledgeMatch = url.pathname.match(/^\/api\/scenarios\/([^/]+)\/knowledge$/);
+    if (req.method === 'GET' && scenarioKnowledgeMatch) {
+      return json(res, 200, await getKnowledgeSnapshot({ scenarioId: scenarioKnowledgeMatch[1] }));
+    }
 
     const knowledgeMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
@@ -186,4 +209,5 @@ if (databaseEnabled) {
   console.log('Taskman database ready', { migration, seeded });
 }
 await restoreSchedules();
+startBrainScheduler();
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));

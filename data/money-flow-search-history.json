@@ -1,6 +1,6 @@
 {
   "schema_version": 4,
-  "updated_at": "2026-08-28T17:39:30+05:30",
+  "updated_at": "2026-08-28T18:40:26+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -37,7 +37,7 @@
     {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers."},
     {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
     {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
-    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted_2026-08-28T17:39:30+05:30","summary":"Included/prepaid SaaS or API capacity approaching a reset with deferrable work remains a strong mechanism, but this run found a cleaner named vertical in synthetic monitoring."},
+    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted","summary":"Included/prepaid SaaS or API capacity approaching a reset with deferrable work remains a strong mechanism, but a cleaner synthetic-monitor vertical was later identified."},
     {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
     {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"demoted","summary":"Refund-promise to settlement matching remains attractive, but enterprise reconciliation products already surface missing refunds and aggregate leakage remains unquantified."},
     {"seq":15,"type":"rejection","candidate":"Unused shipping-label refund recovery","summary":"Exact tools already identify unused labels and automate carrier refunds/voids."},
@@ -47,12 +47,13 @@
     {"seq":19,"type":"rejection","candidate":"Corporate hotel cancellation deadline optimizer","summary":"Corporate travel software already auto-cancels to avoid no-show fees and lost value."},
     {"seq":20,"type":"rejection","candidate":"Vendor credit memo application before payment","summary":"ERP/AP tools already track and apply unapplied vendor credits."},
     {"seq":21,"type":"search_insight","summary":"Quota-boundary opportunities are strongest when the financial unit and work unit are independently machine-readable and the action can be timing rather than routing through our infrastructure."},
-    {"seq":22,"type":"leader_run","candidate":"Adaptive synthetic-monitor frequency optimizer","score":48,"status":"current","summary":"Synthetic monitoring exposes a direct billable event, independently generated schedules and usage records, and APIs that can change frequency/downtime. The proposed wedge continuously adapts test frequency to traffic, deployment, incident and SLO state while measuring avoided check spend. Exact adaptive-cost competition was not found in this run; Gate 8 and savings magnitude remain uncertain."}
+    {"seq":22,"type":"leader_run","candidate":"Adaptive synthetic-monitor frequency optimizer","score":48,"status":"current_but_weakened","summary":"Synthetic monitoring exposes a direct billable event, schedules and APIs. Exact adaptive-frequency cost optimization was not found, but fresh research found Kentik already uses actual traffic to automatically adjust synthetic test locations, increasing incumbent absorption risk."},
+    {"seq":23,"type":"competition_update","candidate":"Adaptive synthetic-monitor frequency optimizer","score":47,"status":"current","summary":"Leader survives but drops one point. Datadog pricing confirms per-run economics; Finout explicitly recommends frequency/location tuning; Kentik already auto-adjusts synthetic test locations from traffic and Datadog can review expensive test setups. Remaining whitespace is automated frequency optimization with verified spend counterfactual, not adaptive synthetic configuration broadly."}
   ],
   "current_leader": {
     "id": "adaptive-synthetic-monitor-frequency-optimizer",
     "name": "Adaptive synthetic-monitor frequency optimizer",
-    "score": 48,
+    "score": 47,
     "max_score": 60,
     "component_scores": {
       "flow_scale": 5,
@@ -61,15 +62,15 @@
       "permission_non_invasiveness": 5,
       "delta_measurability": 5,
       "monetization": 4,
-      "first_party_gap": 4,
-      "competitive_whitespace": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
       "regulation": 5,
       "integration_friction": 4,
       "distribution_burden": 2,
-      "build_simplicity": 2
+      "build_simplicity": 3
     },
-    "state_transition": "fixed synthetic-check schedule -> traffic/deployment/incident/risk state changes -> fixed frequency becomes unnecessarily expensive or insufficiently protective -> change test frequency/downtime through provider API -> preserve required detection coverage with fewer billable checks -> verified monitoring spend avoided",
-    "why_survived": "New Relic currently exposes finite included synthetic checks and charges for additional checks, while monitor frequency multiplied by locations determines monthly check count. New Relic and Datadog expose APIs and usage metrics that allow a sidecar to read cost state and modify frequency/downtime without proxying application requests. Fresh searches found static usage dashboards, alerts, budgets and manual interval-tuning guidance but no sufficiently close product whose narrow job is continuously adapting synthetic-test frequency to changing operational risk while measuring avoided check spend.",
+    "state_transition": "fixed synthetic-check schedule -> traffic/deployment/incident/risk state changes -> current cadence becomes unnecessarily expensive -> lower eligible frequency/coverage within guardrails -> preserve required detection quality -> verified billable test runs avoided",
+    "why_survived": "Synthetic runs remain explicitly usage-priced and machine-scheduled. Current systems expose frequencies, locations, traffic and incident signals, making a read-only recommendation layer feasible without touching customer traffic. Exact searches did not find a sufficiently close product whose commercial job is continuously optimizing frequency against real-time risk and then charging on verified avoided run spend. The hypothesis is weaker because Kentik already performs traffic-driven automatic synthetic configuration at the location level and observability vendors have workflow/cost automation primitives.",
     "gates": {
       "money_flow_scale": "pass",
       "recurring_leakage": "uncertain",
@@ -81,37 +82,37 @@
       "competitive_whitespace": "uncertain"
     },
     "strongest_evidence": [
-      "New Relic pricing currently includes 500 synthetic checks on Free and prices additional synthetics checks beyond included amounts at $0.005/check.",
-      "New Relic docs show frequency and selected locations directly determine monthly check count; three locations at 15-minute frequency yields 8,640 checks/month.",
-      "New Relic APIs can create/update synthetic monitors and scheduled downtimes; Datadog exposes estimated synthetic usage metrics and programmable downtimes.",
-      "Current cost-optimization guidance identifies interval and multi-region frequency as major multiplicative cost drivers, but this run did not find an exact adaptive-frequency FinOps product."
+      "Datadog currently prices browser synthetics from $12 per 1,000 runs and API synthetics from $5 per 10,000 runs, so frequency is directly monetized.",
+      "Finout explicitly identifies check-frequency and test-location tuning as Datadog synthetic cost-optimization levers.",
+      "Kentik states that actual traffic can automatically configure/maintain synthetic tests and adjust test locations when traffic flows change.",
+      "Site24x7 describes intelligent test scheduling based on historical/predictive data as a way to reduce synthetic costs while preserving coverage, supporting technical plausibility but also future incumbent absorption risk."
     ],
-    "closest_threat": "Observability vendors already provide usage alerts, static budgets, configurable frequencies and downtimes; existing observability FinOps tools may evolve to mutate schedules. The wedge dies if manual static configuration captures most savings or if automatic adaptive scheduling already exists at scale.",
-    "smallest_intervention": "Read monitor definitions, historical run counts, traffic/service criticality, deployment calendars, incident state and SLO constraints; compute a minimum-safe frequency per monitor; recommend frequency/downtime changes first, then optionally write them through provider APIs. Maintain a counterfactual ledger of baseline planned checks versus optimized checks and detected incidents.",
-    "monetization": "Small fee per optimized monitor-month or capped percentage of verified avoided billable checks, counted only while reliability/SLO guardrails remain satisfied.",
-    "biggest_unresolved_risk": "Need to prove material enterprise overspend and demonstrate that dynamic frequency reduction saves meaningful dollars without degrading detection latency, contractual monitoring requirements or compliance coverage.",
-    "next_research_test": "ATTACK-LIKE SEARCH while remaining SEARCH mode: find exact observability FinOps products that automatically mutate synthetic-test frequency; model annual savings for 100-1000 API/browser monitors across multiple regions; verify update permissions and operational guardrails across New Relic and Datadog. Kill if typical savings are sub-$1k/year or first-party adaptive scheduling already exists."
+    "closest_threat": "Kentik already auto-adjusts synthetic locations from observed traffic; Datadog provides expensive-test setup review, workflow automation and cost-optimization primitives. The wedge dies if first-party systems also mutate frequency automatically or if dynamic savings beyond one-time manual tuning are small.",
+    "smallest_intervention": "Read synthetic definitions, historical runs, traffic, deploy/incident state and SLO constraints; compute minimum-safe frequency; recommend changes first and optionally write schedules later. Maintain a baseline-versus-optimized run ledger and block changes that violate detection-latency/SLO policy.",
+    "monetization": "Per optimized monitor-month or capped share of verified avoided synthetic-run spend while reliability guardrails remain satisfied.",
+    "biggest_unresolved_risk": "Dynamic optimization may add little beyond one-time static tuning, and adaptive synthetic configuration is close enough to existing vendor capabilities that incumbent absorption risk is now material.",
+    "next_research_test": "Find evidence of real enterprise synthetic estates and billing pain, quantify dynamic-versus-static savings using realistic run-count distributions, and inspect Datadog/New Relic/Kentik/Checkly for automatic frequency mutation. Kill if dynamic incremental savings are small or first-party adaptive frequency already exists."
   },
   "latest_run": {
-    "run_key": "2026-08-28T17:39:30+05:30",
+    "run_key": "2026-08-28T18:40:26+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
     "current_leader": "adaptive-synthetic-monitor-frequency-optimizer",
-    "score": 48,
-    "run_file": "data/money-flow-runs/2026-08-28T173930+0530.json",
-    "promotions": ["adaptive-synthetic-monitor-frequency-optimizer"],
-    "demotions": ["quota-boundary-workload-timing-optimizer"],
-    "rejections": ["security-scan-quota-timing", "CI-CD-boundary-build-timing", "shipping-API-overage-timing", "creator-payout-threshold-acceleration"],
+    "score": 47,
+    "run_file": "data/money-flow-runs/2026-08-28T184026+0530.json",
+    "promotions": [],
+    "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:48->47"],
+    "rejections": [],
     "runner_ups": [
-      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains strong, but synthetic monitoring is a cleaner vertical with explicit billable events, usage metrics and write APIs."},
+      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains structurally strong but still lacks a better specific vertical than synthetics."},
       {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution but unquantified leakage and closer reconciliation competition."},
       {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economics but infrequent app-wide control and weaker performance attribution."}
     ],
     "new_search_rules": [
-      "A quota vertical is stronger when the provider charges explicitly per billable event and exposes both usage and configuration APIs.",
-      "Prefer adjustable recurring machine schedules over one-time settings because they create repeated monetizable decisions and stronger attribution.",
-      "For operational-safety wedges, savings must be conditional on a non-financial guardrail such as SLO, detection latency or compliance coverage.",
-      "A static first-party budget or usage dashboard is an adjacent threat but not an exact Gate-8 killer if the proposed layer automatically changes future event frequency using independent operational state."
+      "Exact adaptive frequency remains distinct from traffic-driven adaptive test-location selection, but the latter materially raises incumbent absorption risk.",
+      "A direct per-run price is not sufficient; prove incremental savings beyond a one-time static best-practice tuning exercise.",
+      "For observability wedges, compare against first-party workflow automation primitives, not only explicit named cost-optimization features.",
+      "When a vendor already uses traffic to mutate one synthetic configuration dimension automatically, penalize adjacent dimensions even if the exact proposed feature is absent."
     ]
   },
   "run_history": [
@@ -119,7 +120,8 @@
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
     {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
     {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"},
-    {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"current","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"}
+    {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"},
+    {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"current","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"}
   ],
   "known_rejected_or_demoted": [
     "expiring contractual financial entitlements broad family",

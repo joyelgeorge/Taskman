@@ -1,0 +1,80 @@
+{
+  "run_key": "2026-08-29T01:35:25+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "processor balance becomes eligible -> standard settlement ETA and paid acceleration tiers are known -> external cash and obligations determine liquidity needed before each ETA -> recommend zero, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
+    "why_survived": "Paid settlement acceleration remains an explicit recurring financial choice. Razorpay currently publishes roughly 0.20-0.30% instant and 0.15-0.20% same-day settlement pricing and allows custom settlement rules, but fresh competition searches did not identify a product that combines processor available balance, standard settlement ETA, acceleration fee tiers, live external liquidity and obligations due before each ETA to compute the minimum economically justified accelerated amount. The intervention can remain read-only and out of the payment path.",
+    "strongest_evidence": "Razorpay currently exposes instant, same-day, and custom settlement modes with explicit incremental pricing, proving both the recurring state transition and deterministic fee delta. SeerFlow separately demonstrates that merchant processor settlement data can feed forward cash-flow forecasts, while explicitly lacking live bank-balance data, leaving the exact cross-system liquidity decision unresolved rather than occupied.",
+    "closest_threat": "Razorpay already supports custom settlement rules, and broad treasury/cash-flow products can forecast liquidity. A first party or treasury platform could combine those primitives. Gate 8 remains uncertain until exact cash-aware minimum-acceleration functionality is ruled out more comprehensively.",
+    "smallest_intervention": "Read processor balance and settlement ETA, acceleration fee tiers, bank balance and obligations due before standard settlement. Output the cheapest sufficient choice: no acceleration, same-day, or instant, plus the minimum amount. V1 does not initiate a payout or hold funds.",
+    "monetization": "Small per valuable settlement decision, low monthly micro-fee, or capped share of verified acceleration fees avoided versus a competent treasury baseline.",
+    "biggest_unresolved_risk": "The avoidable paid-acceleration pool is still unquantified. If merchants already accelerate only the exact amount genuinely needed before free settlement, the theoretical fee delta has little real-world volume.",
+    "next_research_test": "Quantify actual unnecessary accelerated-settlement volume using merchant cash-flow examples or processor/merchant disclosures, and search specifically for products that combine PSP balances, bank balances, obligations and settlement-speed fees to recommend the minimum acceleration amount. Kill if avoidable volume is small or an exact incumbent is found."
+  },
+  "promotions": [
+    "merchant-settlement-acceleration-decision-engine promoted from runner-up to current leader after prior FX leader failed Gate 8"
+  ],
+  "demotions": [],
+  "rejections": [
+    {
+      "id": "processor-native-currency-settlement-optimizer",
+      "fatal_flaw": "Gate 8 fail / first-party absorption. Airwallex now explicitly settles foreign receipts like-for-like into a multi-currency wallet, lets businesses hold the original currency, reuse it for same-currency suppliers/cards/payouts, and says to convert only when needed. That closed-loop first-party workflow captures most of the proposed avoidable double-conversion value without a separate optimizer. Dynamic recommendation value beyond this default behavior is not proven."
+    },
+    {
+      "id": "dealer-warranty-labor-parts-rate-uplift",
+      "fatal_flaw": "Gate 8 fail. Armatus Dealer Uplift already provides turnkey, contingent-fee retail warranty reimbursement submissions, proprietary optimization software, annual anniversary tracking, statutory-vs-factory evaluation, parts-markup and labor-rate optimization, and reports thousands of approved submissions."
+    },
+    {
+      "id": "commercial-utility-tariff-demand-optimizer",
+      "fatal_flaw": "Gate 8 fail. Current products already ingest bills/interval data, continuously optimize utility tariffs, forecast demand peaks, detect demand-charge exposure and in some cases automate load control and verify savings."
+    }
+  ],
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "note": "clean API and delta; adaptive savings beyond competent static tuning remain unproven"},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "note": "structurally strong but still lacks a sufficiently valuable defensible vertical"},
+    {"rank": 4, "id": "corporate-promised-refund-settlement-watchdog", "score": 44, "note": "clean recovery attribution, but leakage magnitude and reconciliation competition remain unresolved"}
+  ],
+  "new_search_rules": [
+    "A first-party closed-loop financial account can neutralize an optimizer even without an explicit recommendation engine when the safe default behavior captures most of the proposed savings; Gate 8 should assess economic neutralization, not only feature-name equivalence.",
+    "For settlement-speed optimization, measure avoidable paid acceleration against competent cash management, not against accelerating the entire available processor balance.",
+    "Continue preferring event-level decisions whose fee delta is explicitly priced and independently observable over annual/legal submissions or hardware-dependent optimization."
+  ],
+  "source_references": [
+    {"title": "Airwallex settlements docs", "url": "https://www.airwallex.com/docs/payments/about-airwallex-payments/settle-into-your-airwallex-balance"},
+    {"title": "Airwallex like-for-like settlement guide", "url": "https://www.airwallex.com/en-sg/blog/like-for-like-settlement"},
+    {"title": "Razorpay Instant Settlements", "url": "https://razorpay.com/capital/instant-settlements/"},
+    {"title": "SeerFlow D2C cash-flow platform", "url": "https://seerflow.in/"},
+    {"title": "Armatus Dealer Uplift retail warranty reimbursement", "url": "https://www.dealeruplift.com/retail-warranty-reimbursement/"},
+    {"title": "TrueMeter utility management", "url": "https://truemeter.com/"},
+    {"title": "Vitality demand forecasting", "url": "https://vitality.io/energy-management-software/demand-forecasting"}
+  ]
+}

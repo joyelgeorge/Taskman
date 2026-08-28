@@ -1,0 +1,86 @@
+{
+  "run_key": "2026-08-28T21:47:16+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 47,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 3
+    },
+    "state_transition": "processor balance becomes available -> standard settlement is free/slower while accelerated settlement has a fee -> bank/AP/cash obligations reveal exactly how much cash is needed before standard settlement -> accelerate only the minimum economically justified amount -> avoid unnecessary settlement fees while preventing cash shortfalls",
+    "why_survived": "Payment processors expose balances, payout schedules and accelerated-settlement choices with explicit fees. Treasury systems expose bank balances and obligations, but this run did not find a sufficiently close cross-processor product whose narrow job is to compute the minimum amount of merchant processor balance that should be accelerated right now versus left on the free standard schedule. The decision can remain recommendation-only and outside the payment-acceptance path.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "Stripe Instant Payouts charges 1%-1.5% depending on region, while funds not accelerated remain on the standard payout schedule; balances expose instant_available and payouts can be initiated via API.",
+      "Cashfree supports on-demand settlement of specific transactions and scheduled instant settlements, with standard instant-settlement pricing starting around 0.30%.",
+      "Instamojo publishes differentiated acceleration fees: instant 1% + GST, same-day 0.50% + GST, next-day 0.25% + GST.",
+      "Razorpay publishes approximately 0.20-0.30% for instant settlement and 0.15-0.20% for same-day settlement.",
+      "PayU allows customized settlement cycles from roughly T+15 minutes through T+1, confirming the decision is a recurring selectable speed-versus-cost tradeoff."
+    ],
+    "closest_threat": "Broad treasury platforms such as Open Money and FlowOne already forecast cash gaps and optimize payout timing. Gate 8 survives only if processor-balance acceleration remains outside their current automatic decision scope; first-party processors could also absorb the feature if they integrate merchant bank/AP data.",
+    "smallest_intervention": "Read processor available/instant-available balance and free standard settlement ETA; read authorized bank balance plus AP/payroll/refund obligations due before that ETA; compute the minimum accelerated amount whose fee is lower than the objective cost of the projected cash shortfall; initially recommend amount and timing only.",
+    "monetization": "Per successful acceleration-avoidance decision, small fixed fee per financially valuable decision, or capped share of verified accelerated-settlement fees avoided relative to a documented cash-need baseline.",
+    "biggest_unresolved_risk": "Magnitude is unproven: merchants may either rarely use paid acceleration or use it because cash need is genuinely urgent, leaving too little avoidable fee. Treasury suites may also already be close enough that the wedge becomes a feature rather than a standalone layer.",
+    "next_research_test": "Quantify how often merchants use paid accelerated settlements unnecessarily and whether treasury products or processor-native products already combine processor balances, bank balances and near-term obligations to choose the minimum accelerated amount. Attack Stripe/Cashfree/Razorpay/PayU ecosystems plus treasury suites; kill if the avoidable fee pool is small or exact automation already exists."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "reason": "Precise and programmable, but repeated searches have not proven material savings beyond best-static tuning."},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "reason": "Strong mechanism but still lacks a specific non-AI vertical with large movable workloads and clear whitespace."},
+    {"rank": 4, "id": "corporate-promised-refund-settlement-watchdog", "score": 44, "reason": "Clean recovery attribution, but reconciliation incumbents are close and aggregate leakage remains unquantified."}
+  ],
+  "tested_families": [
+    "merchant settlement acceleration / payment processor balances",
+    "cloud object-storage minimum-duration and small-object billing",
+    "software subscription proration and seat changes",
+    "enterprise telecom / pooled data optimization",
+    "freight accessorial audit",
+    "commercial insurance claim/premium leakage",
+    "creator payout/revenue-share reconciliation",
+    "chargeback contest-versus-accept decision"
+  ],
+  "rejections_or_demotions": [
+    {"id": "cloud-storage-early-deletion-delay", "status": "rejected", "reason": "Waiting until minimum retention ends generally does not create savings because providers charge the same remaining minimum-duration amount as an early-deletion penalty; first-party smart/intelligent tiering also absorbs much of the lifecycle optimization."},
+    {"id": "small-object-cold-tier-mispricing", "status": "rejected", "reason": "AWS/third-party FinOps tools already identify small-object storage-class inefficiencies; Azure Smart Tier keeps sub-128 KiB objects hot automatically, and Azure paused its announced 128 KiB cooler-tier billing floor in June 2026."},
+    {"id": "chargeback-contest-expected-value", "status": "rejected", "reason": "Chargeback products now expose win probabilities, automatically assemble evidence, and use performance pricing; sufficiently close to the exact decision."},
+    {"id": "adaptive-synthetic-monitor-frequency-optimizer", "status": "demoted", "reason": "Remains viable at 45/60 but is displaced by a more direct recurring fee-versus-liquidity state transition."}
+  ],
+  "new_search_rules": [
+    "Prefer recurring option-value decisions where the same underlying money is already moving and the system chooses between a free/slower state and a paid/faster state.",
+    "For timing wedges, require the optimizer to compute a minimum necessary amount or duration rather than simply recommend the slower/cheaper option.",
+    "Treat first-party possession of one side of the data as insufficient to fail Gate 8 when the economically decisive state requires authorized data from another system, such as processor balance plus external bank/AP obligations."
+  ],
+  "sources": [
+    "https://docs.stripe.com/payouts/instant-payouts",
+    "https://www.cashfree.com/instant-settlements/",
+    "https://www.instamojo.com/faster-payouts/",
+    "https://razorpay.com/capital/instant-settlements/",
+    "https://payu.in/priority-settlements/",
+    "https://open.money/",
+    "https://flowone.in/products/cash-banking-hub/",
+    "https://aws.amazon.com/s3/pricing/",
+    "https://cloud.google.com/storage/pricing"
+  ]
+}

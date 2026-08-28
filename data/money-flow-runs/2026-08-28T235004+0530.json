@@ -1,0 +1,77 @@
+{
+  "run_key": "2026-08-28T23:50:04+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "processor-native-currency-settlement-optimizer",
+    "name": "Processor native-currency settlement optimizer",
+    "score": 47,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "foreign-currency processor balance is created -> account lacks or underuses matching settlement currency -> processor converts to default currency or merchant later reconverts for same-currency obligations -> compare native-settlement payout fee, forced-conversion cost and forecast same-currency spend -> recommend native settlement only where the deterministic fee delta is positive -> avoid one or two unnecessary FX conversions",
+    "why_survived": "Stripe documents that a matching bank account for the settlement currency avoids conversion; without one, payout balances are converted to the default currency. Stripe pricing in several European markets lists multi-currency settlement at about 1% of payout volume while currency conversion can carry separate percentage fees. This makes the decision recurring, machine-readable and objectively priced. The smallest product can remain read-only: identify currencies where native settlement is cheaper than forced conversion, taking into account same-currency upcoming spend. Broad FX and treasury systems optimize exposure and netting, but no exact lightweight merchant-side product was found that continuously compares PSP settlement balances and fee tables against external same-currency obligations to recommend which processor currencies should remain native.",
+    "strongest_evidence": [
+      "Stripe FX documentation: payout in a currency with an available bank account causes no conversion; without one Stripe converts the balance to the default bank-account currency.",
+      "Stripe European pricing pages list multi-currency settlement at 1% of payout volume and instant conversion starting around 0.5%, demonstrating explicit competing fee states.",
+      "EQWIRE describes the merchant pattern of receiving EUR/USD while also paying same-currency SaaS, ads, logistics or suppliers, where forced conversion can cause repeated FX cost."
+    ],
+    "closest_threat": "Kantox, Pleo, LimFi and broader treasury/multi-currency platforms already optimize FX, balances and netting. Stripe itself provides the native settlement capability. The remaining whitespace is the narrow read-only PSP-specific fee decision rather than execution or hedging. Gate 8 is therefore uncertain, not passed.",
+    "smallest_intervention": "Read processor balances by currency, configured settlement bank accounts, processor FX/payout fee tables and authorized upcoming AP/card obligations by currency. Output: enable/keep native settlement for currency X, expected annual deterministic savings Y; otherwise leave default conversion. No funds, FX trades or payouts pass through the product.",
+    "monetization": "Small per-currency optimization fee, monthly fee, or capped percentage of verified processor FX fees avoided. Savings can be verified from actual payout volume multiplied by the counterfactual fee schedule, but pricing must beat a spreadsheet and broad treasury-suite alternatives.",
+    "biggest_unresolved_risk": "Incumbent absorption and self-serve simplicity. If the economically correct configuration is stable for months and can be solved once by adding two bank accounts, recurring monetization is weak. Need evidence that currency mix, obligations and fee schedules change often enough for continuous optimization to create material incremental value.",
+    "next_research_test": "Attack recurrence and competition: find merchant datasets or case studies showing repeated PSP FX leakage after competent static multi-currency setup; test whether same-currency obligations vary enough to change the optimal settlement configuration; search exact products that ingest Stripe/Adyen/PayPal balances plus AP/card obligations and recommend native-vs-convert per currency. Kill if one-time setup captures most value or an exact incumbent exists."
+  },
+  "runner_ups": [
+    {"rank":2,"id":"merchant-settlement-acceleration-decision-engine","score":46,"status":"demoted","reason":"Paid settlement-speed decision remains clean, but avoidable paid acceleration volume is still unquantified and treasury products are closing the gap."},
+    {"rank":3,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"status":"survives","reason":"Programmable and measurable, but dynamic savings beyond competent static tuning remain unproven."},
+    {"rank":4,"id":"quota-boundary-workload-timing-optimizer","score":45,"status":"survives","reason":"Strong general mechanism but still lacks a precise large vertical with high movable workload value."}
+  ],
+  "candidate_events": [
+    {"id":"processor-native-currency-settlement-optimizer","event":"promotion","from_score":null,"to_score":47},
+    {"id":"merchant-settlement-acceleration-decision-engine","event":"demotion","from_score":46,"to_score":46,"reason":"superseded by stronger recurring FX percentage leakage hypothesis"},
+    {"id":"app-store-price-consent-threshold-optimizer","event":"demotion","score":42,"fatal_flaw":"financial delta depends heavily on churn counterfactuals and current pricing tools already warn on consent thresholds; Gate 5/6 weak"},
+    {"id":"warranty-parts-return-deadline-recovery","event":"rejection","fatal_flaw":"dedicated warranty parts-return systems already track return requests, shipments and deadlines; Gate 8 fail"},
+    {"id":"telecom-pooled-plan-overage-optimizer","event":"rejection","fatal_flaw":"TEM/MVNE products already perform pooled-plan optimization, usage anomaly detection and right-sizing; Gate 8 fail"},
+    {"id":"healthcare-timely-filing-priority","event":"rejection","fatal_flaw":"current RCM agents explicitly monitor payer filing deadlines and prioritize claims; Gate 8 fail"}
+  ],
+  "new_search_rules": [
+    "For PSP/cross-border wedges, separate capability from decision: a first party exposing native settlement does not itself kill a read-only optimizer, but one-time configuration value must be discounted heavily.",
+    "Recurring percentage-of-flow leakage is stronger than fixed configuration waste only when the optimal state changes with naturally occurring balances/obligations.",
+    "Use competent static configuration as the baseline before crediting any continuous optimization savings."
+  ],
+  "sources": [
+    "https://docs.stripe.com/connect/currencies/fx-quotes-api",
+    "https://stripe.com/en-ee/pricing",
+    "https://stripe.com/en-de/pricing",
+    "https://eqwire.com/news/fx-neutral-settlement-psp-payouts",
+    "https://www.kantox.com/",
+    "https://www.pleo.io/en/cash-management",
+    "https://limfilabs.com/product",
+    "https://www.intellinetsystem.com/parts-return-management-software",
+    "https://www.spenza.com/controlhub/",
+    "https://www.malakos-ai.com/timely-filing.html"
+  ]
+}

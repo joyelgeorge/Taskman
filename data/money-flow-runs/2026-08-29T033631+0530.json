@@ -1,0 +1,87 @@
+{
+  "run_key": "2026-08-29T03:36:31+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "processor balance becomes eligible -> free/standard settlement ETA and paid speed tiers are known -> external bank liquidity and obligations due before each ETA determine actual shortfall -> recommend zero, next-day, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
+    "why_survived": "Fresh evidence materially strengthens recurrence but not avoidable leakage. Adyen's current Vagaro CashOut case reports 14,000+ instant payouts in the first two months, about 1,300 per week, with 65% of users returning for a second payout, 75% for a third and 83% for a fourth. Cashfree currently prices instant settlement from 0.30% and permits specific on-demand transaction settlement. Razorpay publishes 0.20-0.30% instant and 0.15-0.20% same-day settlement. These prove a recurring paid speed decision. No exact product was found that combines PSP balance/ETA, paid speed tiers, live bank cash and obligations to compute the minimum economically necessary accelerated amount. However repeat usage does not prove over-acceleration, so Gate 2 remains uncertain.",
+    "strongest_evidence": [
+      "Adyen/Vagaro: 14,000+ instant payouts in first two months, 1,300/week and strong repeat-use rates, proving recurrence of the paid-speed event.",
+      "Cashfree: instant settlements start at 0.30% and specific transactions can be settled on demand.",
+      "Razorpay: instant settlement 0.20-0.30%, same-day 0.15-0.20%, establishing a deterministic speed-cost ladder."
+    ],
+    "closest_threat": "First parties already expose amount selection, automatic settlement frequencies and paid speed tiers; adjacent treasury systems aggregate cash. The wedge survives only as a cross-system minimum-necessary-acceleration calculator. Fee-free faster-access products can economically neutralize the opportunity for subsets.",
+    "smallest_intervention": "Read PSP available/instant-eligible balance, free payout ETA, paid speed tiers, bank balance and obligations due before each ETA. Output no acceleration or the cheapest sufficient speed and minimum amount. V1 does not initiate payouts or hold funds.",
+    "monetization": "Small fee per financially valuable recommendation, low recurring micro-fee, or capped share of verified acceleration fees avoided against a competent cash-management counterfactual.",
+    "biggest_unresolved_risk": "No reliable dataset yet quantifies how much paid accelerated-settlement volume exceeds genuine pre-settlement liquidity needs. High adoption and repeat usage may represent rational urgency rather than waste.",
+    "next_research_test": "Find merchant-level or anonymized data linking instant/same-day payout usage to bank liquidity or near-term obligations. Estimate actual paid acceleration fees minus the minimum fees required to avoid genuine shortfalls. In parallel search banking/treasury products for exact PSP-balance + bank-balance + obligations + settlement-fee decisioning. Kill the leader if the avoidable fraction is immaterial or exact functionality is found."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45},
+    {"rank": 4, "id": "off-cycle-payroll-deferral-batching-optimizer", "score": 43}
+  ],
+  "candidate_events": [
+    {
+      "id": "off-cycle-payroll-deferral-batching-optimizer",
+      "status": "surviving-runner-up",
+      "score": 43,
+      "state_transition": "payroll correction/bonus/arrears event appears -> legal/employment due-date and next regular payroll date are known -> provider charges extra for off-cycle run -> determine whether event can safely wait or be batched -> avoid unnecessary off-cycle run fee",
+      "evidence": "UKG Ready currently charges $55 per off-cycle payroll; other payroll sources describe per-run pricing and off-cycle runs as a recurring extra cost. Exact decision optimization was not found, but legal timing varies by jurisdiction, lowering non-invasiveness and build simplicity.",
+      "fatal_or_key_risk": "Compliance complexity and relatively small per-event savings; payroll error/compliance tooling is crowded."
+    },
+    {
+      "id": "ach-noc-auto-remediation",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8: Kotapay and VeriCheck already automatically capture ACH Notice-of-Change corrected data and apply it to subsequent transactions; Treasury Prime now exposes corrected NOC data programmatically via API."
+    },
+    {
+      "id": "usage-tier-plan-auto-optimizer",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8/first-party absorption: current SaaS vendors such as Klaviyo already recommend plans and can automatically upgrade and, in some cases, auto-downgrade based on usage; generalized spend-management competition is also strong."
+    }
+  ],
+  "new_search_rules": [
+    "High adoption or repeat use of a paid-speed option proves recurrence, not leakage. Gate 2 requires a counterfactual showing that some paid speed was unnecessary given actual liquidity/obligations.",
+    "For event-fee wedges, distinguish fee existence from avoidable fee volume; only the latter supports leakage magnitude.",
+    "Reject apparently clean ACH correction wedges when the originating processor already auto-applies NOC corrections before future entries."
+  ],
+  "sources": [
+    "https://www.adyen.com/en_AE/knowledge-hub/vagaro-adyen-instant-payouts",
+    "https://www.cashfree.com/instant-settlements/",
+    "https://razorpay.com/capital/instant-settlements/",
+    "https://www.ukg.com/ukg-payroll-services-miscellaneous-pricing-schedule-current",
+    "https://www.kotapay.com/achprocessing",
+    "https://www.vericheck.com/ach-notification-of-change-noc-codes/",
+    "https://docs.treasuryprime.com/changelog",
+    "https://help.klaviyo.com/hc/en-us/articles/115000976672"
+  ]
+}

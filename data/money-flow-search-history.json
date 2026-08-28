@@ -1,52 +1,113 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-29T02:45:02+05:30",
+  "updated_at": "2026-08-29T03:36:31+05:30",
   "scenario_id": "programmable-money-flow-search",
-  "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
-  "history_archives": [
-    {"type":"prior_anchor_git_blob","sha":"6343cc3c4f5e4ccc3b774361433e085ec4e36355","note":"Schema-v4 full conversation/rejection archive."},
-    {"type":"prior_anchor_git_blob","sha":"bbe3044dc117562d09c7a81d13b9bd58cb4eec54","note":"Schema-v5 anchor through 2026-08-28T19:33:59+05:30; immutable run files preserve normalized history."}
-  ],
-  "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
-  "current_leader": {
-    "id":"merchant-settlement-acceleration-decision-engine",
-    "name":"Merchant settlement acceleration decision engine",
-    "score":46,
-    "max_score":60,
-    "component_scores":{"flow_scale":5,"leakage_magnitude":3,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":3,"competitive_whitespace":3,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":4},
-    "state_transition":"processor balance becomes eligible -> free/standard settlement ETA and paid speed tiers are known -> external bank liquidity and obligations due before each ETA determine actual shortfall -> recommend zero, next-day, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
-    "why_survived":"Fresh searches found strong evidence that instant payouts remain materially priced and are intended for selective urgent liquidity rather than routine use. Yoco charges roughly 1%-1.5% plus VAT depending on plan and explicitly tells merchants to request the amount they need; MeevoPay Now charges 1.75%; Stripe-linked Dubsado currently lists 1%-1.5% by country; Cashfree starts at 0.30%. Stripe also supports daily, weekly, monthly, and manual payout schedules. No exact product was found that combines PSP balance/ETA, paid speed tiers, live bank cash, and obligations to compute the minimum economically necessary accelerated amount. Exact avoidable-volume evidence is still missing, so leakage remains uncertain rather than passed.",
-    "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
-    "closest_threat":"First parties already expose amount selection, payout schedules, and speed choices, while banks/treasury products aggregate cash. Novo even offers fee-free faster Stripe access for eligible customers, which economically neutralizes the wedge for that subset. Gate 8 remains uncertain until exact cross-system cash-aware minimum-acceleration decisioning is ruled out comprehensively.",
-    "smallest_intervention":"Read PSP available/instant-eligible balance, standard settlement ETA, paid speed tiers, bank balance and obligations due before standard settlement. Output the cheapest sufficient choice and minimum amount. V1 does not initiate a payout or hold funds.",
-    "monetization":"Small per valuable settlement decision, low recurring micro-fee, or capped share of verified acceleration fees avoided versus a competent treasury baseline.",
-    "biggest_unresolved_risk":"There is still no reliable primary evidence quantifying how much paid accelerated-settlement volume is unnecessary after accounting for genuine liquidity needs. If merchants already accelerate selectively, the recoverable fee pool may be too small.",
-    "next_research_test":"Search processor disclosures, merchant surveys, payment-company filings or anonymized transaction studies quantifying instant/same-day payout adoption and merchant liquidity need. Estimate actual acceleration fees minus minimum fees required to avoid genuine shortfalls. In parallel search treasury/banking products for exact PSP-balance + bank-balance + obligations + settlement-fee decisioning. Kill if avoidable volume is immaterial or exact functionality is found."
+  "task": {
+    "stable_key": "money-flow-wedge-scout",
+    "title": "Money Flow Wedge Scout",
+    "status": "active",
+    "mode": "SEARCH",
+    "threshold_crossed": false
   },
-  "latest_run":{"run_key":"2026-08-29T02:45:02+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T024502+0530.json","promotions":[],"demotions":[],"rejections":["per-shipment-insurance-selection-optimizer","music-royalty-underpayment-recovery","corporate-gift-card-breakage-tracker"],"runner_ups":[{"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":4,"id":"corporate-promised-refund-settlement-watchdog","score":44}]},
-  "run_history":[
-    {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
-    {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
-    {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
-    {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"},
-    {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"},
-    {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"},
-    {"run_key":"2026-08-28T19:33:59+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T193359+0530.json"},
-    {"run_key":"2026-08-28T20:36:24+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T203624+0530.json"},
-    {"run_key":"2026-08-28T21:47:16+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T214716+0530.json"},
-    {"run_key":"2026-08-28T22:36:35+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T223635+0530.json"},
-    {"run_key":"2026-08-28T23:50:04+05:30","leader":"processor-native-currency-settlement-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T235004+0530.json"},
-    {"run_key":"2026-08-29T00:46:40+05:30","leader":"processor-native-currency-settlement-optimizer","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-29T004640+0530.json"},
-    {"run_key":"2026-08-29T01:35:25+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-29T013525+0530.json"},
-    {"run_key":"2026-08-29T02:45:02+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-29T024502+0530.json"}
+  "history_archives": [
+    {
+      "type": "prior_anchor_git_blob",
+      "sha": "6343cc3c4f5e4ccc3b774361433e085ec4e36355",
+      "note": "Schema-v4 full conversation/rejection archive."
+    },
+    {
+      "type": "prior_anchor_git_blob",
+      "sha": "bbe3044dc117562d09c7a81d13b9bd58cb4eec54",
+      "note": "Schema-v5 anchor through 2026-08-28T19:33:59+05:30."
+    },
+    {
+      "type": "prior_anchor_git_blob",
+      "sha": "d4cc5753f22b3a79e9d227af0150625cacd4dac3",
+      "note": "Full schema-v5 anchor through 2026-08-29T02:45:02+05:30; immutable run files preserve normalized history."
+    }
   ],
-  "recent_cross_family_findings":[
-    "Merchant settlement acceleration remains current leader at 46/60. Instant payout products remain materially priced and are explicitly framed for selective liquidity use, but primary evidence of avoidable over-acceleration remains missing.",
-    "Per-shipment insurance selection is rejected on Gate 8: Insurrl already makes the exact per-order skip/use-carrier/route-to-insurer decision with store/API integrations and savings attribution.",
-    "Music royalty underpayment recovery is rejected on Gate 8: PointsOwl already performs contract-and-statement royalty audits on a 20% success fee, while RoyaltyCoPilot, SongBounty and CheckMyRoyalty cover adjacent leakage/underpayment recovery workflows.",
-    "Corporate gift-card breakage tracking is rejected for the basic wedge: CardLockr already provides expiry alerts, balance tracking, APIs/webhooks and team controls.",
-    "Novo's fee-free Stripe Boost demonstrates that first-party/banking alternatives can economically neutralize paid-acceleration optimization for subsets even without copying the exact decision algorithm.",
-    "New search rule: primary behavioral evidence is required before recurring leakage can move from UNCERTAIN to PASS for optional paid-speed products."
+  "operating_protocol": {
+    "discovery_floor": "Always return a best surviving hypothesis.",
+    "freeze_build_threshold": [
+      "huge existing money flow",
+      "recurring measurable leakage/unrealized value",
+      "independent machine-readable trigger",
+      "practical non-invasive permission",
+      "objectively measurable financial delta",
+      "credible tiny fee stronger than self-serve/flat-fee alternatives",
+      "no core transaction/request path ownership",
+      "no dominant/sufficiently-close incumbent or first-party feature"
+    ],
+    "persistence_rule": "Append immutable run file and update current-state anchor every run."
+  },
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "state_transition": "processor balance becomes eligible -> free/standard settlement ETA and paid speed tiers are known -> external bank liquidity and obligations due before each ETA determine actual shortfall -> recommend zero, next-day, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
+    "why_survived": "Adyen's current Vagaro CashOut case reports 14,000+ instant payouts in its first two months, about 1,300 per week, with strong repeat-use rates. Cashfree prices instant settlement from 0.30% and permits specific on-demand settlements; Razorpay publishes 0.20-0.30% instant and 0.15-0.20% same-day pricing. This proves a recurring paid speed decision. No exact product was found combining PSP balance/ETA, paid speed tiers, live bank cash and obligations to compute the minimum economically necessary accelerated amount. Repeat use does not establish avoidable over-acceleration, so Gate 2 remains uncertain.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": "Adyen/Vagaro reports 14,000+ instant payouts in two months and escalating repeat-use rates, proving recurrence of the paid-speed event; processor fee ladders make the incremental cost deterministic.",
+    "closest_threat": "First parties already expose amount selection, automatic settlement frequencies and paid speed tiers; treasury systems aggregate cash. The wedge survives only as a cross-system minimum-necessary-acceleration calculator, and fee-free faster-access products can neutralize it for subsets.",
+    "smallest_intervention": "Read PSP available/instant-eligible balance, free payout ETA, paid speed tiers, bank balance and obligations due before each ETA. Output no acceleration or the cheapest sufficient speed and minimum amount. V1 does not initiate payouts or hold funds.",
+    "monetization": "Small per valuable settlement decision, low recurring micro-fee, or capped share of verified acceleration fees avoided versus a competent cash-management counterfactual.",
+    "biggest_unresolved_risk": "No reliable dataset yet quantifies how much paid accelerated-settlement volume exceeds genuine pre-settlement liquidity needs. High adoption may reflect rational urgency rather than waste.",
+    "next_research_test": "Find merchant-level or anonymized data linking accelerated payout use to external liquidity or near-term obligations; estimate actual acceleration fees minus minimum fees needed to avoid genuine shortfalls. In parallel search exact cash-aware settlement decisioning. Kill if avoidable fraction is immaterial or exact functionality is found."
+  },
+  "latest_run": {
+    "run_key": "2026-08-29T03:36:31+05:30",
+    "mode": "SEARCH",
+    "threshold_crossed": false,
+    "current_leader": "merchant-settlement-acceleration-decision-engine",
+    "score": 46,
+    "run_file": "data/money-flow-runs/2026-08-29T033631+0530.json",
+    "promotions": [],
+    "demotions": [],
+    "rejections": [
+      "ach-noc-auto-remediation",
+      "usage-tier-plan-auto-optimizer"
+    ],
+    "runner_ups": [
+      {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+      {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45},
+      {"rank": 4, "id": "off-cycle-payroll-deferral-batching-optimizer", "score": 43}
+    ]
+  },
+  "recent_run_history": [
+    {"run_key": "2026-08-29T01:35:25+05:30", "leader": "merchant-settlement-acceleration-decision-engine", "score": 46, "run_file": "data/money-flow-runs/2026-08-29T013525+0530.json"},
+    {"run_key": "2026-08-29T02:45:02+05:30", "leader": "merchant-settlement-acceleration-decision-engine", "score": 46, "run_file": "data/money-flow-runs/2026-08-29T024502+0530.json"},
+    {"run_key": "2026-08-29T03:36:31+05:30", "leader": "merchant-settlement-acceleration-decision-engine", "score": 46, "status": "current", "run_file": "data/money-flow-runs/2026-08-29T033631+0530.json"}
   ],
-  "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
+  "recent_cross_family_findings": [
+    "Instant-payout recurrence is now strongly evidenced by Adyen/Vagaro, but repeat usage is not evidence that acceleration was avoidable; Gate 2 remains uncertain.",
+    "ACH NOC auto-remediation is rejected on Gate 8: Kotapay and VeriCheck already auto-apply corrected NOC data, while Treasury Prime exposes NOC corrected data via API.",
+    "Generic usage-tier SaaS plan optimization is rejected on first-party absorption: current vendors such as Klaviyo already recommend plans and can auto-upgrade and sometimes auto-downgrade from usage.",
+    "Off-cycle payroll deferral/batching survives as a 43/60 runner-up because some payroll providers charge per off-cycle run, but savings are small and jurisdiction-specific payment timing lowers simplicity.",
+    "New rule: adoption of a paid option proves event recurrence, not leakage. Leakage requires a counterfactual showing the paid option was unnecessary given actual state."
+  ],
+  "known_rejected_or_demoted_summary": "Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

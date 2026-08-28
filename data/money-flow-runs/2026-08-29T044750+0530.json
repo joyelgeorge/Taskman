@@ -1,0 +1,43 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T04:47:50+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {"flow_scale":5,"leakage_magnitude":3,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":3,"competitive_whitespace":3,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":4},
+    "gates": {"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
+    "state_transition": "processor balance eligible -> free payout ETA and paid speed tiers known -> external liquidity and obligations reveal actual shortfall -> choose zero/next-day/same-day/instant and minimum amount -> verify acceleration fees avoided",
+    "why_survived": "No newly tested family beat the leader. Existing evidence establishes a recurring paid-speed event with deterministic marginal cost, while exact cross-system minimum-necessary-acceleration decisioning remains unconfirmed. Leakage magnitude still lacks a merchant-level counterfactual dataset.",
+    "strongest_evidence": "Prior Adyen/Vagaro evidence establishes repeated instant-payout use; processor fee ladders make the financial delta deterministic. This run found no stronger counterfactual leakage evidence, so Gate 2 remains uncertain.",
+    "closest_threat": "First-party payout controls plus treasury/cash forecasting can absorb the wedge; fee-free faster-access products neutralize it for subsets.",
+    "smallest_intervention": "Read PSP balances/ETAs/fee tiers, bank liquidity and obligations; recommend no acceleration or cheapest sufficient speed and minimum amount; no payout execution or custody.",
+    "monetization": "Small per valuable decision, low recurring micro-fee, or capped share of verified acceleration fees avoided versus competent cash management.",
+    "biggest_unresolved_risk": "Paid acceleration may be rational liquidity demand rather than waste; avoidable volume is still unquantified.",
+    "next_research_test": "Find merchant-level/anonymized evidence linking paid accelerated payouts to external liquidity and obligations, or an exact competitor combining those inputs. Kill if avoidable fraction is immaterial or exact functionality is found."
+  },
+  "runner_ups": [
+    {"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},
+    {"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},
+    {"rank":4,"id":"off-cycle-payroll-deferral-batching-optimizer","score":43}
+  ],
+  "candidate_events": [
+    {"id":"prepaid-api-credit-expiry-workload-allocator","action":"demote","score":42,"fatal_flaw":"Credits can expire and are machine-readable, but automatic rescue requires steering workload/request execution, overlapping the previously rejected routing family; recommendation-only value is weaker and broad credit/balance tooling already exists."},
+    {"id":"usage-commitment-drawdown-optimizer","action":"reject","fatal_flaw":"Gate 8: current commitment-intelligence and billing systems already pace commitments, forecast term-end outcomes, track rollover/expiry, and recommend plays; Drawdown is especially close."}
+  ],
+  "new_search_rules": [
+    "For prepaid-credit expiry, distinguish balance visibility from a monetizable rescue action; if rescue requires owning workload routing, penalize Gate 7 heavily.",
+    "Commitment tracking alone is no longer whitespace; require a narrower micro-decision not already covered by commitment-intelligence/billing suites.",
+    "Do not promote a candidate merely because forfeiture is deterministic; prove the intervention can alter the outcome without creating artificial workload or demand."
+  ],
+  "sources": [
+    {"title":"OpenAI prepaid API billing","url":"https://help.openai.com/en/articles/8264644-what-is-prepaid-billi","finding":"Purchased credits expire after one year and are non-refundable."},
+    {"title":"Zuora prepaid commitment expiration","url":"https://docs.zuora.com/en/zuora-billing/bill-your-customer/commitments/prepaid-commitment/lifecycle/expiration","finding":"Unused prepaid balance can expire to zero with no rollover/refund."},
+    {"title":"Drawdown commitment intelligence","url":"https://drawdownhq.com/","finding":"Existing product paces usage commitments, forecasts term-end landing, tracks rollover and renewal deadlines, and recommends plays."},
+    {"title":"Concentrate balance alerts","url":"https://concentrate.ai/features/balance-alerts","finding":"Existing tooling forecasts prepaid AI balance depletion and alerts billing owners."}
+  ],
+  "persistence": {"target":"Taskman repository durable seed/bridge","database_direct_access":false}
+}

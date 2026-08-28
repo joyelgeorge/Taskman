@@ -5,13 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Taskman</title>
   <style>
-    body{font-family:system-ui,sans-serif;margin:0;background:#f6f7f9;color:#111}.wrap{max-width:920px;margin:auto;padding:24px}.card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:16px}textarea,input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d1d5db;border-radius:10px;margin:6px 0 12px}button{padding:10px 14px;border:0;border-radius:10px;cursor:pointer}.primary{background:#111;color:white}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:#6b7280;font-size:14px}.pill{background:#eef2f7;border-radius:999px;padding:5px 9px;font-size:12px}.task{padding:14px 0;border-top:1px solid #eee}.result{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:10px;margin-top:8px;max-height:220px;overflow:auto}h1{margin-bottom:4px}@media(max-width:600px){.wrap{padding:14px}}
+    body{font-family:system-ui,sans-serif;margin:0;background:#f6f7f9;color:#111}.wrap{max-width:920px;margin:auto;padding:24px}.card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:16px}textarea,input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d1d5db;border-radius:10px;margin:6px 0 12px}button{padding:10px 14px;border:0;border-radius:10px;cursor:pointer}.primary{background:#111;color:white}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:#6b7280;font-size:14px}.pill{background:#eef2f7;border-radius:999px;padding:5px 9px;font-size:12px}.task{padding:14px 0;border-top:1px solid #eee}.result{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:10px;margin-top:8px;max-height:220px;overflow:auto}.brain{border:1px solid #c7d2fe;background:#f8faff}.brain-gap{font-size:18px;font-weight:650;margin:10px 0}.score{font-variant-numeric:tabular-nums}h1{margin-bottom:4px}@media(max-width:600px){.wrap{padding:14px}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <h1>Taskman</h1>
-    <p class="muted">Describe it once. Taskman runs, routes, retries and remembers.</p>
+    <p class="muted">Describe it once. Taskman runs, routes, learns and moves to the next money-relevant gap.</p>
+
+    <section class="card brain">
+      <div class="row"><h2 style="margin-right:auto">Brain</h2><button class="primary" id="runBrain">Run brain once</button></div>
+      <div id="brainState"><p class="muted">Loading brain state…</p></div>
+      <div id="brainResult"></div>
+    </section>
 
     <section class="card">
       <h2>Create task</h2>

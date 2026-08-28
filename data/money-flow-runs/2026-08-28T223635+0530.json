@@ -1,0 +1,78 @@
+{
+  "run_key": "2026-08-28T22:36:35+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "state_transition": "processor balance becomes instant-eligible -> free standard settlement ETA and paid instant/same-day alternatives are known -> external bank/AP obligations determine the minimum cash needed before free settlement -> choose zero, same-day, or instant and only the minimum amount -> avoid unnecessary acceleration fees without causing a liquidity shortfall",
+    "why_survived": "Paid settlement acceleration is a real recurring decision with explicit fee schedules and programmable/observable balances. Stripe charges 1%-1.5% for Instant Payouts while standard payouts remain free; Razorpay publishes 0.20%-0.30% instant and 0.15%-0.20% same-day settlement and explicitly allows merchants to settle the needed amount. Broad treasury and D2C finance systems forecast cash and gateway settlements, but this run still did not find an exact product that computes the minimum paid acceleration amount and speed tier from processor balances plus external obligations.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "Stripe Instant Payouts charge a percentage fee while funds not accelerated continue on the free default schedule.",
+      "Razorpay exposes distinct instant and same-day settlement price tiers and says on-demand merchants can settle the needed amount.",
+      "Cashfree exposes instant settlement as a working-capital product with multiple settlement options.",
+      "SeerFlow already combines Razorpay settlement data with forward cash-flow forecasting for Indian D2C businesses, showing adjacent incumbent capability but explicitly says it does not read live bank balances."
+    ],
+    "closest_threat": "Adjacent systems are closing in. FlowOne forecasts cash and optimizes payment timing; SeerFlow combines Razorpay settlements with forward cash-flow forecasting; TreasuryPath continuously optimizes cash positions. Razorpay itself already lets merchants select the needed settlement amount. The remaining whitespace is the exact fee-aware decision across zero/same-day/instant using external obligations and bank liquidity.",
+    "smallest_intervention": "Read-only v1: ingest processor available/instant-eligible balance, free settlement ETA and acceleration fee tiers; ingest authorized bank balance and obligations due before each settlement ETA; output the minimum amount and cheapest speed tier required. Do not initiate money movement.",
+    "monetization": "Small per-decision or monthly fee, or a capped share of verified settlement-acceleration fees avoided relative to a documented liquidity baseline. Avoid charging on gross processor volume.",
+    "biggest_unresolved_risk": "First-party and treasury-suite absorption risk increased. The avoidable fee pool is still unquantified; merchants may already accelerate only what they genuinely need. If avoidable paid-settlement spend is small after competent manual treasury practice, the wedge dies.",
+    "next_research_test": "Obtain or find merchant-level evidence on frequency and amount of paid instant/same-day settlements, then simulate optimal decisions using actual due-date obligations. Quantify avoidable acceleration fees after a competent manual baseline. In parallel search exact integrations/products combining Stripe/Razorpay/Cashfree balances, live bank balances, AP due dates and settlement fee tiers. Kill if incremental avoidable fees are immaterial or exact automation is already present."
+  },
+  "state_transition": "leader survives but 47->46 after stronger incumbent-absorption evidence",
+  "promotions": [],
+  "demotions": ["merchant-settlement-acceleration-decision-engine:47->46"],
+  "rejections": [
+    {
+      "id": "b2b-payment-rail-speed-optimizer",
+      "reason": "Exact rail selection by due-date urgency and cost is already implemented by current AP automation systems such as PayLoom and Niural; Gate 8 fails."
+    }
+  ],
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "reason": "Clean programmability but unproven adaptive savings beyond best static tuning."},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "reason": "Strong structural pattern but still lacks a single large defensible vertical."},
+    {"rank": 4, "id": "corporate-promised-refund-settlement-watchdog", "score": 44, "reason": "Clean recovery attribution, but reconciliation incumbents and aggregate leakage remain unresolved."}
+  ],
+  "new_search_rules": [
+    "For settlement-acceleration opportunities, compare against competent manual treasury behavior, not naive acceleration of the full processor balance.",
+    "Treat first-party amount selection as solved; whitespace must come from calculating the amount and speed tier using external obligations unavailable to the processor.",
+    "Reject generic B2B payment-rail timing/routing when AP systems already choose ACH/same-day ACH/RTP/wire based on due date, urgency and cost."
+  ],
+  "sources": [
+    "https://support.stripe.com/questions/what-are-instant-payouts-and-who-is-eligible",
+    "https://razorpay.com/capital/instant-settlements/",
+    "https://www.cashfree.com/instant-settlements/",
+    "https://flowone.in/products/cash-banking-hub/",
+    "https://treasurypath.com/",
+    "https://seerflow.in/",
+    "https://www.payloom.app/",
+    "https://www.niural.com/products/account-payable"
+  ],
+  "persistence_status": "saved_to_repository_anchor_and_immutable_run_file"
+}

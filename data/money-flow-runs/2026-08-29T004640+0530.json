@@ -1,0 +1,80 @@
+{
+  "run_key": "2026-08-29T00:46:40+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "processor-native-currency-settlement-optimizer",
+    "name": "Processor native-currency settlement optimizer",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "foreign-currency processor balance appears -> matching settlement account availability and PSP fee schedule are known -> compare native payout cost against conversion and expected same-currency obligations -> recommend keep-native or convert -> measure avoided FX/payout fees",
+    "why_survived": "Stripe still exposes a deterministic no-conversion state when a payout currency has an eligible matching bank account, while unsupported currencies are converted to the account default. Multi-currency settlement itself can carry roughly 1% payout fees and instant currency conversion starts around 0.5%, so the decision has a measurable dollar consequence. No exact lightweight read-only product was found that combines PSP balances, PSP fee schedules and external same-currency obligations to continuously recommend native settlement versus conversion. However, recurrence after competent static setup is not yet proven strongly enough to keep leakage as PASS.",
+    "strongest_evidence": [
+      "Stripe documentation: payout in a currency with available bank account/debit card causes no conversion; without one Stripe converts the balance to the default currency.",
+      "Stripe current pricing: multi-currency settlement is generally around 1% in supported markets; instant currency conversion starts around 0.5%.",
+      "Stripe NetSuite connector explicitly describes using multiple settlement accounts to avoid currency conversion fees."
+    ],
+    "closest_threat": "Broad multi-currency treasury/payment systems increasingly hold, convert and route balances natively; Pockyt explicitly markets holding 27 currencies and paying suppliers in native currency, while Stripe itself supplies the settlement primitives. The wedge survives only as a read-only optimization layer if external obligations cause the optimal keep-native/convert decision to change often enough.",
+    "smallest_intervention": "Read-only: ingest authorized PSP balances by currency, configured settlement accounts, processor conversion/native-payout fees, and upcoming AP/card obligations by currency; output KEEP NATIVE or CONVERT with expected deterministic fee difference. Do not execute FX, payouts or hold funds.",
+    "monetization": "Small fee per economically valuable currency decision, per-currency-month pricing, or capped percentage of verified PSP FX/payout fees avoided, benchmarked against a competent static multi-currency setup.",
+    "biggest_unresolved_risk": "A one-time setup of matching USD/EUR/GBP settlement accounts may capture most savings. If dynamic optimization adds little after that baseline, the recurring tollbooth disappears.",
+    "next_research_test": "Quantify the incremental savings of dynamic obligation-aware decisions after best-practice static multi-currency setup. Search merchant case data where currency mix and foreign-currency obligations vary enough to change the optimal settlement choice month to month. If dynamic delta is small, reject and promote merchant settlement acceleration or a new event-level candidate."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "merchant-settlement-acceleration-decision-engine", "score": 46, "note": "Clean fee delta and recurring processor event, but unnecessary paid acceleration volume remains unquantified."},
+    {"rank": 3, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "note": "Programmable and measurable, but dynamic savings beyond best static tuning remain unproven."},
+    {"rank": 4, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "note": "Strong general mechanism, still lacks one defensible high-value non-AI vertical."}
+  ],
+  "rejections": [
+    {"id": "hotel-ota-vcc-recovery", "fatal_flaw": "Exact incumbents already detect undercharged/uncharged/expiring OTA virtual cards and recover them on performance pricing; current products report roughly $9k-$13k annual recovery per property and dedicated automated VCC recovery."},
+    {"id": "insurance-broker-commission-underpayment-recovery", "fatal_flaw": "Multiple exact products now parse carrier statements, compare expected vs actual commissions, flag missing/underpaid amounts and support recovery workflows."},
+    {"id": "post-booking-hotel-price-drop-rebooking", "fatal_flaw": "Exact incumbents and first-party travel products already monitor refundable reservations and auto-rebook when prices fall."},
+    {"id": "saas-contract-invoice-overcharge-recovery", "fatal_flaw": "Current contingency-fee and continuous-audit products already compare contracts to SaaS/vendor invoices and recover pricing drift, missed discounts and duplicate charges."}
+  ],
+  "new_search_rules": [
+    "For configuration optimizers, score only incremental recurring savings after competent static setup; do not count one-time cleanup value as recurring leakage.",
+    "High leakage plus perfect triggers are insufficient when performance-fee incumbents already own the exact recovery workflow.",
+    "Prefer event-level state transitions whose optimal action can genuinely change from one event to the next rather than stable account configuration."
+  ],
+  "sources": [
+    "https://docs.stripe.com/connect/currencies/fx-quotes-api",
+    "https://docs.stripe.com/use-stripe-apps/netsuite/multiple-currencies",
+    "https://stripe.com/resources/more/payouts-explained",
+    "https://stripe.com/en-fi/pricing",
+    "https://pockyt.io/",
+    "https://www.reconcileota.com/",
+    "https://otarecovery.com/",
+    "https://www.useterrace.ai/products/accounts-receivable/ota-reconciliation",
+    "https://commissionguard.app/",
+    "https://mycommissioniq.com/",
+    "https://support.ramp.com/hotel-price-drop",
+    "https://rebookify.com/",
+    "https://www.clawbacklabs.com/",
+    "https://saasspendtrack.com/"
+  ],
+  "persistence": {"repository_anchor": "data/money-flow-search-history.json", "run_file": "data/money-flow-runs/2026-08-29T004640+0530.json"}
+}

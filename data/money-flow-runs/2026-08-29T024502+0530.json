@@ -1,0 +1,78 @@
+{
+  "run_key": "2026-08-29T02:45:02+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "processor balance becomes eligible -> free/standard settlement ETA and paid speed tiers are known -> external bank liquidity and obligations due before each ETA determine actual shortfall -> recommend zero, next-day, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
+    "why_survived": "Fresh searches found strong evidence that instant payouts remain materially priced and are intended for selective urgent liquidity rather than routine use. Yoco charges roughly 1%-1.5% plus VAT depending on plan and explicitly tells merchants to request the amount they need; MeevoPay Now charges 1.75%; Stripe-linked Dubsado currently lists 1%-1.5% by country; Cashfree starts at 0.30%. Stripe also supports daily, weekly, monthly, and manual payout schedules. No exact product was found that combines PSP balance/ETA, paid speed tiers, live bank cash, and obligations to compute the minimum economically necessary accelerated amount. Exact avoidable-volume evidence is still missing, so leakage remains uncertain rather than passed.",
+    "strongest_evidence": [
+      "https://support.yoco.help/en/articles/109522-instant-payout",
+      "https://www.meevo.com/features/meevopay-now",
+      "https://help.dubsado.com/en/articles/15920638-instant-payouts-with-dubsado-payments",
+      "https://stripe.com/resources/more/payouts-explained",
+      "https://www.cashfree.com/instant-settlements/"
+    ],
+    "closest_threat": "First parties already expose amount selection, payout schedules, and speed choices, while banks/treasury products aggregate cash. Novo even offers fee-free faster Stripe access for eligible customers, which economically neutralizes the wedge for that subset. The wedge survives only as a cross-system decision layer that calculates the minimum paid acceleration needed under real obligations.",
+    "smallest_intervention": "Read-only recommendation using PSP available/instant-eligible balance, standard settlement ETA, fee tiers, bank balance and near-term obligations. Output the cheapest sufficient settlement speed and minimum amount. Do not initiate payouts or hold funds.",
+    "monetization": "Small per valuable decision, low recurring micro-fee, or capped share of verified acceleration fees avoided against a competent cash-management baseline.",
+    "biggest_unresolved_risk": "There is still no reliable primary evidence quantifying how much paid accelerated-settlement volume is unnecessary after accounting for genuine liquidity needs. If merchants already accelerate selectively, the recoverable fee pool may be too small.",
+    "next_research_test": "Search for processor disclosures, merchant surveys, payment-company filings, or anonymized transaction studies quantifying instant/same-day payout adoption and merchant liquidity need. Estimate actual acceleration fees minus the minimum fees required to avoid genuine pre-standard-settlement shortfalls. In parallel, search treasury/banking products for exact PSP-balance + bank-balance + obligations + settlement-fee decisioning. Kill if avoidable volume is immaterial or exact functionality is found."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "status": "survives; adaptive savings beyond competent static tuning remain unproven"},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "status": "survives structurally; still lacks a defensible high-value vertical"},
+    {"rank": 4, "id": "corporate-promised-refund-settlement-watchdog", "score": 44, "status": "survives; leakage magnitude and reconciliation competition remain unresolved"}
+  ],
+  "rejections": [
+    {
+      "id": "per-shipment-insurance-selection-optimizer",
+      "fatal_flaw": "Gate 8 fail: Insurrl already performs the exact per-order decision to skip insurance, rely on carrier coverage, or route to the cheapest valid insurer, with API/store integrations and quantified savings.",
+      "sources": ["https://insurrl.com/"]
+    },
+    {
+      "id": "music-royalty-underpayment-recovery",
+      "fatal_flaw": "Gate 8 fail: PointsOwl already analyzes statements and agreements for missing royalties and rate discrepancies on a 20% success fee; RoyaltyCoPilot, SongBounty and CheckMyRoyalty cover adjacent automated leakage, claiming and underpayment detection.",
+      "sources": ["https://pointsowl.com/", "https://royaltycopilot.ai/", "https://songbounty.com/", "https://checkmyroyalty.com/"]
+    },
+    {
+      "id": "corporate-gift-card-breakage-tracker",
+      "fatal_flaw": "Gate 8 fail for the basic wedge: CardLockr already provides balance tracking, expiry alerts, APIs/webhooks and team management specifically to stop businesses losing unused gift-card value.",
+      "sources": ["https://cardlockr.com/"]
+    }
+  ],
+  "candidate_promotions": [],
+  "candidate_demotions": [],
+  "new_search_rules": [
+    "For optional paid speed products, leakage must be measured against the cheapest liquidity-preserving alternative, not against always using the free rail.",
+    "A recommendation wedge fails Gate 8 when a current product already makes the same per-event skip/use/route decision, even if its branding is framed as insurance, royalty, or asset management rather than FinOps.",
+    "Primary evidence of behavioral overuse is now required before settlement-acceleration leakage can move from UNCERTAIN to PASS."
+  ]
+}

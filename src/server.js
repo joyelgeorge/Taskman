@@ -4,13 +4,18 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
 import { getKnowledgeSnapshot, recordRunLearning } from './knowledge-store.js';
+import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
+import { seedScenarios, listScenarios } from './scenario-store.js';
+import {
+  createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
+  createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
+} from './task-store.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
 const port = Number(process.env.PORT || 3000);
-
-const state = { tasks: [], runs: [], usage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 } };
 const timers = new Map();
+const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -40,8 +45,12 @@ function compactKnowledge(knowledge) {
 }
 
 async function executeTask(task, reason = 'manual') {
-  const run = { id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null, reason, status: 'running', startedAt: new Date().toISOString() };
-  state.runs.unshift(run);
+  const run = {
+    id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null,
+    reason, status: 'running', startedAt: new Date().toISOString()
+  };
+  await createRunRecord(run);
+
   const knowledgeBefore = await getKnowledgeSnapshot({ taskId: task.id });
   try {
     const context = compactKnowledge(knowledgeBefore);
@@ -55,27 +64,25 @@ async function executeTask(task, reason = 'manual') {
     run.outputTokens = result.outputTokens;
     run.latencyMs = result.latencyMs;
     run.fallbacks = result.fallbacks;
-    state.usage.inputTokens += result.inputTokens;
-    state.usage.outputTokens += result.outputTokens;
-    task.lastResult = result.text;
-    task.lastRunAt = new Date().toISOString();
+    memoryUsage.inputTokens += result.inputTokens;
+    memoryUsage.outputTokens += result.outputTokens;
   } catch (e) {
     run.status = 'failed';
     run.error = String(e.message || e);
   }
+
   run.finishedAt = new Date().toISOString();
   run.nextBestAction = nextAction(task, run, knowledgeBefore);
+  await finishRunRecord(run);
+  await recordUsage({
+    runId: run.id, provider: run.provider, model: run.model,
+    inputTokens: run.inputTokens || 0, outputTokens: run.outputTokens || 0, estimatedCost: 0
+  });
   await recordRunLearning({
-    taskId: task.id,
-    scenarioId: task.scenarioId || null,
-    runId: run.id,
-    result: run.result || run.error,
-    provider: run.provider,
-    model: run.model,
-    inputTokens: run.inputTokens || 0,
-    outputTokens: run.outputTokens || 0,
-    status: run.status,
-    nextBestAction: run.nextBestAction
+    taskId: task.id, scenarioId: task.scenarioId || null, runId: run.id,
+    result: run.result || run.error, provider: run.provider, model: run.model,
+    inputTokens: run.inputTokens || 0, outputTokens: run.outputTokens || 0,
+    status: run.status, nextBestAction: run.nextBestAction
   });
   run.knowledge = await getKnowledgeSnapshot({ taskId: task.id });
   return run;
@@ -85,17 +92,28 @@ function schedule(task) {
   const old = timers.get(task.id);
   if (old) clearInterval(old);
   if (!task.intervalMinutes || task.status !== 'active') return;
-  const timer = setInterval(() => executeTask(task, 'schedule'), task.intervalMinutes * 60_000);
+  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), task.intervalMinutes * 60_000);
   timer.unref();
   timers.set(task.id, timer);
+}
+
+async function restoreSchedules() {
+  const tasks = await listTaskRecords();
+  for (const task of tasks) schedule(task);
 }
 
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    if (req.method === 'GET' && url.pathname === '/api/status') return json(res, 200, { providers: providerStatus(), usage: state.usage });
-    if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, state.tasks);
-    if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, state.runs.slice(0, 50));
+
+    if (req.method === 'GET' && url.pathname === '/api/status') {
+      const db = await dbHealth();
+      const usage = databaseEnabled ? await usageSummary() : memoryUsage;
+      return json(res, 200, { providers: providerStatus(), usage, database: db });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
+    if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
+    if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
 
     const knowledgeMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
@@ -103,32 +121,29 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
       const body = await readBody(req);
       if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
-      const task = {
-        id: crypto.randomUUID(),
+      const id = crypto.randomUUID();
+      const task = await createTaskRecord({
+        id,
         scenarioId: body.scenarioId || null,
         title: body.title?.trim() || body.prompt.trim().slice(0, 60),
         prompt: body.prompt.trim(),
-        intervalMinutes: Number(body.intervalMinutes || 0) || null,
-        status: 'active',
-        createdAt: new Date().toISOString()
-      };
-      state.tasks.unshift(task);
+        intervalMinutes: Number(body.intervalMinutes || 0) || null
+      });
       schedule(task);
       return json(res, 201, task);
     }
 
     const runMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/run$/);
     if (req.method === 'POST' && runMatch) {
-      const task = state.tasks.find(t => t.id === runMatch[1]);
+      const task = await getTaskRecord(runMatch[1]);
       if (!task) return json(res, 404, { error: 'task not found' });
       return json(res, 200, await executeTask(task));
     }
 
     const pauseMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/pause$/);
     if (req.method === 'POST' && pauseMatch) {
-      const task = state.tasks.find(t => t.id === pauseMatch[1]);
+      const task = await toggleTaskStatus(pauseMatch[1]);
       if (!task) return json(res, 404, { error: 'task not found' });
-      task.status = task.status === 'active' ? 'paused' : 'active';
       schedule(task);
       return json(res, 200, task);
     }
@@ -149,4 +164,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+if (databaseEnabled) {
+  const migration = await migrate();
+  const seeded = await seedScenarios();
+  console.log('Taskman database ready', { migration, seeded });
+}
+await restoreSchedules();
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));

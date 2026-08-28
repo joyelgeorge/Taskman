@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
-import { getKnowledgeSnapshot, recordRunLearning } from './knowledge-store.js';
+import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
+import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
 import { seedScenarios, listScenarios } from './scenario-store.js';
 import {
@@ -28,20 +29,21 @@ async function readBody(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
-function nextAction(task, run, knowledge) {
-  if (run.status === 'failed') return 'Resolve the failure cause before repeating the same route.';
-  if (knowledge?.latestFuturePath?.value?.nextBestAction) return knowledge.latestFuturePath.value.nextBestAction;
-  if (task.intervalMinutes) return 'Use this run to identify the next unresolved money-relevant gap, then make the next run attack that gap.';
-  return 'Review the result and define the next unresolved gap.';
-}
-
 function compactKnowledge(knowledge) {
   return {
-    knownFacts: knowledge.knownFacts.slice(-8).map(e => e.value ?? e.summary ?? e),
-    rejectedPaths: knowledge.rejectedPaths.slice(-8).map(e => e.value ?? e.summary ?? e),
-    openGaps: knowledge.openGaps.slice(-5).map(e => e.gap ?? e.value ?? e),
+    knownFacts: knowledge.knownFacts.slice(-8).map(e => e.value ?? e),
+    activeAssumptions: knowledge.activeAssumptions.slice(-5).map(e => e.value ?? e),
+    rejectedPaths: knowledge.rejectedPaths.slice(-8).map(e => e.value ?? e),
+    openGaps: knowledge.openGaps.slice(-5).map(e => e.value?.gap ?? e.value ?? e),
+    moneyEvents: knowledge.moneyEvents.slice(-5).map(e => e.value ?? e),
     latestFuturePath: knowledge.latestFuturePath?.value || null
   };
+}
+
+function deriveNextAction(envelope, run) {
+  if (run.status !== 'succeeded') return 'Resolve the failure cause before repeating the same route.';
+  const event = envelope?.events?.find(e => e.type === 'future_path');
+  return event?.value?.nextBestAction || 'Use the updated knowledge state to select the next unresolved money-relevant gap.';
 }
 
 async function executeTask(task, reason = 'manual') {
@@ -52,12 +54,15 @@ async function executeTask(task, reason = 'manual') {
   await createRunRecord(run);
 
   const knowledgeBefore = await getKnowledgeSnapshot({ taskId: task.id });
+  let envelope = null;
   try {
-    const context = compactKnowledge(knowledgeBefore);
-    const prompt = `${task.prompt}\n\nCurrent durable task knowledge:\n${JSON.stringify(context)}\n\nInstruction: focus only on the most valuable unresolved gap. Do not repeat rejected paths. Return evidence or an actionable step that moves toward the task's measurable outcome.`;
+    const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
     const result = await runWithFallback(prompt);
+    envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
+
     run.status = 'succeeded';
-    run.result = result.text;
+    run.result = envelope.answer;
+    run.structuredEvents = envelope.events;
     run.provider = result.provider;
     run.model = result.model;
     run.inputTokens = result.inputTokens;
@@ -72,18 +77,29 @@ async function executeTask(task, reason = 'manual') {
   }
 
   run.finishedAt = new Date().toISOString();
-  run.nextBestAction = nextAction(task, run, knowledgeBefore);
+  run.nextBestAction = deriveNextAction(envelope, run);
   await finishRunRecord(run);
   await recordUsage({
     runId: run.id, provider: run.provider, model: run.model,
     inputTokens: run.inputTokens || 0, outputTokens: run.outputTokens || 0, estimatedCost: 0
   });
+
   await recordRunLearning({
     taskId: task.id, scenarioId: task.scenarioId || null, runId: run.id,
     result: run.result || run.error, provider: run.provider, model: run.model,
     inputTokens: run.inputTokens || 0, outputTokens: run.outputTokens || 0,
     status: run.status, nextBestAction: run.nextBestAction
   });
+
+  if (run.status === 'succeeded' && envelope) {
+    run.learning = await ingestStructuredLearning({
+      taskId: task.id,
+      scenarioId: task.scenarioId || null,
+      runId: run.id,
+      envelope
+    });
+  }
+
   run.knowledge = await getKnowledgeSnapshot({ taskId: task.id });
   return run;
 }
@@ -109,7 +125,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const db = await dbHealth();
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
-      return json(res, 200, { providers: providerStatus(), usage, database: db });
+      return json(res, 200, { providers: providerStatus(), usage, database: db, structuredLearning: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

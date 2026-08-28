@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-29T00:46:40+05:30",
+  "updated_at": "2026-08-29T01:35:25+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
   "history_archives": [
@@ -9,21 +9,21 @@
   ],
   "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
   "current_leader": {
-    "id":"processor-native-currency-settlement-optimizer",
-    "name":"Processor native-currency settlement optimizer",
+    "id":"merchant-settlement-acceleration-decision-engine",
+    "name":"Merchant settlement acceleration decision engine",
     "score":46,
     "max_score":60,
     "component_scores":{"flow_scale":5,"leakage_magnitude":3,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":3,"competitive_whitespace":3,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":4},
-    "state_transition":"foreign-currency processor balance appears -> matching settlement-account availability and processor fee schedule are known -> compare native payout cost with processor conversion and forecast same-currency obligations -> recommend keep-native or convert -> verify avoided FX/payout fees",
-    "why_survived":"Stripe still documents a deterministic no-conversion state when the payout currency has an eligible matching bank account; without one Stripe converts the payout balance to the account default currency. Multi-currency settlement can itself carry roughly 1% payout fees in supported markets while instant balance conversion starts around 0.5%, so the decision has an objectively measurable dollar consequence. No exact lightweight read-only product was found that combines PSP balances, PSP fee schedules and external same-currency obligations to continuously recommend native settlement versus conversion without executing FX or owning the rail. However, this run downgraded recurring leakage from PASS to UNCERTAIN because best-practice static multi-currency setup may capture most of the value.",
+    "state_transition":"processor balance becomes eligible -> standard settlement ETA and paid acceleration tiers are known -> external cash and obligations determine liquidity needed before each ETA -> recommend zero, same-day, or instant settlement and only the minimum amount -> verify acceleration fees avoided",
+    "why_survived":"Paid settlement acceleration remains an explicit recurring financial choice. Razorpay currently publishes incremental prices for instant and same-day settlement and allows custom settlement rules, but fresh competition searches did not identify an exact product combining processor available balance, standard settlement ETA, acceleration fee tiers, live external liquidity and obligations due before each ETA to compute the minimum economically justified accelerated amount. The intervention can remain read-only and outside the payment path.",
     "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
-    "closest_threat":"Broad multi-currency treasury/payment platforms increasingly hold, convert and route balances natively; Pockyt explicitly markets holding multiple currencies and paying suppliers in native currency, while Stripe itself provides the settlement primitives. The wedge survives only if external obligations make the optimal keep-native/convert decision change often enough after competent static configuration.",
-    "smallest_intervention":"Read-only v1: ingest authorized PSP balances by currency, configured settlement accounts, processor conversion/native-payout fee tables and upcoming AP/card obligations by currency; output KEEP NATIVE or CONVERT with expected deterministic fee difference. Do not initiate payouts, conversions or hold funds.",
-    "monetization":"Small per-value-event fee, per-currency-month fee, or capped share of verified PSP FX/payout fees avoided, benchmarked against competent static multi-currency configuration.",
-    "biggest_unresolved_risk":"A one-time setup of matching USD/EUR/GBP accounts may capture most savings. If dynamic obligation-aware decisions add little beyond that baseline, recurring monetization fails even though the underlying FX leakage is real.",
-    "next_research_test":"Quantify incremental dynamic savings after best-practice static multi-currency setup using merchant currency-mix and foreign-obligation patterns. Test whether the optimal keep-native/convert choice changes often enough month to month. If dynamic delta is small, reject this candidate and promote merchant settlement acceleration or a new event-level candidate."
+    "closest_threat":"Razorpay already supports custom settlement rules, and broad treasury/cash-flow products forecast liquidity. A first party or treasury platform could combine those primitives. Gate 8 remains uncertain until exact cash-aware minimum-acceleration functionality is ruled out comprehensively.",
+    "smallest_intervention":"Read processor balance and settlement ETA, acceleration fee tiers, bank balance and obligations due before standard settlement. Output the cheapest sufficient choice: no acceleration, same-day, or instant, plus the minimum amount. V1 does not initiate a payout or hold funds.",
+    "monetization":"Small per valuable settlement decision, low monthly micro-fee, or capped share of verified acceleration fees avoided versus a competent treasury baseline.",
+    "biggest_unresolved_risk":"The avoidable paid-acceleration pool is unquantified. If merchants already accelerate only the exact amount genuinely needed before free settlement, the theoretical fee delta has little real-world volume.",
+    "next_research_test":"Quantify actual unnecessary accelerated-settlement volume using merchant cash-flow examples or processor/merchant disclosures, and search specifically for products that combine PSP balances, bank balances, obligations and settlement-speed fees to recommend the minimum acceleration amount. Kill if avoidable volume is small or an exact incumbent is found."
   },
-  "latest_run":{"run_key":"2026-08-29T00:46:40+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"processor-native-currency-settlement-optimizer","score":46,"run_file":"data/money-flow-runs/2026-08-29T004640+0530.json","promotions":[],"demotions":["processor-native-currency-settlement-optimizer:47->46"],"rejections":["hotel-ota-vcc-recovery","insurance-broker-commission-underpayment-recovery","post-booking-hotel-price-drop-rebooking","saas-contract-invoice-overcharge-recovery"],"runner_ups":[{"rank":2,"id":"merchant-settlement-acceleration-decision-engine","score":46},{"rank":3,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":4,"id":"quota-boundary-workload-timing-optimizer","score":45}]},
+  "latest_run":{"run_key":"2026-08-29T01:35:25+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T013525+0530.json","promotions":["merchant-settlement-acceleration-decision-engine"],"demotions":[],"rejections":["processor-native-currency-settlement-optimizer","dealer-warranty-labor-parts-rate-uplift","commercial-utility-tariff-demand-optimizer"],"runner_ups":[{"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":4,"id":"corporate-promised-refund-settlement-watchdog","score":44}]},
   "run_history":[
     {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
@@ -36,16 +36,16 @@
     {"run_key":"2026-08-28T21:47:16+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T214716+0530.json"},
     {"run_key":"2026-08-28T22:36:35+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T223635+0530.json"},
     {"run_key":"2026-08-28T23:50:04+05:30","leader":"processor-native-currency-settlement-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T235004+0530.json"},
-    {"run_key":"2026-08-29T00:46:40+05:30","leader":"processor-native-currency-settlement-optimizer","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-29T004640+0530.json"}
+    {"run_key":"2026-08-29T00:46:40+05:30","leader":"processor-native-currency-settlement-optimizer","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-29T004640+0530.json"},
+    {"run_key":"2026-08-29T01:35:25+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-29T013525+0530.json"}
   ],
   "recent_cross_family_findings":[
-    "Processor-native currency settlement remains technically clean, but recurring leakage must now be measured only after competent static multi-currency setup; this demoted leakage magnitude from 4 to 3 and Gate 2 from PASS to UNCERTAIN.",
-    "Stripe's current primitives make the financial delta explicit: eligible matching payout-currency accounts avoid conversion, while multi-currency settlement and balance conversion can carry percentage fees.",
-    "Hotel OTA virtual-card recovery is now an explicit rejection: multiple exact products detect undercharged, uncharged and expiring VCCs and recover them, often on performance pricing.",
-    "Insurance broker commission underpayment recovery is now an explicit rejection: multiple exact products compare carrier statements against expected commissions and flag missing/underpaid amounts.",
-    "Post-booking hotel price-drop rebooking is occupied by dedicated products and first-party travel systems that automatically monitor and rebook refundable reservations.",
-    "SaaS/vendor contract-to-invoice overcharge recovery is occupied by current contingency-fee and continuous-audit products.",
-    "New search rule: configuration optimizers get credit only for incremental recurring value beyond best-practice static setup; one-time cleanup value does not satisfy recurring leakage."
+    "Processor-native currency settlement is rejected on Gate 8: Airwallex now explicitly combines like-for-like settlement, multi-currency holding and direct same-currency supplier/card/payout use, with conversion only when needed. This closed-loop first-party workflow captures most of the proposed double-conversion saving without a separate optimizer.",
+    "Merchant settlement acceleration is restored as current leader because paid settlement speed is a recurring explicitly priced decision and no exact cash-aware minimum-acceleration optimizer was found this run.",
+    "Dealer warranty labor/parts reimbursement uplift is rejected: Armatus Dealer Uplift already offers turnkey contingent-fee submissions, proprietary optimization software, annual timing tracking and statutory-vs-factory analysis at scale.",
+    "Commercial utility tariff/demand optimization is rejected as a broad family: TrueMeter, MeterBase, Vitality and other current systems already perform continuous tariff analysis, demand forecasting, bill auditing and in some cases automated load control with verified savings.",
+    "New search rule: Gate 8 considers economic neutralization, not only exact feature naming. If a first-party closed-loop default captures most value, a separate recommendation layer does not have enough whitespace.",
+    "Settlement-speed optimization must be benchmarked against competent cash management, not against naively accelerating the entire available balance."
   ],
   "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

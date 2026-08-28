@@ -1,6 +1,6 @@
 {
-  "schema_version": 4,
-  "updated_at": "2026-08-28T18:40:26+05:30",
+  "schema_version": 5,
+  "updated_at": "2026-08-28T19:33:59+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -10,6 +10,13 @@
     "mode": "SEARCH",
     "threshold_crossed": false
   },
+  "history_archives": [
+    {
+      "type": "prior_anchor_git_blob",
+      "sha": "6343cc3c4f5e4ccc3b774361433e085ec4e36355",
+      "note": "Schema-v4 anchor containing full conversation_history, rejected/demoted families, scoring evolution and prior evidence. Preserved in Git history; schema-v5 keeps immutable run files as the operational history."
+    }
+  ],
   "operating_protocol": {
     "discovery_floor": "Every run must return at least one best surviving hypothesis even if some gates remain uncertain.",
     "freeze_build_threshold": [
@@ -23,41 +30,16 @@
       "no dominant or sufficiently close incumbent or first-party feature"
     ],
     "search_behavior": "Before threshold maintain a current leader and try to beat it. At threshold enter ATTACK and search for disconfirming evidence. If it survives, freeze and build; if it fails, record fatal flaw and promote the next candidate.",
-    "persistence_rule": "Every scheduled or manual run must append its normalized result, candidate scores, gate changes, evidence, rejected reasons, current leader and next research test to Taskman persistence before completion."
+    "persistence_rule": "Every run appends an immutable normalized run file and updates this current-state anchor before completion."
   },
-  "conversation_history": [
-    {"seq":1,"type":"strategy_evolution","summary":"Opportunity search narrowed away from tenders, jobs, freelance lead hunting, buyer/seller matchmaking, manufacturer sourcing and generic demand creation toward programmable interventions in existing private money flows."},
-    {"seq":2,"type":"decision_protocol","summary":"Adopted eight strict build gates and lifecycle SEARCH -> ATTACK -> FROZEN-BUILD."},
-    {"seq":3,"type":"rejection","candidate":"Delay-tolerant LLM Batch/Flex optimization","summary":"Rejected after attack because trigger was customer-created, intervention sat on the request path, first-party cheaper lanes and gateways existed, and performance pricing was weak."},
-    {"seq":4,"type":"search_framework_enhancement","summary":"Added two-level standard: every run must return a best surviving hypothesis while final build threshold stays strict; search breadth widened and now drills flow -> state transition -> micro-decision."},
-    {"seq":5,"type":"leader_run","candidate":"Expiring payment authorization protection","score":45,"status":"demoted","summary":"Clean authorization/fulfillment/expiry trigger, later weakened by first-party capture/reauthorization features and payment orchestration."},
-    {"seq":6,"type":"leader_run","candidate":"Cross-vendor commitment shortfall prevention","score":46,"status":"demoted","summary":"Strong minimum-spend shortfall economics, later weakened by cloud commitment managers and procurement/SaaS allocation tooling."},
-    {"seq":7,"type":"candidate_attack","candidate":"Take-or-pay make-up-right expiry prevention","status":"rejected_obvious_implementation","summary":"Excellent economics but current systems reconcile volume commitments, deficiency payments and make-up rights."},
-    {"seq":8,"type":"search_insight","summary":"Promising pattern: two legitimate future uses already exist and a contractual or quota state changes which is economically optimal; detect before the decision and redirect existing activity."},
-    {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers."},
-    {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
-    {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
-    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted","summary":"Included/prepaid SaaS or API capacity approaching a reset with deferrable work remains a strong mechanism, but a cleaner synthetic-monitor vertical was later identified."},
-    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
-    {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"demoted","summary":"Refund-promise to settlement matching remains attractive, but enterprise reconciliation products already surface missing refunds and aggregate leakage remains unquantified."},
-    {"seq":15,"type":"rejection","candidate":"Unused shipping-label refund recovery","summary":"Exact tools already identify unused labels and automate carrier refunds/voids."},
-    {"seq":16,"type":"rejection","candidate":"Prior-authorization expiry before scheduled service watchdog","summary":"Current authorization tools already track expiry and flag authorizations that will expire before scheduled procedures."},
-    {"seq":17,"type":"rejection","candidate":"ECR excess-balance expiry optimizer","summary":"Material idle-cash loss exists but treasury/bank-fee tools and bank sweeps already optimize the exact state."},
-    {"seq":18,"type":"rejection","candidate":"Automotive core-deposit return recovery","summary":"Dedicated software already tracks refundable core deposits, deadlines, returns and credits."},
-    {"seq":19,"type":"rejection","candidate":"Corporate hotel cancellation deadline optimizer","summary":"Corporate travel software already auto-cancels to avoid no-show fees and lost value."},
-    {"seq":20,"type":"rejection","candidate":"Vendor credit memo application before payment","summary":"ERP/AP tools already track and apply unapplied vendor credits."},
-    {"seq":21,"type":"search_insight","summary":"Quota-boundary opportunities are strongest when the financial unit and work unit are independently machine-readable and the action can be timing rather than routing through our infrastructure."},
-    {"seq":22,"type":"leader_run","candidate":"Adaptive synthetic-monitor frequency optimizer","score":48,"status":"current_but_weakened","summary":"Synthetic monitoring exposes a direct billable event, schedules and APIs. Exact adaptive-frequency cost optimization was not found, but fresh research found Kentik already uses actual traffic to automatically adjust synthetic test locations, increasing incumbent absorption risk."},
-    {"seq":23,"type":"competition_update","candidate":"Adaptive synthetic-monitor frequency optimizer","score":47,"status":"current","summary":"Leader survives but drops one point. Datadog pricing confirms per-run economics; Finout explicitly recommends frequency/location tuning; Kentik already auto-adjusts synthetic test locations from traffic and Datadog can review expensive test setups. Remaining whitespace is automated frequency optimization with verified spend counterfactual, not adaptive synthetic configuration broadly."}
-  ],
   "current_leader": {
     "id": "adaptive-synthetic-monitor-frequency-optimizer",
     "name": "Adaptive synthetic-monitor frequency optimizer",
-    "score": 47,
+    "score": 46,
     "max_score": 60,
     "component_scores": {
       "flow_scale": 5,
-      "leakage_magnitude": 3,
+      "leakage_magnitude": 2,
       "trigger_independence": 5,
       "permission_non_invasiveness": 5,
       "delta_measurability": 5,
@@ -69,8 +51,8 @@
       "distribution_burden": 2,
       "build_simplicity": 3
     },
-    "state_transition": "fixed synthetic-check schedule -> traffic/deployment/incident/risk state changes -> current cadence becomes unnecessarily expensive -> lower eligible frequency/coverage within guardrails -> preserve required detection quality -> verified billable test runs avoided",
-    "why_survived": "Synthetic runs remain explicitly usage-priced and machine-scheduled. Current systems expose frequencies, locations, traffic and incident signals, making a read-only recommendation layer feasible without touching customer traffic. Exact searches did not find a sufficiently close product whose commercial job is continuously optimizing frequency against real-time risk and then charging on verified avoided run spend. The hypothesis is weaker because Kentik already performs traffic-driven automatic synthetic configuration at the location level and observability vendors have workflow/cost automation primitives.",
+    "state_transition": "fixed synthetic-check schedule -> operational risk state changes -> current cadence becomes over-provisioned -> reduce eligible frequency/locations within explicit detection guardrails -> avoid billable synthetic runs -> restore higher cadence when deployment/incident/traffic state changes",
+    "why_survived": "New Relic exposes monitor period as an API-updatable field, making cadence optimization technically feasible without proxying customer traffic. Exact adaptive-frequency optimization with verified avoided run spend still appears narrower than known incumbent functionality. The hypothesis weakened because no strong evidence was found that continuous adaptation saves materially more than one-time static tuning.",
     "gates": {
       "money_flow_scale": "pass",
       "recurring_leakage": "uncertain",
@@ -82,37 +64,36 @@
       "competitive_whitespace": "uncertain"
     },
     "strongest_evidence": [
-      "Datadog currently prices browser synthetics from $12 per 1,000 runs and API synthetics from $5 per 10,000 runs, so frequency is directly monetized.",
-      "Finout explicitly identifies check-frequency and test-location tuning as Datadog synthetic cost-optimization levers.",
-      "Kentik states that actual traffic can automatically configure/maintain synthetic tests and adjust test locations when traffic flows change.",
-      "Site24x7 describes intelligent test scheduling based on historical/predictive data as a way to reduce synthetic costs while preserving coverage, supporting technical plausibility but also future incumbent absorption risk."
+      "New Relic NerdGraph supports updating an existing synthetic monitor's period, with intervals from every minute through every day.",
+      "New Relic best-practice documentation exposes monitor period and locations as normal configurable dimensions.",
+      "Prior runs established direct per-run synthetic pricing and incumbent movement toward traffic-driven adaptive synthetic configuration."
     ],
-    "closest_threat": "Kentik already auto-adjusts synthetic locations from observed traffic; Datadog provides expensive-test setup review, workflow automation and cost-optimization primitives. The wedge dies if first-party systems also mutate frequency automatically or if dynamic savings beyond one-time manual tuning are small.",
-    "smallest_intervention": "Read synthetic definitions, historical runs, traffic, deploy/incident state and SLO constraints; compute minimum-safe frequency; recommend changes first and optionally write schedules later. Maintain a baseline-versus-optimized run ledger and block changes that violate detection-latency/SLO policy.",
-    "monetization": "Per optimized monitor-month or capped share of verified avoided synthetic-run spend while reliability guardrails remain satisfied.",
-    "biggest_unresolved_risk": "Dynamic optimization may add little beyond one-time static tuning, and adaptive synthetic configuration is close enough to existing vendor capabilities that incumbent absorption risk is now material.",
-    "next_research_test": "Find evidence of real enterprise synthetic estates and billing pain, quantify dynamic-versus-static savings using realistic run-count distributions, and inspect Datadog/New Relic/Kentik/Checkly for automatic frequency mutation. Kill if dynamic incremental savings are small or first-party adaptive frequency already exists."
+    "closest_threat": "Observability vendors already expose the primitives needed to add this feature, and Kentik has traffic-driven adaptive synthetic configuration at the location dimension. More importantly, one-time manual/static tuning may capture most of the savings.",
+    "smallest_intervention": "Read monitor definitions, periods, locations, run history, deployment/incident state and maximum detection-latency policy; recommend period changes first, then optionally update monitor.period via authorized provider API. Track baseline versus optimized run counts and auto-restore higher cadence on risk escalation.",
+    "monetization": "Per optimized monitor-month or capped share of verified avoided run spend while agreed reliability guardrails remain satisfied.",
+    "biggest_unresolved_risk": "Incremental dynamic savings beyond static cleanup are unproven; if small, recurring leakage and performance-fee economics fail.",
+    "next_research_test": "Find enterprise synthetic estates with disclosed run counts/costs or a realistic workload dataset and quantify current versus best-static versus adaptive cost. Require meaningful marginal savings from adaptation after static cleanup. Continue parallel cross-family search so this leader does not persist by inertia."
   },
   "latest_run": {
-    "run_key": "2026-08-28T18:40:26+05:30",
+    "run_key": "2026-08-28T19:33:59+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
     "current_leader": "adaptive-synthetic-monitor-frequency-optimizer",
-    "score": 47,
-    "run_file": "data/money-flow-runs/2026-08-28T184026+0530.json",
+    "score": 46,
+    "run_file": "data/money-flow-runs/2026-08-28T193359+0530.json",
     "promotions": [],
-    "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:48->47"],
+    "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:47->46"],
     "rejections": [],
     "runner_ups": [
-      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains structurally strong but still lacks a better specific vertical than synthetics."},
-      {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution but unquantified leakage and closer reconciliation competition."},
-      {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economics but infrequent app-wide control and weaker performance attribution."}
+      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Structurally strong but still lacks a better precise high-value vertical."},
+      {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution but aggregate leakage and competition remain unresolved."},
+      {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economic tradeoff but infrequent app-wide control weakens recurring monetization."}
     ],
     "new_search_rules": [
-      "Exact adaptive frequency remains distinct from traffic-driven adaptive test-location selection, but the latter materially raises incumbent absorption risk.",
-      "A direct per-run price is not sufficient; prove incremental savings beyond a one-time static best-practice tuning exercise.",
-      "For observability wedges, compare against first-party workflow automation primitives, not only explicit named cost-optimization features.",
-      "When a vendor already uses traffic to mutate one synthetic configuration dimension automatically, penalize adjacent dimensions even if the exact proposed feature is absent."
+      "Technical API writability is not economic proof; require savings incremental to best static configuration.",
+      "Separate total theoretical optimization savings from marginal savings created by continuous adaptation.",
+      "When first-party APIs expose the exact control variable, increase incumbent-absorption penalty even if the exact optimizer is not named.",
+      "Maintain broad runner-ups but do not promote them until a precise vertical proves economics."
     ]
   },
   "run_history": [
@@ -121,55 +102,15 @@
     {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
     {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"},
     {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"},
-    {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"current","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"}
+    {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"},
+    {"run_key":"2026-08-28T19:33:59+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-28T193359+0530.json"}
   ],
-  "known_rejected_or_demoted": [
-    "expiring contractual financial entitlements broad family",
-    "carrier guaranteed-service refunds",
-    "Amazon FBA reimbursement recovery",
-    "835 underpayment recovery",
-    "buyer-side early-payment discount capture",
-    "payment fee/MDR leakage recovery",
-    "pre-authorization false-decline optimization",
-    "merchant reserve-release watchdog",
-    "B2B interchange L2/L3 enrichment",
-    "payment-partner residual reconciliation",
-    "delay-tolerant LLM Batch/Flex optimization",
-    "generic failed-payment recovery",
-    "generic ecommerce return/refund rescue",
-    "generic subscription cancellation rescue",
-    "generic chargeback recovery",
-    "freight invoice audit",
-    "parcel lost/damaged claims",
-    "generic retail deductions recovery",
-    "generic cloud SLA credit recovery",
-    "duplicate payment/idempotency",
-    "duplicate AP prevention",
-    "bank guarantee or standby-LC cash-margin release monitoring",
-    "construction retainage release/recovery",
-    "generic marketplace payout attribution/recovery",
-    "invalid digital-ad-spend refund recovery",
-    "ocean demurrage/detention overcharge recovery",
-    "unused corporate airline ticket value recovery",
-    "cloud-specific commitment allocation",
-    "obvious take-or-pay make-up-right reconciliation",
-    "generic supplier rebate threshold optimization",
-    "generic security-deposit release automation",
-    "data-enrichment cross-provider credit routing",
-    "partial-fulfillment payment capture automation",
-    "generic app-store failed-payment dunning",
-    "generic container last-free-day alerting/scheduling",
-    "generic creator revenue-share reconciliation",
-    "generic commercial-energy timing optimization",
-    "unused shipping-label refund recovery",
-    "prior-authorization expiry before scheduled service watchdog",
-    "ECR excess-balance expiry optimization",
-    "automotive core-deposit return recovery",
-    "corporate hotel cancellation deadline optimization",
-    "vendor credit memo application before payment",
-    "security-scan-quota timing",
-    "CI/CD boundary build timing",
-    "shipping API overage timing",
-    "creator payout threshold acceleration"
-  ]
+  "recent_cross_family_findings": [
+    "Software-license seat reclamation/right-sizing is occupied by current license-management products with continuous monitoring and automated harvesting.",
+    "Commercial CAM reconciliation is occupied by lease/CAM systems and specialized tenant audit products.",
+    "Payment authorization residual handling sits adjacent to mature gateway expiry, partial-capture, void and authorization-adjustment controls.",
+    "Automotive warranty labor-rate reimbursement remains an uncertain research branch: real annual value event, but insufficient evidence on machine-readable OEM rules, APIs and whitespace.",
+    "No telecom or app-platform payout micro-event found this run beat the leader."
+  ],
+  "known_rejected_or_demoted_summary": "Full list retained in schema-v4 anchor blob 6343cc3c4f5e4ccc3b774361433e085ec4e36355 and immutable prior run files. Includes Batch/Flex, broad contractual entitlements, carrier/FBA/835 recoveries, generic dunning/returns/chargebacks, freight/retail deductions, reserves/L2L3/payment residuals, construction retainage, marketplace/ad/demurrage/airline recoveries, commitment monitoring, make-up rights, rebates, deposits, partial capture, container scheduling, creator reconciliation, energy timing, unused shipping labels, prior-auth expiry, ECR, core deposits, hotel cancellation, vendor credits, security scan quotas, CI/CD timing and shipping API timing."
 }

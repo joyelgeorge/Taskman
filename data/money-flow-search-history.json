@@ -1,6 +1,6 @@
 {
-  "schema_version": 3,
-  "updated_at": "2026-08-28T16:41:26+05:30",
+  "schema_version": 4,
+  "updated_at": "2026-08-28T17:39:30+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -37,40 +37,41 @@
     {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers."},
     {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
     {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
-    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"current_leader_again_2026-08-28T16:41:26+05:30","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist; clean trigger and measurable overage avoidance. Fresh research found the same quota/overage mechanism outside AI, including e-signature and security-scanning allowances, but one high-value vertical remains to be proven."},
-    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted_2026-08-28T15:45:00+05:30","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
-    {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"demoted_2026-08-28T16:41:26+05:30","summary":"Refund-promise to settlement matching remains attractive, but fresh enterprise reconciliation products already surface missing refunds across gateway/ERP/bank data and the aggregate leakage pool remains unquantified."},
-    {"seq":15,"type":"rejection","candidate":"Unused shipping-label refund recovery","status":"rejected_exact_competition","summary":"Exact tools already identify unused labels and automate carrier refunds/voids, including performance-priced recovery."},
-    {"seq":16,"type":"rejection","candidate":"Prior-authorization expiry before scheduled service watchdog","status":"rejected_exact_feature","summary":"Current authorization tools already track expiry and explicitly flag authorizations that will expire before scheduled procedures."},
-    {"seq":17,"type":"rejection","candidate":"ECR excess-balance expiry optimizer","status":"rejected_exact_or_absorbable","summary":"Excess corporate earnings credits can expire monthly and create material idle-cash losses, but DebtBook explicitly optimizes balances to avoid excess zero-interest cash, bank-fee platforms ingest machine-readable account-analysis files, and banks provide target-balance sweeps/hybrid interest accounts."},
-    {"seq":18,"type":"rejection","candidate":"Automotive core-deposit return recovery","status":"rejected_exact_competition","summary":"Refundable auto-parts core deposits have strong deadlines and measurable leakage, but dedicated tools and repair-shop software already track deposits, deadlines, returns and credits."},
-    {"seq":19,"type":"rejection","candidate":"Corporate hotel cancellation deadline optimizer","status":"rejected_first_party_feature","summary":"Booking and cancellation deadlines are machine-readable, but current corporate travel software already auto-cancels bookings/trips to avoid no-show fees and lost value."},
-    {"seq":20,"type":"rejection","candidate":"Vendor credit memo application before payment","status":"rejected_exact_competition","summary":"ERP/AP tools already track unapplied vendor credits and surface or automatically apply them in payment runs."},
-    {"seq":21,"type":"search_insight","summary":"Fresh quota evidence outside AI confirms the mechanism is broader: annual e-signature envelope allowances and monthly security/SaaS usage quotas can create overage/reset boundaries. The remaining challenge is finding one vertical with meaningful movable workload and enough leakage to support a tollbooth."}
+    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted_2026-08-28T17:39:30+05:30","summary":"Included/prepaid SaaS or API capacity approaching a reset with deferrable work remains a strong mechanism, but this run found a cleaner named vertical in synthetic monitoring."},
+    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
+    {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"demoted","summary":"Refund-promise to settlement matching remains attractive, but enterprise reconciliation products already surface missing refunds and aggregate leakage remains unquantified."},
+    {"seq":15,"type":"rejection","candidate":"Unused shipping-label refund recovery","summary":"Exact tools already identify unused labels and automate carrier refunds/voids."},
+    {"seq":16,"type":"rejection","candidate":"Prior-authorization expiry before scheduled service watchdog","summary":"Current authorization tools already track expiry and flag authorizations that will expire before scheduled procedures."},
+    {"seq":17,"type":"rejection","candidate":"ECR excess-balance expiry optimizer","summary":"Material idle-cash loss exists but treasury/bank-fee tools and bank sweeps already optimize the exact state."},
+    {"seq":18,"type":"rejection","candidate":"Automotive core-deposit return recovery","summary":"Dedicated software already tracks refundable core deposits, deadlines, returns and credits."},
+    {"seq":19,"type":"rejection","candidate":"Corporate hotel cancellation deadline optimizer","summary":"Corporate travel software already auto-cancels to avoid no-show fees and lost value."},
+    {"seq":20,"type":"rejection","candidate":"Vendor credit memo application before payment","summary":"ERP/AP tools already track and apply unapplied vendor credits."},
+    {"seq":21,"type":"search_insight","summary":"Quota-boundary opportunities are strongest when the financial unit and work unit are independently machine-readable and the action can be timing rather than routing through our infrastructure."},
+    {"seq":22,"type":"leader_run","candidate":"Adaptive synthetic-monitor frequency optimizer","score":48,"status":"current","summary":"Synthetic monitoring exposes a direct billable event, independently generated schedules and usage records, and APIs that can change frequency/downtime. The proposed wedge continuously adapts test frequency to traffic, deployment, incident and SLO state while measuring avoided check spend. Exact adaptive-cost competition was not found in this run; Gate 8 and savings magnitude remain uncertain."}
   ],
   "current_leader": {
-    "id": "quota-boundary-workload-timing-optimizer",
-    "name": "Quota-boundary workload timing optimizer",
-    "score": 45,
+    "id": "adaptive-synthetic-monitor-frequency-optimizer",
+    "name": "Adaptive synthetic-monitor frequency optimizer",
+    "score": 48,
     "max_score": 60,
     "component_scores": {
-      "flow_scale": 4,
+      "flow_scale": 5,
       "leakage_magnitude": 3,
       "trigger_independence": 5,
-      "permission_non_invasiveness": 4,
+      "permission_non_invasiveness": 5,
       "delta_measurability": 5,
       "monetization": 4,
       "first_party_gap": 4,
       "competitive_whitespace": 4,
       "regulation": 5,
-      "integration_friction": 3,
+      "integration_friction": 4,
       "distribution_burden": 2,
       "build_simplicity": 2
     },
-    "state_transition": "included or prepaid quota plus reset/expiry boundary -> already-planned non-urgent work exists -> executing on the wrong side of the boundary causes overage or destroys paid allowance -> recommend safe timing/reassignment -> verified incremental spend avoided",
-    "why_survived": "Fresh research found the same objective quota/overage structure across non-AI SaaS categories, including annual e-signature envelope allowances and monthly security-scanning or API allowances. Billing/usage state exists independently, a read-only sidecar can recommend timing rather than proxy requests, and the avoided overage is measurable. No dominant general buyer-side quota-boundary scheduler was found.",
+    "state_transition": "fixed synthetic-check schedule -> traffic/deployment/incident/risk state changes -> fixed frequency becomes unnecessarily expensive or insufficiently protective -> change test frequency/downtime through provider API -> preserve required detection coverage with fewer billable checks -> verified monitoring spend avoided",
+    "why_survived": "New Relic currently exposes finite included synthetic checks and charges for additional checks, while monitor frequency multiplied by locations determines monthly check count. New Relic and Datadog expose APIs and usage metrics that allow a sidecar to read cost state and modify frequency/downtime without proxying application requests. Fresh searches found static usage dashboards, alerts, budgets and manual interval-tuning guidance but no sufficiently close product whose narrow job is continuously adapting synthetic-test frequency to changing operational risk while measuring avoided check spend.",
     "gates": {
-      "money_flow_scale": "pass_with_scope_uncertainty",
+      "money_flow_scale": "pass",
       "recurring_leakage": "uncertain",
       "independent_trigger": "pass",
       "permission_non_invasive": "pass",
@@ -80,44 +81,45 @@
       "competitive_whitespace": "uncertain"
     },
     "strongest_evidence": [
-      "Current SaaS products expose non-rollover allowances plus explicit overage prices, creating real financial reset boundaries.",
-      "Docusign terms define annual envelope allowances and per-envelope overage charges, confirming the mechanism outside AI inference.",
-      "Security-scanning products expose included monthly scans plus per-scan overage, another non-AI example.",
-      "Usage dashboards and billing APIs/exports make quota state machine-readable without customer-created labels."
+      "New Relic pricing currently includes 500 synthetic checks on Free and prices additional synthetics checks beyond included amounts at $0.005/check.",
+      "New Relic docs show frequency and selected locations directly determine monthly check count; three locations at 15-minute frequency yields 8,640 checks/month.",
+      "New Relic APIs can create/update synthetic monitors and scheduled downtimes; Datadog exposes estimated synthetic usage metrics and programmable downtimes.",
+      "Current cost-optimization guidance identifies interval and multi-region frequency as major multiplicative cost drivers, but this run did not find an exact adaptive-frequency FinOps product."
     ],
-    "closest_threat": "The mechanism may remain too heterogeneous, and individual SaaS platforms expose first-party budgets/usage dashboards. It fails if safe workload timing is uncommon or if useful intervention requires becoming an inline request router.",
-    "smallest_intervention": "Read usage/billing APIs or exports plus an existing job queue/calendar; compute remaining allowance, reset/expiry time, overage price and job deadlines; recommend RUN BEFORE RESET, DEFER UNTIL RESET, or USE EXISTING ALLOWANCE. No proxy or payment execution initially.",
-    "monetization": "Small per-success fee or capped percentage of objectively avoided overage/forfeited allowance.",
-    "biggest_unresolved_risk": "Need one sufficiently large non-AI vertical with high per-customer leakage, machine-readable work deadlines and enough safe timing flexibility to support repeated savings without request-path ownership.",
-    "next_research_test": "Narrow the quota-boundary mechanism to enterprise e-signature envelopes, security scanning, communications and other non-AI metered SaaS. Quantify overage economics and test whether workflow systems already schedule work against quota boundaries. Promote only a vertical where queue/deadline data is available and savings recur at meaningful scale."
+    "closest_threat": "Observability vendors already provide usage alerts, static budgets, configurable frequencies and downtimes; existing observability FinOps tools may evolve to mutate schedules. The wedge dies if manual static configuration captures most savings or if automatic adaptive scheduling already exists at scale.",
+    "smallest_intervention": "Read monitor definitions, historical run counts, traffic/service criticality, deployment calendars, incident state and SLO constraints; compute a minimum-safe frequency per monitor; recommend frequency/downtime changes first, then optionally write them through provider APIs. Maintain a counterfactual ledger of baseline planned checks versus optimized checks and detected incidents.",
+    "monetization": "Small fee per optimized monitor-month or capped percentage of verified avoided billable checks, counted only while reliability/SLO guardrails remain satisfied.",
+    "biggest_unresolved_risk": "Need to prove material enterprise overspend and demonstrate that dynamic frequency reduction saves meaningful dollars without degrading detection latency, contractual monitoring requirements or compliance coverage.",
+    "next_research_test": "ATTACK-LIKE SEARCH while remaining SEARCH mode: find exact observability FinOps products that automatically mutate synthetic-test frequency; model annual savings for 100-1000 API/browser monitors across multiple regions; verify update permissions and operational guardrails across New Relic and Datadog. Kill if typical savings are sub-$1k/year or first-party adaptive scheduling already exists."
   },
   "latest_run": {
-    "run_key": "2026-08-28T16:41:26+05:30",
+    "run_key": "2026-08-28T17:39:30+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
-    "current_leader": "quota-boundary-workload-timing-optimizer",
-    "score": 45,
-    "run_file": "data/money-flow-runs/2026-08-28T164126+0530.json",
-    "promotions": ["quota-boundary-workload-timing-optimizer"],
-    "demotions": ["corporate-promised-refund-settlement-watchdog"],
-    "rejections": ["ecr-excess-balance-expiry-optimizer", "automotive-core-deposit-return-recovery", "corporate-hotel-cancellation-deadline-optimizer", "vendor-credit-memo-application-before-payment"],
+    "current_leader": "adaptive-synthetic-monitor-frequency-optimizer",
+    "score": 48,
+    "run_file": "data/money-flow-runs/2026-08-28T173930+0530.json",
+    "promotions": ["adaptive-synthetic-monitor-frequency-optimizer"],
+    "demotions": ["quota-boundary-workload-timing-optimizer"],
+    "rejections": ["security-scan-quota-timing", "CI-CD-boundary-build-timing", "shipping-API-overage-timing", "creator-payout-threshold-acceleration"],
     "runner_ups": [
-      {"rank":2,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution and non-invasive recovery, but closer reconciliation competition and still-unproven leakage magnitude."},
-      {"rank":3,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economic tradeoff but infrequent/app-wide and hard to performance-price."},
-      {"rank":4,"id":"expiring-enterprise-messaging-capacity-allocator","score":40,"reason":"Real expiry but routing incumbents can absorb expiry awareness."}
+      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains strong, but synthetic monitoring is a cleaner vertical with explicit billable events, usage metrics and write APIs."},
+      {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution but unquantified leakage and closer reconciliation competition."},
+      {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economics but infrequent app-wide control and weaker performance attribution."}
     ],
     "new_search_rules": [
-      "A large visible leak is not enough if a first-party sweep, target-balance feature or adjacent treasury module already makes the optimal action routine.",
-      "Quota-boundary opportunities are stronger when both the financial unit and work unit are independently machine-readable and the action is timing rather than routing through our infrastructure.",
-      "Before promoting a refundable-deposit or deadline candidate, search vertical operational software because niche industries often already have exact tracking products.",
-      "Treat products that already ingest both operational and bank data as stronger Gate-8 threats to cross-system reconciliation wedges even when they stop short of performance-priced recovery."
+      "A quota vertical is stronger when the provider charges explicitly per billable event and exposes both usage and configuration APIs.",
+      "Prefer adjustable recurring machine schedules over one-time settings because they create repeated monetizable decisions and stronger attribution.",
+      "For operational-safety wedges, savings must be conditional on a non-financial guardrail such as SLO, detection latency or compliance coverage.",
+      "A static first-party budget or usage dashboard is an adjacent threat but not an exact Gate-8 killer if the proposed layer automatically changes future event frequency using independent operational state."
     ]
   },
   "run_history": [
     {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
     {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
-    {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"current","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"}
+    {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"},
+    {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"current","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"}
   ],
   "known_rejected_or_demoted": [
     "expiring contractual financial entitlements broad family",
@@ -162,6 +164,10 @@
     "ECR excess-balance expiry optimization",
     "automotive core-deposit return recovery",
     "corporate hotel cancellation deadline optimization",
-    "vendor credit memo application before payment"
+    "vendor credit memo application before payment",
+    "security-scan-quota timing",
+    "CI/CD boundary build timing",
+    "shipping API overage timing",
+    "creator payout threshold acceleration"
   ]
 }

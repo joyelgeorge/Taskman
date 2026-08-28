@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-28T12:44:00+05:30",
+  "scenario_id": "programmable-money-flow-search",
+  "task": {
+    "stable_key": "money-flow-wedge-scout",
+    "title": "Money Flow Wedge Scout",
+    "objective": "Discover the strongest tiny programmable software/AI intervention inside an existing large private-sector money flow, continuously rank a best surviving hypothesis, attack it when all build gates appear satisfied, and persist every run so future runs continue from accumulated evidence rather than restarting.",
+    "status": "active",
+    "mode": "SEARCH",
+    "threshold_crossed": false
+  },
+  "operating_protocol": {
+    "discovery_floor": "Every run must return at least one best surviving hypothesis, even if some gates remain uncertain.",
+    "freeze_build_threshold": [
+      "huge existing money flow",
+      "recurring measurable leakage or unrealized value",
+      "independent machine-readable trigger",
+      "practical non-invasive permission to intervene",
+      "objectively measurable financial delta",
+      "credible tiny fee stronger than obvious self-serve or flat-fee alternatives",
+      "no need to own the core transaction or request path",
+      "no dominant or sufficiently close incumbent or first-party feature"
+    ],
+    "search_behavior": "Before threshold maintain a current leader and try to beat it. At threshold enter ATTACK and search for disconfirming evidence. If it survives, freeze and build; if it fails, record fatal flaw and promote the next candidate.",
+    "persistence_rule": "Every scheduled or manual run must append its normalized result, candidate scores, gate changes, evidence, rejected reasons, current leader and next research test to Taskman persistence before the run is considered complete."
+  },
+  "conversation_history": [
+    {
+      "seq": 1,
+      "type": "strategy_evolution",
+      "summary": "Opportunity search was narrowed away from tenders, jobs, freelance lead hunting, buyer/seller matchmaking, manufacturer sourcing and generic demand creation toward programmable interventions in existing private money flows."
+    },
+    {
+      "seq": 2,
+      "type": "decision_protocol",
+      "summary": "The search adopted eight strict build gates and the lifecycle SEARCH -> ATTACK -> FROZEN-BUILD."
+    },
+    {
+      "seq": 3,
+      "type": "rejection",
+      "candidate": "Delay-tolerant LLM Batch/Flex optimization",
+      "summary": "Rejected after attack because the trigger was customer-created, the intervention sat on the prompt/request path, first-party cheaper lanes already existed, gateways were close substitutes and percentage-of-savings pricing was weak."
+    },
+    {
+      "seq": 4,
+      "type": "search_framework_enhancement",
+      "summary": "The search was enhanced so runs can no longer end with only no outcome. A two-level standard was added: always report a best surviving hypothesis while keeping the final build threshold strict. Search breadth was widened across many money-flow families and search now drills from flow to state transition to micro-decision."
+    },
+    {
+      "seq": 5,
+      "type": "leader_run",
+      "candidate": "Expiring payment authorization protection",
+      "score": 45,
+      "max_score": 60,
+      "status": "demoted",
+      "summary": "Authorization creation plus fulfillment plus expiry created a clean machine trigger and measurable protected revenue. Later research found first-party reauthorization/capture features and payment-orchestration systems already monitoring expiry, so competitive whitespace weakened."
+    },
+    {
+      "seq": 6,
+      "type": "leader_run",
+      "candidate": "Cross-vendor commitment shortfall prevention",
+      "score": 46,
+      "max_score": 60,
+      "status": "demoted",
+      "summary": "Minimum-spend contracts plus live usage created a strong shortfall event and measurable avoided true-up. Cloud commitment managers and SaaS/procurement platforms increasingly cover monitoring and allocation, narrowing whitespace."
+    },
+    {
+      "seq": 7,
+      "type": "candidate_attack",
+      "candidate": "Take-or-pay make-up-right expiry prevention",
+      "status": "rejected_obvious_implementation",
+      "summary": "Deficiency payment creates a future make-up credit with a contractual expiry, producing excellent machine economics. A current system was found reconciling volume commitments, deficiency payments and make-up rights, so the obvious implementation failed competition."
+    },
+    {
+      "seq": 8,
+      "type": "search_insight",
+      "summary": "A stronger structural pattern emerged: two legitimate future uses of money already exist and a contractual state elsewhere changes which use is economically optimal. The opportunity is to detect that state before the decision and redirect existing activity rather than merely recover money afterward."
+    },
+    {
+      "seq": 9,
+      "type": "leader_run",
+      "candidate": "Expiring enterprise messaging-capacity allocator",
+      "score": 43,
+      "max_score": 60,
+      "status": "current_leader",
+      "summary": "Prepaid messaging credits can expire while already-planned outbound messages exist. A read-only allocator could recommend consuming the balance closest to forfeiture where sender identity, geography, deliverability and compliance allow. The critical uncertainty is whether enough enterprise messaging value actually expires unused and whether balances/queues are accessible without becoming the message rail."
+    },
+    {
+      "seq": 10,
+      "type": "anchor_requirement",
+      "summary": "Because the strategy is evolving, GitHub/Taskman was selected as the permanent anchor so search state, evidence, rejected paths, scores, task results and conversation-derived knowledge can be reloaded in future sessions."
+    }
+  ],
+  "current_leader": {
+    "id": "expiring-enterprise-messaging-capacity-allocator",
+    "name": "Expiring enterprise messaging-capacity allocator",
+    "score": 43,
+    "max_score": 60,
+    "state_transition": "prepaid messaging credits exist -> ordinary future messages are already scheduled -> credit pool approaches expiry -> shift eligible existing sends toward expiring pool -> prevent forfeiture",
+    "why_survived": "The trigger can be independent and machine-readable, the intervention can start read-only, the financial delta can be measured from projected expired value versus actual expired value, and no exact dominant cross-provider optimizer was confirmed in the latest pass.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "uncertain",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "next_research_test": "Quantify how much prepaid enterprise SMS/CPaaS value expires unused each year and verify whether balances, expiry dates and existing outbound queues can be accessed through APIs without forcing the product onto the message path."
+  },
+  "known_rejected_or_demoted": [
+    "expiring contractual financial entitlements broad family",
+    "carrier guaranteed-service refunds",
+    "Amazon FBA reimbursement recovery",
+    "835 underpayment recovery",
+    "buyer-side early-payment discount capture",
+    "payment fee/MDR leakage recovery",
+    "pre-authorization false-decline optimization",
+    "merchant reserve-release watchdog",
+    "B2B interchange L2/L3 enrichment",
+    "payment-partner residual reconciliation",
+    "delay-tolerant LLM Batch/Flex optimization",
+    "generic failed-payment recovery",
+    "generic ecommerce return/refund rescue",
+    "generic subscription cancellation rescue",
+    "generic chargeback recovery",
+    "freight invoice audit",
+    "parcel lost/damaged claims",
+    "generic retail deductions recovery",
+    "generic cloud SLA credit recovery",
+    "duplicate payment/idempotency",
+    "duplicate AP prevention",
+    "bank guarantee or standby-LC cash-margin release monitoring",
+    "construction retainage release/recovery",
+    "generic marketplace payout attribution/recovery",
+    "invalid digital-ad-spend refund recovery",
+    "ocean demurrage/detention overcharge recovery",
+    "unused corporate airline ticket value recovery",
+    "cloud-specific commitment allocation",
+    "obvious take-or-pay make-up-right reconciliation",
+    "generic supplier rebate threshold optimization",
+    "generic security-deposit release automation"
+  ]
+}

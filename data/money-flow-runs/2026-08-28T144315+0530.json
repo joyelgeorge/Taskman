@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "run_key": "2026-08-28T14:43:15+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "subscription-grace-period-cost-recovery-optimizer",
+    "name": "Subscription grace-period cost/recovery optimizer",
+    "score": 47,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 5,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 3,
+      "monetization": 3,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 5,
+      "integration_friction": 4,
+      "distribution_burden": 2,
+      "build_simplicity": 2
+    },
+    "state_transition": "subscription renewal fails -> app-store billing-retry/grace-period event appears -> developer must choose/maintain a platform-level grace-period duration while service continues -> longer grace increases recovery probability but can incur incremental service/AI/content cost for subscribers who never recover -> use observed recovery curves plus marginal service cost to recommend the economically optimal grace-period configuration -> protect net subscription margin rather than gross recovery alone",
+    "why_survived": "The underlying money flow is large and current 2026 subscription-app data shows billing failures are a major involuntary-churn source, especially on Google Play. Apple exposes 3/16/28-day grace choices and an App Store Connect API PATCH endpoint to change grace configuration. Google permits configurable grace/account-hold windows and reports materially better recovery with longer recovery periods. Existing tools strongly cover dunning, subscriber-level messaging, retry-state analytics and recovery workflows, but this search did not find a dominant product whose narrow job is to optimize the store-level grace-period duration from each app's actual recovery hazard curve versus marginal cost-to-serve. This is materially different from generic failed-payment recovery because it optimizes a provider-native configuration rather than replacing retry/dunning rails.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "uncertain",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "RevenueCat State of Subscription Apps 2026 reports that roughly a third of Google Play subscription cancellations are involuntary billing failures and about 15% on the App Store in its dataset.",
+      "Google reported that extending the decline-recovery period from 30 to 60 days produced an average 10% reduction in involuntary churn for renewals.",
+      "Apple allows Billing Grace Period choices of 3, 16, or 28 days and exposes PATCH /v1/subscriptionGracePeriods/{id} to modify the opt-in status and duration.",
+      "RevenueCat exposes BILLING_ISSUE/grace-period events and recovery events, so recovery curves are machine-readable without owning payment processing.",
+      "Current dunning vendors such as RedChurn, Recurflux and Rezoki operate on billing events and messaging/recovery, but the search did not identify an exact optimizer for the app-level grace-duration configuration itself."
+    ],
+    "closest_threat": "The strongest first-party threat is that longer grace may be an obvious default for low-marginal-cost apps, reducing the optimization problem to 'choose the longest period'. Google already enables grace by default and encourages longer recovery windows. The wedge is strongest only for high-variable-cost subscription services, such as AI/compute/content-cost apps, where unrecovered users can consume meaningful cost during grace. Existing subscription analytics/dunning platforms could also add this recommendation cheaply.",
+    "smallest_intervention": "Read App Store/Google Play or RevenueCat billing-issue and renewal events plus per-user or cohort cost-to-serve; estimate recovery probability by day and expected net value of 3/16/28-day (Apple) or available Google recovery-window settings; output a configuration recommendation and expected incremental net margin. Initially no payment control and no subscriber messaging. With explicit authorization, apply Apple configuration through App Store Connect API after recommendation validation.",
+    "monetization": "Per configuration optimization cycle or a capped share of measured incremental net margin versus the prior configuration. Performance pricing remains uncertain because Apple configuration is app-wide and causal attribution across periods can be noisy; a small success/event fee or low flat fee tied to recovered net margin may be stronger.",
+    "biggest_unresolved_risk": "Objective attribution is weaker than detection: Apple applies one grace setting across an app, making clean contemporaneous A/B testing difficult, and for low-cost apps the economically dominant answer may simply be maximum grace. The next test must prove a meaningful cohort of high-COGS subscription apps where the optimal duration is non-trivial and where configuration changes generate measurable net-margin deltas large enough to support a fee.",
+    "next_research_test": "Quantify the tradeoff for high-variable-cost mobile subscriptions: obtain or find public recovery-by-day curves and typical marginal cost-to-serve for AI, compute-heavy, licensed-content or other costly apps; model when 3 vs 16 vs 28 days changes expected net margin. Then search exact competitors for 'grace period optimizer', 'billing retry duration optimizer' and store-configuration recommendation products. Kill if longest grace is economically dominant across realistic cost structures or if an incumbent already optimizes the setting."
+  },
+  "promotions": ["subscription-grace-period-cost-recovery-optimizer"],
+  "demotions": ["quota-boundary-workload-timing-optimizer"],
+  "runner_ups": [
+    {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Still has clean quota/reset triggers and measurable overage avoidance, but no single high-value non-AI/non-enrichment vertical with proven leakage and easy read-only scheduling has yet been found."},
+    {"rank":3,"id":"expiring-enterprise-messaging-capacity-allocator","score":40,"reason":"Expiry is real, but multi-provider messaging routers already own the routing decision and can absorb expiry-awareness."},
+    {"rank":4,"id":"commercial-energy-price-window-optimizer","score":38,"reason":"Excellent machine-readable tariff/price signals and dollar deltas, but mature battery/DER/EV optimization software and APIs already optimize timing directly."}
+  ],
+  "families_tested": [
+    "subscription/app-store billing recovery configuration",
+    "SaaS/API quota reset timing",
+    "private healthcare claims automation",
+    "creator/revenue-share payout reconciliation",
+    "logistics container free-time/demurrage timing",
+    "commercial energy tariff/demand timing",
+    "employee benefit forfeiture",
+    "prepaid advertising credits",
+    "e-signature envelope allowance timing"
+  ],
+  "rejections_or_failed_attacks": [
+    {"candidate":"generic app-store failed-payment dunning","reason":"Current RevenueCat-integrated and store-specific vendors already handle retry-state detection, dunning, deep links and win-back; only the configuration optimization micro-decision remains potentially open."},
+    {"candidate":"container last-free-day scheduling","reason":"Current tracking APIs already push Last Free Date/available-for-pickup events explicitly to reduce demurrage; obvious alerting/scheduling wedge is occupied."},
+    {"candidate":"creator revenue-share reconciliation","reason":"Current finance-grade products calculate and evidence payout splits without moving money; generic reconciliation is occupied."},
+    {"candidate":"commercial energy timing","reason":"Current price-signal APIs and DER/battery optimizers already make operating decisions price-aware; generic timing wedge is mature."},
+    {"candidate":"commuter-benefit spend-down before termination","reason":"The forfeiture event can be real, but intervention depends on employment termination and employee purchasing behavior, with low repeat frequency per person and weak autonomous monetization."}
+  ],
+  "new_search_rules": [
+    "Provider-native configurable recovery windows can be opportunities only when the financially optimal setting is non-obvious; if 'maximum grace' dominates for nearly all customers, the wedge collapses to a checkbox.",
+    "Separate gross revenue recovery from net-margin recovery. For high-variable-cost digital services, allowing unpaid users continued access has a measurable cost that can make recovery-window optimization genuinely economic.",
+    "A narrow configuration optimizer can remain distinct from mature dunning if it does not send messages, retry payments or own billing; competition must be tested against configuration-intelligence features, not only dunning vendors.",
+    "For app-wide settings, causal attribution is a first-class gate because lack of per-user experimentation can weaken performance-fee pricing even when the decision is financially important."
+  ],
+  "source_references": [
+    "https://developer.apple.com/help/app-store-connect/manage-subscriptions/enable-billing-grace-period-for-auto-renewable-subscriptions",
+    "https://developer.apple.com/documentation/appstoreconnectapi/managing-auto-renewable-subscriptions",
+    "https://developer.apple.com/app-store/subscriptions/",
+    "https://android-developers.googleblog.com/2025/06/top-announcements-to-know-from-google-play-google-io-25.html",
+    "https://www.revenuecat.com/state-of-subscription-apps-2026-utilities",
+    "https://www.revenuecat.com/blog/growth/google-play-billing-error-churn-how-to-fix",
+    "https://www.revenuecat.com/docs/integrations/webhooks/event-flows",
+    "https://www-docs.revenuecat.com/docs/subscription-guidance/how-grace-periods-work",
+    "https://redchurn.io/",
+    "https://recurflux.com/for/revenuecat",
+    "https://www.rezoki.com/integrations/google-play",
+    "https://www.vizionapi.com/container-tracking/port-terminal-connections",
+    "https://www.wattshift.com/",
+    "https://www.allocora.com/"
+  ],
+  "persistence_status": "repository_run_saved_database_import_pending"
+}

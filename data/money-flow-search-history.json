@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "updated_at": "2026-08-28T13:50:47+05:30",
+  "schema_version": 3,
+  "updated_at": "2026-08-28T14:43:15+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -34,113 +34,79 @@
     {"seq":6,"type":"leader_run","candidate":"Cross-vendor commitment shortfall prevention","score":46,"status":"demoted","summary":"Strong minimum-spend shortfall economics, later weakened by cloud commitment managers and procurement/SaaS allocation tooling."},
     {"seq":7,"type":"candidate_attack","candidate":"Take-or-pay make-up-right expiry prevention","status":"rejected_obvious_implementation","summary":"Excellent economics but current systems reconcile volume commitments, deficiency payments and make-up rights."},
     {"seq":8,"type":"search_insight","summary":"Promising pattern: two legitimate future uses already exist and a contractual or quota state changes which is economically optimal; detect before the decision and redirect existing activity."},
-    {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted_2026-08-28","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers, increasing feature-absorption risk."},
+    {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers."},
     {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
     {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
-    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"current_leader","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist and overage/PAYG cost is avoidable. Buyer-side timing/allocation around the billing boundary appears less directly served than seller-side billing, data-enrichment waterfall routing, or messaging orchestration."}
+    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted_2026-08-28","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist; clean trigger and measurable overage avoidance, but no single high-value non-AI/non-enrichment vertical with proven leakage was identified."},
+    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"current_leader","summary":"App-store failed-renewal events and provider-native grace-period settings create a small configuration decision. For high-variable-cost subscription apps, longer grace can recover more renewals but also incur service cost for users who never recover. The open wedge is optimizing net margin from the grace duration, not generic dunning."}
   ],
   "current_leader": {
-    "id": "quota-boundary-workload-timing-optimizer",
-    "name": "Quota-boundary workload timing optimizer",
-    "score": 45,
+    "id": "subscription-grace-period-cost-recovery-optimizer",
+    "name": "Subscription grace-period cost/recovery optimizer",
+    "score": 47,
     "max_score": 60,
     "component_scores": {
-      "flow_scale": 4,
-      "leakage_magnitude": 3,
+      "flow_scale": 5,
+      "leakage_magnitude": 5,
       "trigger_independence": 5,
-      "permission_non_invasiveness": 4,
-      "delta_measurability": 5,
-      "monetization": 4,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 3,
+      "monetization": 3,
       "first_party_gap": 4,
       "competitive_whitespace": 4,
       "regulation": 5,
-      "integration_friction": 3,
+      "integration_friction": 4,
       "distribution_burden": 2,
       "build_simplicity": 2
     },
-    "state_transition": "included/prepaid usage quota exists -> real system exposes remaining quota and reset/billing boundary -> already-planned non-urgent workload exists -> continuing now would create overage or leave other paid capacity unused -> schedule/allocate eligible work across the boundary -> avoid incremental spend while consuming already-paid capacity",
-    "why_survived": "The quota/reset event is independently machine-readable; many APIs expose remaining quota and reset timestamps; the intervention can begin as a read-only recommendation against existing job queues; the financial delta can be computed as avoided overage/PAYG minus any execution cost; current search found many seller-side metering/billing products but no dominant buyer-side cross-SaaS workload timing optimizer for arbitrary quotas.",
+    "state_transition": "subscription renewal fails -> app-store retry/grace event appears -> developer has a provider-native grace-period duration setting while service continues -> longer grace increases recovery probability but may add variable service cost for subscribers who never recover -> recommend the duration that maximizes expected net subscription margin",
+    "why_survived": "The flow is large; billing failures are a major source of involuntary churn; Apple and Google expose configurable recovery windows and machine-readable billing states; the intervention can be read-only configuration intelligence; current dunning tools recover individual subscriptions but this search did not find a dominant product that optimizes the store-level grace duration using each app's recovery-by-day curve versus marginal cost-to-serve.",
     "gates": {
       "money_flow_scale": "pass",
-      "recurring_leakage": "uncertain",
+      "recurring_leakage": "pass",
       "independent_trigger": "pass",
       "permission_non_invasive": "pass",
-      "measurable_delta": "pass",
+      "measurable_delta": "uncertain",
       "monetization": "uncertain",
       "no_transaction_ownership": "pass",
       "competitive_whitespace": "uncertain"
     },
     "strongest_evidence": [
-      "Multiple current SaaS/API products expose quota remaining and reset dates or explicitly state that unused credits reset/expire each billing cycle.",
-      "Apollo credits expire at the end of the billing cycle; Coresignal and other data APIs use recurring credit pools; several APIs expose usage endpoints or quota headers.",
-      "Usage-based SaaS billing products confirm that allowances plus overages are widespread, making the boundary economically meaningful."
+      "RevenueCat State of Subscription Apps 2026 reports billing failures are roughly a third of Google Play subscription cancellations and about 15% on the App Store in its dataset.",
+      "Google reports that extending decline recovery from 30 to 60 days produced an average 10% reduction in involuntary churn for renewals.",
+      "Apple allows 3, 16 or 28-day Billing Grace Period choices and exposes PATCH /v1/subscriptionGracePeriods/{id} to modify grace configuration.",
+      "RevenueCat exposes BILLING_ISSUE/grace and RENEWAL events, enabling machine-readable recovery curves without owning payment processing."
     ],
-    "closest_threat": "A broad SaaS spend-management platform or provider-native workload scheduler could add buyer-side quota-aware timing. Narrow verticals such as data enrichment already have waterfall routers, so the wedge must avoid categories where routing itself is mature.",
-    "smallest_intervention": "Read quota/balance/reset data plus an existing job queue or batch schedule; classify jobs by deadline and provider/capability eligibility; recommend RUN-NOW, DEFER-UNTIL-RESET, or USE-ALREADY-PAID-CAPACITY. Do not proxy requests initially.",
-    "monetization": "Per verified boundary-saving event or a small percentage of objectively avoided overage/PAYG spend; if percentage pricing is weak, charge a small fee only when a recommendation produces a measured avoided charge.",
-    "biggest_unresolved_risk": "The exact annual buyer-side leakage pool is not yet quantified, and arbitrary cross-SaaS workload interchangeability may be too heterogeneous. If most useful workloads cannot be delayed or reassigned without sitting on the request path, the candidate fails structurally.",
-    "next_research_test": "Find one high-volume non-AI, non-data-enrichment SaaS/API family where (a) included quota expires/resets, (b) overage or alternative PAYG spend is material, (c) queued work has machine-readable deadlines, and (d) no existing product performs buyer-side quota-boundary scheduling. Quantify real avoided dollars per account and test whether read-only recommendations are enough to capture value."
+    "closest_threat": "For low-marginal-cost apps the optimal answer may simply be maximum grace, collapsing the wedge to a checkbox. Google already defaults grace on and promotes longer recovery windows. Subscription analytics/dunning platforms can also absorb the recommendation cheaply.",
+    "smallest_intervention": "Read billing-issue and renewal events plus app/cohort cost-to-serve; estimate recovery probability by day and expected net value for each available store grace setting; output the economically optimal configuration and expected net-margin change. Initially do not retry payments or message subscribers. With authorization, an Apple setting can later be changed through App Store Connect API.",
+    "monetization": "Small fee per configuration optimization cycle or capped share of measured incremental net margin. Percentage pricing is currently uncertain because app-wide settings make causal attribution noisier than event-level interventions.",
+    "biggest_unresolved_risk": "Need proof that a meaningful population of high-variable-cost subscription apps has a non-trivial optimal grace duration. Apple settings are app-wide, so clean concurrent A/B attribution is difficult. If maximum grace dominates realistic economics, or an incumbent already optimizes this setting, kill the candidate.",
+    "next_research_test": "Model high-variable-cost mobile subscriptions using public recovery-by-day curves and realistic marginal service costs for AI/compute/licensed-content apps. Determine when 3 vs 16 vs 28 days changes expected net margin, then search exact grace-duration/configuration optimizers."
   },
   "latest_run": {
-    "run_key": "2026-08-28T13:50:47+05:30",
+    "run_key": "2026-08-28T14:43:15+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
-    "current_leader": "quota-boundary-workload-timing-optimizer",
-    "score": 45,
-    "promotions": ["quota-boundary-workload-timing-optimizer"],
-    "demotions": ["expiring-enterprise-messaging-capacity-allocator"],
-    "rejections_or_failed_attacks": [
-      {
-        "candidate": "data-enrichment credit expiry allocator",
-        "reason": "Apollo and other waterfall enrichment systems already connect multiple providers, meter per-source credit usage and route requests; exact vertical is too occupied."
-      },
-      {
-        "candidate": "partial-fulfillment payment capture optimizer",
-        "reason": "Shopify now provides automatic capture per fulfillment for Plus and a current Shopify app automatically captures shipped amounts across split fulfillments; Stripe and Adyen expose mature multicapture semantics. Gate 8 is too threatened."
-      }
-    ],
+    "current_leader": "subscription-grace-period-cost-recovery-optimizer",
+    "score": 47,
+    "run_file": "data/money-flow-runs/2026-08-28T144315+0530.json",
+    "promotions": ["subscription-grace-period-cost-recovery-optimizer"],
+    "demotions": ["quota-boundary-workload-timing-optimizer"],
     "runner_ups": [
-      {
-        "rank": 2,
-        "id": "expiring-enterprise-messaging-capacity-allocator",
-        "score": 40,
-        "reason": "Expiry remains real, but current multi-provider SMS orchestration layers already optimize cost, reliability and routing across existing provider accounts, making expiry-awareness an absorbable feature."
-      },
-      {
-        "rank": 3,
-        "id": "partial-fulfillment-capture-preservation",
-        "score": 39,
-        "reason": "Strong machine events and exact payment delta, but native Shopify per-fulfillment capture and a live split-fulfillment capture app materially weaken whitespace."
-      },
-      {
-        "rank": 4,
-        "id": "cross-provider-data-api-credit-allocator",
-        "score": 37,
-        "reason": "Balances and reset dates are clean, but Apollo waterfall enrichment and other multi-provider enrichment tools already perform the key routing decision."
-      }
+      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Clean quota/reset trigger, but no single high-value non-AI/non-enrichment vertical with proven buyer-side leakage and easy scheduling has been found."},
+      {"rank":3,"id":"expiring-enterprise-messaging-capacity-allocator","score":40,"reason":"Real expiry but multi-provider routing software can absorb the expiry variable."},
+      {"rank":4,"id":"commercial-energy-price-window-optimizer","score":38,"reason":"Excellent dollar signals, but current DER/battery/EV software already optimizes timing directly."}
     ],
     "new_search_rules": [
-      "Do not treat multi-provider routing as whitespace merely because it lacks an expiry variable; if an incumbent already owns the routing decision, expiry-awareness is likely a feature rather than a business.",
-      "Prefer timing/allocation wedges that can operate from read-only quota state plus an existing queue, so the first version does not sit on the request path.",
-      "When a candidate relies on expiring credits, verify whether the adjacent category already has a router/orchestrator before spending time quantifying expiry leakage."
-    ],
-    "source_references": [
-      "https://knowledge.apollo.io/hc/en-us/articles/34071089002509-Waterfall-Enrichment-Overview",
-      "https://knowledge.apollo.io/hc/en-us/articles/9527776320781-What-Are-Credits",
-      "https://developers.theorg.com/api/get-started",
-      "https://www.apiverve.com/pricing",
-      "https://www.gong.io/docs/about-gong-credits",
-      "https://docs.enterprise.appier.com/docs/account-usage-usage-dashboard",
-      "https://www.coresignal.com/pricing/",
-      "https://docs.stripe.com/payments/multicapture",
-      "https://docs.adyen.com/online-payments/capture/",
-      "https://help.shopify.com/en/manual/payments/payment-authorization",
-      "https://apps.shopify.com/ship-capture",
-      "https://www.symphonyroute.com/",
-      "https://www.contexa.in/",
-      "https://www.fyno.io/cost-optimisation"
+      "Provider-native configurable recovery windows are interesting only when the optimal setting is economically non-obvious; otherwise the wedge collapses to a checkbox.",
+      "Optimize net-margin recovery, not gross renewal recovery, whenever continuing unpaid service creates real variable cost.",
+      "Treat app-wide configuration attribution as a first-class monetization gate because lack of per-user experiments can weaken performance pricing."
     ]
   },
+  "run_history": [
+    {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
+    {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"current","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"}
+  ],
   "known_rejected_or_demoted": [
     "expiring contractual financial entitlements broad family",
     "carrier guaranteed-service refunds",
@@ -174,6 +140,10 @@
     "generic supplier rebate threshold optimization",
     "generic security-deposit release automation",
     "data-enrichment cross-provider credit routing as a standalone wedge",
-    "partial-fulfillment payment capture automation as a standalone wedge"
+    "partial-fulfillment payment capture automation as a standalone wedge",
+    "generic app-store failed-payment dunning",
+    "generic container last-free-day alerting/scheduling",
+    "generic creator revenue-share reconciliation",
+    "generic commercial-energy timing optimization"
   ]
 }

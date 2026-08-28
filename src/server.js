@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
+import { getKnowledgeSnapshot, recordRunLearning } from './knowledge-store.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -22,19 +23,29 @@ async function readBody(req) {
   return raw ? JSON.parse(raw) : {};
 }
 
-function nextAction(task, run) {
-  if (run.status === 'failed') return 'Check provider credentials or retry after the provider recovers.';
-  if (task.intervalMinutes) return `Review the next scheduled result in about ${task.intervalMinutes} minute(s).`;
-  return 'Review the result and convert it into a recurring task if repetition would be useful.';
+function nextAction(task, run, knowledge) {
+  if (run.status === 'failed') return 'Resolve the failure cause before repeating the same route.';
+  if (knowledge?.latestFuturePath?.value?.nextBestAction) return knowledge.latestFuturePath.value.nextBestAction;
+  if (task.intervalMinutes) return 'Use this run to identify the next unresolved money-relevant gap, then make the next run attack that gap.';
+  return 'Review the result and define the next unresolved gap.';
+}
+
+function compactKnowledge(knowledge) {
+  return {
+    knownFacts: knowledge.knownFacts.slice(-8).map(e => e.value ?? e.summary ?? e),
+    rejectedPaths: knowledge.rejectedPaths.slice(-8).map(e => e.value ?? e.summary ?? e),
+    openGaps: knowledge.openGaps.slice(-5).map(e => e.gap ?? e.value ?? e),
+    latestFuturePath: knowledge.latestFuturePath?.value || null
+  };
 }
 
 async function executeTask(task, reason = 'manual') {
-  const run = { id: crypto.randomUUID(), taskId: task.id, reason, status: 'running', startedAt: new Date().toISOString() };
+  const run = { id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null, reason, status: 'running', startedAt: new Date().toISOString() };
   state.runs.unshift(run);
+  const knowledgeBefore = await getKnowledgeSnapshot({ taskId: task.id });
   try {
-    const history = state.runs.filter(r => r.taskId === task.id && r.status === 'succeeded' && r.result).slice(0, 3)
-      .map(r => r.result).join('\n\n');
-    const prompt = history ? `${task.prompt}\n\nRecent task context:\n${history}` : task.prompt;
+    const context = compactKnowledge(knowledgeBefore);
+    const prompt = `${task.prompt}\n\nCurrent durable task knowledge:\n${JSON.stringify(context)}\n\nInstruction: focus only on the most valuable unresolved gap. Do not repeat rejected paths. Return evidence or an actionable step that moves toward the task's measurable outcome.`;
     const result = await runWithFallback(prompt);
     run.status = 'succeeded';
     run.result = result.text;
@@ -53,7 +64,20 @@ async function executeTask(task, reason = 'manual') {
     run.error = String(e.message || e);
   }
   run.finishedAt = new Date().toISOString();
-  run.nextBestAction = nextAction(task, run);
+  run.nextBestAction = nextAction(task, run, knowledgeBefore);
+  await recordRunLearning({
+    taskId: task.id,
+    scenarioId: task.scenarioId || null,
+    runId: run.id,
+    result: run.result || run.error,
+    provider: run.provider,
+    model: run.model,
+    inputTokens: run.inputTokens || 0,
+    outputTokens: run.outputTokens || 0,
+    status: run.status,
+    nextBestAction: run.nextBestAction
+  });
+  run.knowledge = await getKnowledgeSnapshot({ taskId: task.id });
   return run;
 }
 
@@ -73,11 +97,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, state.tasks);
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, state.runs.slice(0, 50));
 
+    const knowledgeMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/knowledge$/);
+    if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
+
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
       const body = await readBody(req);
       if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
       const task = {
         id: crypto.randomUUID(),
+        scenarioId: body.scenarioId || null,
         title: body.title?.trim() || body.prompt.trim().slice(0, 60),
         prompt: body.prompt.trim(),
         intervalMinutes: Number(body.intervalMinutes || 0) || null,

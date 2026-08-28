@@ -27,9 +27,11 @@ npm run migrate
 npm start
 ```
 
-When `DATABASE_URL` is configured, Taskman automatically runs unapplied migrations and seeds the structured scenarios from `data/scenarios.json` at startup.
+When `DATABASE_URL` is configured, Taskman automatically runs unapplied migrations, applies newer schema-versioned scenario seeds from `data/scenarios.json`, and ensures the canonical `Money Flow Wedge Scout` task/version exists. Existing database-only fields survive; the same seed version is not reapplied on every restart.
 
 When `DATABASE_URL` is not configured, the lightweight POC remains usable with in-memory task/run state and the file-backed knowledge-event fallback.
+
+The dashboard distinguishes executable `tasks` from research `scenarios`. Wide-search candidates, rejected paths and scored leaders are scenario rows; the reusable scheduler job appears as the canonical task.
 
 ## Evolution principle
 
@@ -63,3 +65,4 @@ scenario
 ```
 
 The next major persistence step is to turn AI outputs into validated structured events (`fact`, `assumption`, `rejection`, `gap_opened`, `gap_resolved`, `future_path`, `money_event`) rather than storing only a generic run observation.
+

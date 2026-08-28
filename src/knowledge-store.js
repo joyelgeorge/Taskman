@@ -115,12 +115,63 @@ export async function persistKnowledgeSnapshot({ scenarioId, taskId, runId, snap
   return result.rows[0];
 }
 
+async function persistMoneyEvent({ taskId, scenarioId, runId, event }) {
+  if (!databaseEnabled || !event.money) return null;
+  const m = event.money;
+  const result = await query(
+    `INSERT INTO money_events
+     (scenario_id, task_id, run_id, event_type, amount, currency, attributable_value, confidence, evidence)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING *`,
+    [scenarioId || null, taskId || null, runId || null, m.eventType,
+     Number.isFinite(m.amount) ? m.amount : null, m.currency || null,
+     Number.isFinite(m.attributableValue) ? m.attributableValue : null,
+     event.confidence, JSON.stringify(m.evidence || { summary: event.summary })]
+  );
+  return result.rows[0];
+}
+
+async function persistFuturePath({ taskId, scenarioId, runId, event }) {
+  if (!databaseEnabled || event.type !== 'future_path') return null;
+  const result = await query(
+    `INSERT INTO future_paths
+     (scenario_id, task_id, based_on_run_id, next_strategy, next_questions, next_experiments)
+     VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb) RETURNING *`,
+    [scenarioId || null, taskId || null, runId || null,
+     JSON.stringify({ nextBestAction: event.value?.nextBestAction, summary: event.summary }),
+     JSON.stringify(event.value?.nextQuestions || []), JSON.stringify(event.value?.nextExperiments || [])]
+  );
+  return result.rows[0];
+}
+
+export async function ingestStructuredLearning({ taskId, scenarioId, runId, envelope }) {
+  const stored = [];
+  for (const event of envelope.events) {
+    const record = await appendKnowledgeEvent({
+      taskId, scenarioId, runId,
+      type: event.type,
+      key: event.key,
+      value: event.value,
+      sourceType: event.sourceType,
+      confidence: event.confidence,
+      metadata: { ...event.metadata, summary: event.summary, structured: true }
+    });
+    stored.push(record);
+    if (event.type === 'money_event') await persistMoneyEvent({ taskId, scenarioId, runId, event });
+    if (event.type === 'future_path') await persistFuturePath({ taskId, scenarioId, runId, event });
+  }
+
+  const allEvents = await readKnowledgeEvents({ taskId });
+  const snapshot = buildKnowledgeSnapshot(allEvents);
+  await persistKnowledgeSnapshot({ scenarioId, taskId, runId, snapshot, eventCount: allEvents.length });
+  return { events: stored, snapshot };
+}
+
 export async function recordRunLearning({ taskId, scenarioId, runId, result, provider, model, inputTokens = 0, outputTokens = 0, status, nextBestAction }) {
   const events = [];
 
   events.push(await appendKnowledgeEvent({
-    type: 'run_observation', taskId, scenarioId, runId, status,
-    value: { result, nextBestAction }, sourceType: 'execution', confidence: status === 'succeeded' ? 0.7 : 0.5
+    type: 'run_observation', taskId, scenarioId, runId,
+    value: { result, nextBestAction, status }, sourceType: 'execution', confidence: status === 'succeeded' ? 0.7 : 0.5
   }));
 
   if (provider) {
@@ -131,16 +182,8 @@ export async function recordRunLearning({ taskId, scenarioId, runId, result, pro
     }));
   }
 
-  if (nextBestAction) {
-    events.push(await appendKnowledgeEvent({
-      type: 'future_path', taskId, scenarioId, runId,
-      value: { nextBestAction }, sourceType: 'inference', confidence: 0.55
-    }));
-  }
-
   const allEvents = await readKnowledgeEvents({ taskId });
   const snapshot = buildKnowledgeSnapshot(allEvents);
   await persistKnowledgeSnapshot({ scenarioId, taskId, runId, snapshot, eventCount: allEvents.length });
-
   return events;
 }

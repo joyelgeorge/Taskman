@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "updated_at": "2026-08-28",
   "objective": "Find and execute repeatable AI-assisted money tasks that require minimal one-time setup, then improve them continuously from accumulated evidence.",
   "global_constraints": [
@@ -10,14 +10,25 @@
     "Self-evolution may change the path, search, provider routing and execution strategy, but not silently change the user's goal.",
     "Avoid opportunities that require holding customer funds or rebuilding underlying payment/marketplace infrastructure.",
     "Avoid tenders, government procurement, generic buyer-seller matchmaking, generic business ideas and long lead-time sourcing as the core opportunity engine.",
-    "Do not treat individual people or specific companies as the primary opportunity target; focus on systems, rails, workflows and structural money flows."
+    "Do not treat individual people or specific companies as the primary opportunity target; focus on systems, rails, workflows and structural money flows.",
+    "Do not prioritize job-seeking, freelance gigs, cold-outreach service selling or other paths that depend mainly on waiting for a human buyer to respond.",
+    "A candidate that repeatedly requires new manual setup for each customer is weaker than a reusable one-time integration.",
+    "Immediate-revenue means the path to the first measurable economic event should be short and machine-executable, not merely theoretically monetizable.",
+    "Ethical correctness is a hard constraint: no deceptive or manipulative monetization path should be treated as acceptable."
   ],
+  "decision_protocol": {
+    "before_threshold": "SEARCH and try to beat the current leader.",
+    "at_threshold": "Freeze broad discovery and move VALIDATE -> ATTACK -> BUILD.",
+    "revisit_rejected": "Only when materially new evidence changes the failed gate or structural condition.",
+    "immediate_revenue_filter": "Reject or heavily demote slow, speculative, unsupported or human-wait-dependent paths."
+  },
   "scenarios": [
     {
       "id": "programmable-money-flow-search",
       "name": "Programmable money-flow opportunity search",
       "category": "core_search_strategy",
       "status": "active",
+      "decision": "selected_search_framework",
       "goal": "Discover a large existing private transaction flow where a small software/AI intervention can measurably recover, save or create money and charge a tiny usage/performance fee.",
       "one_time_setup": ["connect research/search sources", "define threshold gates", "persist rejected paths and evidence"],
       "repeatable_loop": ["scan structural money flows", "score candidates", "attack best candidate", "reject or freeze", "carry evidence forward"],
@@ -37,7 +48,7 @@
         "identify machine-readable event triggers with intervention permission",
         "prove attribution and charging mechanism before build"
       ],
-      "evidence_strength": 0.95,
+      "evidence_strength": 0.99,
       "source_type": "user_requirement_and_prior_research"
     },
     {
@@ -45,6 +56,7 @@
       "name": "Delay-tolerant LLM requests routed to provider Batch/Flex",
       "category": "programmable_money_flow",
       "status": "rejected",
+      "decision": "rejected_after_attack",
       "goal": "Route delay-tolerant inference to cheaper provider-native lanes and take a share of verified savings.",
       "rejection_reasons": [
         "machine trigger depended too much on customer annotation/self-serve configuration",
@@ -54,8 +66,9 @@
         "dominant/native alternatives weakened the incumbent gate"
       ],
       "gates": {"money_flow":"pass","leakage":"pass","trigger":"weak","permission":"weak","measurement":"pass","fee":"weak","ownership":"weak","incumbent":"fail"},
+      "known_competitive_pressure": ["provider-native Batch/Flex lanes", "automatic routing gateways such as Tessera"],
       "reuse_rule": "Do not resurface unless a materially new trigger, integration method or market structure changes the failed gates.",
-      "evidence_strength": 0.98,
+      "evidence_strength": 0.99,
       "source_type": "prior_research"
     },
     {
@@ -63,18 +76,152 @@
       "name": "Expiring contractual financial entitlements",
       "category": "programmable_money_flow",
       "status": "rejected",
+      "decision": "rejected_family",
       "examples": ["cloud SLA credits", "carrier late guarantees", "FBA reimbursements", "healthcare underpayments", "AP credits/rebates"],
       "rejection_reasons": ["incumbent products already cover major subcategories", "failed no-dominant-incumbent gate"],
       "known_incumbent_examples": ["AllCaps", "LateShipment", "Share A Refund", "ProfitTrust", "Getida", "Refunds Manager", "MD Clarity", "Xelix", "Enable"],
       "reuse_rule": "Do not revisit the broad family unless a genuinely uncovered entitlement class appears.",
-      "evidence_strength": 0.95,
+      "evidence_strength": 0.98,
       "source_type": "prior_research"
+    },
+    {
+      "id": "buildscout-slow-build-opportunities",
+      "name": "BuildScout / build-now-wait-for-users opportunity path",
+      "category": "historical_opportunity_search",
+      "status": "rejected",
+      "decision": "rejected_by_time_to_money",
+      "goal": "Identify something to build first and monetize after users or buyers arrive.",
+      "rejection_reasons": [
+        "required creating a product first and waiting for adoption",
+        "did not satisfy immediate-revenue requirement",
+        "money event depended on future demand rather than an existing transaction flow"
+      ],
+      "failed_dimensions": ["time_to_money", "existing_demand_capture", "immediate_executability"],
+      "reuse_rule": "Only revive if the build can attach immediately to an existing transaction flow and produce measurable value without waiting for market creation.",
+      "evidence_strength": 0.95,
+      "source_type": "user_rejection"
+    },
+    {
+      "id": "cold-email-help-cashback-outreach",
+      "name": "Cold-email help / cashback / free-value outreach",
+      "category": "outbound_service_revenue",
+      "status": "rejected",
+      "decision": "rejected_distribution_method",
+      "goal": "Find people or organizations with needs, send relevant help or offers by email, and convert responses into revenue.",
+      "attempted_variants": ["mutual-help emails", "Christian-believer needs outreach", "cashback/relevant-value email", "company-specific outreach"],
+      "observed_failures": ["email delivery/spam-folder issues", "human response required", "manual targeting burden", "weak repeatability", "revenue not directly attributable to an automated money event"],
+      "rejection_reasons": [
+        "distribution depended on cold outbound email",
+        "spam/deliverability risk was observed",
+        "required creating demand or persuading individual recipients",
+        "not a reusable transaction-rail intervention"
+      ],
+      "reuse_rule": "Do not use cold email as the core engine. Email may remain a notification/follow-up connector after a machine-readable opportunity already exists.",
+      "evidence_strength": 0.93,
+      "source_type": "observed_attempt_and_user_feedback"
+    },
+    {
+      "id": "christian-ministry-freelance-ai-content",
+      "name": "AI Bible filmmaking / ministry freelance service outreach",
+      "category": "service_work",
+      "status": "deprioritized",
+      "decision": "outside_current_core_strategy",
+      "goal": "Earn through AI Bible filmmaking, Christian short-form video, digital evangelism, creative production, AI content strategy or workflow orchestration for ministries.",
+      "attempted_evidence": ["short-pilot outreach was pursued", "at least one TBN press email attempt bounced/rejected"],
+      "reasons_deprioritized": [
+        "service/freelance model depends on individual client acquisition",
+        "human sales cycle and waiting period",
+        "not aligned with current systems/rails-first programmable-money-flow strategy",
+        "cannot be the autonomous core money engine"
+      ],
+      "reuse_rule": "Can remain a separate business/service path, but should not compete for brain cycles intended for automated structural money-flow discovery.",
+      "evidence_strength": 0.82,
+      "source_type": "prior_outreach_history"
+    },
+    {
+      "id": "tenders-government-procurement",
+      "name": "Tenders and government/public procurement",
+      "category": "excluded_opportunity_family",
+      "status": "rejected",
+      "decision": "hard_scope_exclusion",
+      "rejection_reasons": [
+        "user explicitly removed tenders/government procurement from the strategy",
+        "long cycles and procedural friction conflict with immediate revenue",
+        "often requires bid preparation and human institutional processes"
+      ],
+      "reuse_rule": "Do not search or rank this family unless the user explicitly changes the strategy.",
+      "evidence_strength": 1.0,
+      "source_type": "user_constraint"
+    },
+    {
+      "id": "manufacturer-distributor-sourcing-matchmaking",
+      "name": "Manufacturer/distributor sourcing and buyer-seller matchmaking",
+      "category": "excluded_opportunity_family",
+      "status": "rejected",
+      "decision": "hard_scope_exclusion",
+      "historical_context": ["manufacturer/distributor matching and country-specific sourcing were previously explored"],
+      "rejection_reasons": [
+        "user explicitly removed manufacturer/distributor sourcing and buyer-seller matchmaking as the core opportunity",
+        "depends on individual counterparties rather than structural machine-readable events",
+        "human sales/negotiation cycles weaken autonomous repeatability"
+      ],
+      "reuse_rule": "Specific companies may be examples or infrastructure references only, not the primary opportunity target.",
+      "evidence_strength": 1.0,
+      "source_type": "user_constraint_and_prior_search_history"
+    },
+    {
+      "id": "generic-business-ideas-demand-creation",
+      "name": "Generic business ideas / create-new-demand products",
+      "category": "excluded_opportunity_family",
+      "status": "rejected",
+      "decision": "hard_scope_exclusion",
+      "examples": ["generic SaaS ideas", "build a website then wait", "undifferentiated utility apps without transaction attachment"],
+      "rejection_reasons": [
+        "requires creating demand",
+        "weak immediate monetization",
+        "distribution burden is external to the system",
+        "does not begin with a proven existing money flow"
+      ],
+      "reuse_rule": "Only revive a product idea if it is reframed as an intervention inside an existing measurable transaction flow.",
+      "evidence_strength": 1.0,
+      "source_type": "user_constraint"
+    },
+    {
+      "id": "hosted-website-immediate-revenue",
+      "name": "Hosted website intended to generate immediate revenue",
+      "category": "historical_idea_family",
+      "status": "unvalidated",
+      "decision": "concept_retained_but_not_selected",
+      "goal": "Use a website and free tools to generate even small real-time revenue.",
+      "positive_aspects": ["one-time setup potential", "could become autonomous", "fits desire for measurable online revenue"],
+      "blocking_reasons": [
+        "no sufficiently strong structural money-flow wedge was identified",
+        "website alone does not solve distribution or create a money event",
+        "must attach to an existing transaction source rather than merely exist online"
+      ],
+      "next_gaps": ["identify an existing transaction/event source feeding the site", "define automatic value intervention", "define attributable charging event"],
+      "reuse_rule": "Treat the website as an interface/deployment surface, not the opportunity itself.",
+      "evidence_strength": 0.7,
+      "source_type": "historical_ideation"
+    },
+    {
+      "id": "crypto-as-money-output",
+      "name": "Crypto as payment/output rail",
+      "category": "payment_option",
+      "status": "supporting_only",
+      "decision": "not_an_opportunity_by_itself",
+      "goal": "Allow money outcomes to be received or represented via crypto where practical.",
+      "reasons_not_primary": ["crypto does not itself create the economic value", "opportunity must first satisfy the core money-flow gates"],
+      "reuse_rule": "Use only as a payment/settlement option after a valid revenue mechanism exists.",
+      "evidence_strength": 0.9,
+      "source_type": "user_preference_in_prior_opportunity_search"
     },
     {
       "id": "rubber-glove-sales",
       "name": "Rubber glove sales workflow",
       "category": "existing_business_revenue",
       "status": "active_manual",
+      "decision": "real_business_but_not_core_autonomous_engine",
       "goal": "Convert existing rubber glove supply into sales using catalogues, quotations, outreach and follow-up.",
       "known_data": {
         "moq_pairs": 500,
@@ -86,6 +233,7 @@
       "automation_opportunity": ["lead intake", "quotation generation", "catalogue attachment", "follow-up detection", "reply drafting", "order readiness scoring"],
       "money_event": "confirmed buyer/order/payment",
       "next_gaps": ["structured lead pipeline", "reply-to-opportunity scoring", "automatic follow-up timing", "conversion tracking"],
+      "limitations_for_core_brain": ["depends on buyer acquisition", "physical fulfillment", "manual commercial negotiation can remain"],
       "evidence_strength": 0.9,
       "source_type": "user_business_data"
     },
@@ -94,6 +242,7 @@
       "name": "Church Mass Timings / Find Mass Anywhere",
       "category": "owned_digital_asset",
       "status": "existing_asset_possible_revenue",
+      "decision": "unvalidated_monetization_asset",
       "asset": "churchmasstiming.vercel.app",
       "goal": "Grow an existing Mass-timing utility into a monetizable directory/SaaS asset.",
       "previous_paths": ["featured listings", "subscriptions", "ads", "parish SaaS", "diaspora/global expansion"],
@@ -108,6 +257,7 @@
       "name": "Small AI/fintech utility family",
       "category": "historical_idea_family",
       "status": "unvalidated",
+      "decision": "deprioritized_generic_ideas",
       "examples": ["statement analyzer", "PDF-to-Excel", "EMI comparison", "GST/invoice parser", "reconciliation", "risk dashboard", "market signal journal"],
       "rule": "Do not prioritize as generic product ideas. Only revive one if current evidence shows an existing money flow, machine-readable trigger, immediate executability and measurable monetization.",
       "next_gaps": ["evidence of existing transaction flow", "distribution path", "machine trigger", "measurable economic event"],
@@ -115,14 +265,49 @@
       "source_type": "historical_ideation"
     },
     {
+      "id": "remote-ai-content-job-search",
+      "name": "Remote/freelance AI content and creative job search",
+      "category": "job_or_gig_search",
+      "status": "rejected",
+      "decision": "outside_strategy",
+      "rejection_reasons": [
+        "user explicitly does not want a job-search strategy",
+        "requires applications and human hiring decisions",
+        "not an autonomous one-time-setup money engine"
+      ],
+      "reuse_rule": "Do not rank job/gig listings as opportunities for the core brain.",
+      "evidence_strength": 1.0,
+      "source_type": "user_constraint_and_prior_attempt"
+    },
+    {
       "id": "taskman-private-money-ai",
       "name": "Taskman private money-making orchestration system",
       "category": "meta_system",
       "status": "building",
+      "decision": "current_build_focus",
       "goal": "Use structured data, deterministic algorithms, external AI layers and execution interfaces to identify and fulfill repeatable money-making tasks with minimal one-time setup.",
       "core_loop": ["data", "ranked gap", "minimal relevant context", "best current model/tool", "evidence", "knowledge update", "next gap", "execution", "money event"],
       "success_metric": "measurable economic outcomes with progressively less human intervention",
-      "next_gaps": ["structured scenario persistence", "scenario scoring engine", "evidence ingestion", "money-event tracking", "next-gap selector", "self-evolving scheduler integration"],
+      "completed_build_steps": [
+        "structured scenario seed",
+        "scenario scoring engine",
+        "knowledge event model",
+        "structured AI learning envelope",
+        "PostgreSQL schema and migrations",
+        "knowledge snapshots",
+        "money event table",
+        "autonomous brain-cycle controller",
+        "brain-cycle persistence",
+        "dashboard brain panel"
+      ],
+      "next_gaps": [
+        "connect a live PostgreSQL instance",
+        "configure at least one live AI provider credential",
+        "run first end-to-end brain cycle against the structured opportunity history",
+        "measure whether the selected next gap produces useful evidence",
+        "add outcome-based score updates from real brain cycles",
+        "add automatic suppression of repeatedly unproductive scenario branches"
+      ],
       "evidence_strength": 1.0,
       "source_type": "current_project_decision"
     }

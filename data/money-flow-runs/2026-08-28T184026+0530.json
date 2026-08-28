@@ -1,0 +1,80 @@
+{
+  "run_key": "2026-08-28T18:40:26+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "adaptive-synthetic-monitor-frequency-optimizer",
+    "name": "Adaptive synthetic-monitor frequency optimizer",
+    "score": 47,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 5,
+      "integration_friction": 4,
+      "distribution_burden": 2,
+      "build_simplicity": 3
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "fixed synthetic-check schedule -> real traffic/deployment/incident state changes -> current test cadence or geographic coverage becomes unnecessarily expensive -> recommend or apply a lower safe frequency/coverage -> preserve defined SLO/detection guardrails -> verify avoided billable test runs",
+    "why_survived": "Per-run synthetic pricing remains a direct recurring money meter, and current products expose configurable intervals/locations plus operational telemetry. Fresh exact-competitor searches did not find a product whose narrow commercial job is to continuously choose the minimum-cost safe test frequency and verify saved run spend. However, Kentik already auto-adjusts synthetic test locations using observed traffic and Datadog reviews expensive test setups, so adaptive synthetic configuration is an adjacent first-party/incumbent capability and Gate 8 is weaker than last run.",
+    "strongest_evidence": [
+      "Datadog currently prices browser synthetics from $12 per 1,000 runs and API synthetics from $5 per 10,000 runs, making execution frequency a directly billable variable.",
+      "Independent 2026 synthetic-monitoring comparisons describe costs growing linearly with run volume and flag frequency/location multiplicative effects.",
+      "Finout explicitly recommends adjusting synthetic-check frequency and locations to control Datadog synthetic costs.",
+      "Kentik states that its synthetic service can use actual traffic to automatically configure and maintain tests and automatically adjust test locations when traffic flows change.",
+      "Site24x7 describes intelligent test scheduling based on historical data and predictive analytics as a direction for minimizing costs while preserving coverage, evidence that the optimization mechanism is technically credible but also absorbable by incumbents."
+    ],
+    "closest_threat": "Kentik already performs traffic-driven automatic adjustment of synthetic test locations; Datadog can identify expensive tests and has workflow automation plus cloud-cost automation primitives. The remaining whitespace is specifically automatic frequency optimization tied to a verified spend counterfactual, but incumbent absorption risk is material.",
+    "smallest_intervention": "Read synthetic definitions, run counts, real-user traffic, deploy/incident state and SLO constraints; compute minimum safe frequency per check; begin with recommendations, then optionally write schedule changes through vendor APIs. Keep a baseline-versus-optimized ledger and refuse changes that violate detection-latency/SLO policy.",
+    "monetization": "Per optimized monitor-month or capped share of verified avoided synthetic-run spend while reliability guardrails remain satisfied.",
+    "biggest_unresolved_risk": "The opportunity may self-limit because customers with obviously excessive high-frequency browser tests already have a strong incentive to tune them manually, while observability vendors can absorb adaptive scheduling into existing platforms.",
+    "next_research_test": "Search for evidence of real enterprise synthetic estates and billing pain, then quantify dynamic-versus-static savings using actual run-count distributions. In parallel, inspect Datadog/New Relic/Kentik/Checkly APIs and product roadmaps for automatic frequency mutation. Kill if dynamic savings beyond one-time manual tuning are small or if a first-party adaptive scheduler exists."
+  },
+  "runner_ups": [
+    {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"General mechanism remains structurally strong but still lacks a better specific vertical than synthetics."},
+    {"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Very clean recovery attribution, but broad reconciliation software already finds missing refunds and leakage magnitude is still unproven."},
+    {"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real app-store recovery economics, but infrequent app-wide configuration weakens recurring monetization and counterfactual measurement."}
+  ],
+  "tested_families": [
+    "observability/synthetic monitoring",
+    "software/API quota usage",
+    "corporate refunds/settlement",
+    "subscription billing recovery",
+    "software licensing/seat optimization",
+    "cross-border fee/settlement timing",
+    "telecom committed capacity",
+    "warranty/reimbursement administration"
+  ],
+  "promotions": [],
+  "demotions": ["adaptive-synthetic-monitor-frequency-optimizer:48->47"],
+  "rejections": [],
+  "new_search_rules": [
+    "Exact adaptive frequency remains distinct from traffic-driven adaptive test-location selection, but the latter is strong evidence of incumbent absorption risk.",
+    "A direct per-run price is not enough: prove incremental savings beyond a one-time static best-practice tuning exercise.",
+    "For observability wedges, compare the proposed optimizer against first-party workflow automation primitives, not just against explicit named cost-optimization features.",
+    "When a vendor can already inspect traffic and mutate one synthetic configuration dimension automatically, penalize adjacent dimensions even if the exact feature is absent."
+  ],
+  "sources": [
+    {"title":"Datadog pricing","url":"https://www.datadoghq.com/pricing/"},
+    {"title":"Finout - Understanding Datadog Synthetic Pricing","url":"https://www.finout.io/blog/datadog-synthetic-pricing"},
+    {"title":"Kentik synthetic transaction monitoring","url":"https://www.kentik.com/blog/kentik-moves-up-the-stack-with-synthetic-transaction-monitoring/"},
+    {"title":"Site24x7 synthetic monitoring guide","url":"https://www.site24x7.com/learn/guide-to-synthetic-monitoring.html"},
+    {"title":"Datadog synthetic tests docs","url":"https://docs.datadoghq.com/synthetics/explore/"}
+  ]
+}

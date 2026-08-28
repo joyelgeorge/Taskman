@@ -8,6 +8,7 @@ import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } 
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
+import { handleMoltJobsRequest } from './moltjobs-routes.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
@@ -132,6 +133,8 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
+    if (await handleMoltJobsRequest(req, res, url)) return;
+
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const db = await dbHealth();
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
@@ -212,4 +215,3 @@ if (databaseEnabled) {
 await restoreSchedules();
 startBrainScheduler();
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));
-

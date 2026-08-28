@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-28T20:36:24+05:30",
+  "updated_at": "2026-08-28T21:47:16+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
   "history_archives": [
@@ -9,18 +9,21 @@
   ],
   "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
   "current_leader": {
-    "id":"adaptive-synthetic-monitor-frequency-optimizer","name":"Adaptive synthetic-monitor frequency optimizer","score":45,"max_score":60,
-    "component_scores":{"flow_scale":5,"leakage_magnitude":2,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":3,"first_party_gap":3,"competitive_whitespace":3,"regulation":5,"integration_friction":4,"distribution_burden":2,"build_simplicity":3},
-    "state_transition":"fixed synthetic schedule -> operational risk changes -> reduce eligible cadence/coverage within detection guardrails -> avoid billable runs -> restore cadence when risk rises",
-    "why_survived":"Still the strongest precise surviving vertical because billing is usage-linked, schedule mutation is out-of-path, and savings are measurable. Repeated searches have not established large marginal adaptive savings beyond best static tuning, so monetization confidence is reduced and it is now tied with the broad quota-boundary hypothesis.",
+    "id":"merchant-settlement-acceleration-decision-engine",
+    "name":"Merchant settlement acceleration decision engine",
+    "score":47,
+    "max_score":60,
+    "component_scores":{"flow_scale":5,"leakage_magnitude":3,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":4,"competitive_whitespace":4,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":3},
+    "state_transition":"processor balance becomes available -> standard settlement is free/slower while accelerated settlement has a fee -> external bank/AP obligations reveal how much cash is actually needed before standard settlement -> accelerate only the minimum justified amount -> avoid unnecessary settlement fees without causing a cash shortfall",
+    "why_survived":"Current processors expose a recurring speed-versus-fee decision with machine-readable balances and payout state. Stripe publishes 1%-1.5% Instant Payout fees by region and exposes instant_available balances plus payout APIs; Indian processors publish several acceleration tiers from same-day to instant. Treasury suites forecast cash gaps, but this run did not find a sufficiently close cross-processor product whose narrow job is to combine processor balance, free settlement ETA, external bank balance and near-term obligations to compute the minimum amount worth accelerating.",
     "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
-    "closest_threat":"First-party observability vendors possess telemetry and schedule controls; static tuning may capture most savings.",
-    "smallest_intervention":"Read monitor definitions, periods, locations, run history and risk signals; recommend cadence changes; optionally mutate schedules via authorized provider API; measure avoided runs against best-static baseline.",
-    "monetization":"Per optimized monitor-month or capped share of verified savings incremental to best-static baseline.",
-    "biggest_unresolved_risk":"No strong public evidence that dynamic adaptation creates material recurring savings after static cleanup.",
-    "next_research_test":"Quantify marginal adaptive savings versus best-static using realistic enterprise synthetic estates; kill if increment is small. Search in parallel for a precise vertical exceeding 45/60."
+    "closest_threat":"Broad treasury systems such as Open Money and FlowOne already forecast liquidity and optimize payment timing. First-party processors could absorb the feature if they gain external bank/AP context.",
+    "smallest_intervention":"Read processor available/instant-available balance and standard settlement ETA; read authorized bank balance plus obligations due before that ETA; compute and recommend the minimum accelerated amount whose fee is economically justified. Do not initiate money movement in v1.",
+    "monetization":"Small fee per successful decision or capped share of verified accelerated-settlement fees avoided relative to a documented liquidity baseline.",
+    "biggest_unresolved_risk":"The avoidable fee pool may be too small if merchants rarely use paid acceleration or use it only when genuinely necessary. Gate 8 also remains open because treasury suites may already be close enough to absorb the decision.",
+    "next_research_test":"Quantify unnecessary use of paid accelerated settlements and attack exact competition across Stripe/Cashfree/Razorpay/PayU plus treasury suites. Kill if avoidable acceleration fees are immaterial or if an incumbent already computes the minimum amount to accelerate from processor balances plus external obligations."
   },
-  "latest_run":{"run_key":"2026-08-28T20:36:24+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"run_file":"data/money-flow-runs/2026-08-28T203624+0530.json","demotions":["adaptive-synthetic-monitor-frequency-optimizer:46->45"],"rejections":["dormant-iot-sim-subscription-optimizer: exact/near-exact idle-SIM detection and lifecycle automation exists"],"runner_ups":[{"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":3,"id":"corporate-promised-refund-settlement-watchdog","score":44},{"rank":4,"id":"subscription-grace-period-cost-recovery-optimizer","score":44}]},
+  "latest_run":{"run_key":"2026-08-28T21:47:16+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"merchant-settlement-acceleration-decision-engine","score":47,"run_file":"data/money-flow-runs/2026-08-28T214716+0530.json","promotions":["merchant-settlement-acceleration-decision-engine:new->47"],"demotions":["adaptive-synthetic-monitor-frequency-optimizer:45->runner-up"],"rejections":["cloud-storage-early-deletion-delay","small-object-cold-tier-mispricing","chargeback-contest-expected-value"],"runner_ups":[{"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":4,"id":"corporate-promised-refund-settlement-watchdog","score":44}]},
   "run_history":[
     {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
@@ -29,8 +32,15 @@
     {"run_key":"2026-08-28T17:39:30+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":48,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T173930+0530.json"},
     {"run_key":"2026-08-28T18:40:26+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T184026+0530.json"},
     {"run_key":"2026-08-28T19:33:59+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T193359+0530.json"},
-    {"run_key":"2026-08-28T20:36:24+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"status":"current","run_file":"data/money-flow-runs/2026-08-28T203624+0530.json"}
+    {"run_key":"2026-08-28T20:36:24+05:30","leader":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T203624+0530.json"},
+    {"run_key":"2026-08-28T21:47:16+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":47,"status":"current","run_file":"data/money-flow-runs/2026-08-28T214716+0530.json"}
   ],
-  "recent_cross_family_findings":["Dormant IoT SIM cost control is real and programmable, but SIMWiser and CMP lifecycle automation neutralize the wedge.","Soracom exposes Standby/Suspended states that can eliminate eligible basic fees and supports API state changes; this proves the mechanism but also first-party programmability.","Toll/FASTag anomaly recovery remains occupied by GPS/toll reconciliation and dispute automation.","Commercial insurance premium-audit automation remains occupied by current AI audit and payroll-connected premium platforms."],
+  "recent_cross_family_findings":[
+    "Paid merchant settlement acceleration creates a recurring option-value decision: Stripe charges 1%-1.5% Instant Payout fees depending on region, while Indian processors publish lower-cost same-day/next-day alternatives and on-demand settlement choices.",
+    "The potentially open micro-wedge is not faster payouts; it is calculating the minimum amount that should be accelerated using processor balances plus external cash obligations.",
+    "Cloud-storage early-deletion timing was rejected because delaying deletion usually does not reduce minimum-duration cost; providers charge the remaining minimum period either as storage or penalty.",
+    "Small-object cold-tier optimization is substantially covered by AWS/FinOps tooling and first-party smart/intelligent tiering; Azure also paused its planned 128 KiB cooler-tier billing floor in June 2026.",
+    "Chargeback contest-versus-accept scoring is already occupied by products exposing win probabilities and automated evidence/representment."
+  ],
   "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

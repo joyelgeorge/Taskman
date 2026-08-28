@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "updated_at": "2026-08-28T15:45:00+05:30",
+  "updated_at": "2026-08-28T16:41:26+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -37,80 +37,87 @@
     {"seq":9,"type":"leader_run","candidate":"Expiring enterprise messaging-capacity allocator","score":43,"status":"demoted","summary":"Prepaid messaging credits plus scheduled sends created a good trigger; later search found mature multi-provider SMS routing/cost optimization layers."},
     {"seq":10,"type":"anchor_requirement","summary":"GitHub/Taskman selected as permanent anchor for search state, evidence, rejected paths, scores, task results and conversation-derived knowledge."},
     {"seq":11,"type":"persistence_requirement","summary":"Every recurring research run must read Taskman first and persist the full normalized result back to Taskman before completion."},
-    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"demoted","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist; clean trigger and measurable overage avoidance, but no single high-value non-AI/non-enrichment vertical with proven leakage was identified."},
-    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted_2026-08-28T15:45:00+05:30","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but this run showed the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
-    {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"current_leader","summary":"Convert vendor refund promises/credit memos into expected receivables, match them to corporate card/bank credits, and escalate missing or short settlements before dispute deadlines. Strong per-event attribution and non-invasive intervention; leakage magnitude and incumbent overlap remain uncertain."},
+    {"seq":12,"type":"leader_run","candidate":"Quota-boundary workload timing optimizer","score":45,"status":"current_leader_again_2026-08-28T16:41:26+05:30","summary":"Included/prepaid SaaS or API capacity approaches reset while already-planned deferrable workloads exist; clean trigger and measurable overage avoidance. Fresh research found the same quota/overage mechanism outside AI, including e-signature and security-scanning allowances, but one high-value vertical remains to be proven."},
+    {"seq":13,"type":"leader_run","candidate":"Subscription grace-period cost/recovery optimizer","score":47,"status":"demoted_2026-08-28T15:45:00+05:30","summary":"Provider-native app-store grace windows create a real net-margin choice for high-variable-cost apps, but the decision is app-wide/infrequent, relatively spreadsheetable and difficult to attribute for performance pricing."},
+    {"seq":14,"type":"leader_run","candidate":"Corporate promised-refund settlement watchdog","score":46,"status":"demoted_2026-08-28T16:41:26+05:30","summary":"Refund-promise to settlement matching remains attractive, but fresh enterprise reconciliation products already surface missing refunds across gateway/ERP/bank data and the aggregate leakage pool remains unquantified."},
     {"seq":15,"type":"rejection","candidate":"Unused shipping-label refund recovery","status":"rejected_exact_competition","summary":"Exact tools already identify unused labels and automate carrier refunds/voids, including performance-priced recovery."},
-    {"seq":16,"type":"rejection","candidate":"Prior-authorization expiry before scheduled service watchdog","status":"rejected_exact_feature","summary":"Current authorization tools already track expiry and explicitly flag authorizations that will expire before scheduled procedures."}
+    {"seq":16,"type":"rejection","candidate":"Prior-authorization expiry before scheduled service watchdog","status":"rejected_exact_feature","summary":"Current authorization tools already track expiry and explicitly flag authorizations that will expire before scheduled procedures."},
+    {"seq":17,"type":"rejection","candidate":"ECR excess-balance expiry optimizer","status":"rejected_exact_or_absorbable","summary":"Excess corporate earnings credits can expire monthly and create material idle-cash losses, but DebtBook explicitly optimizes balances to avoid excess zero-interest cash, bank-fee platforms ingest machine-readable account-analysis files, and banks provide target-balance sweeps/hybrid interest accounts."},
+    {"seq":18,"type":"rejection","candidate":"Automotive core-deposit return recovery","status":"rejected_exact_competition","summary":"Refundable auto-parts core deposits have strong deadlines and measurable leakage, but dedicated tools and repair-shop software already track deposits, deadlines, returns and credits."},
+    {"seq":19,"type":"rejection","candidate":"Corporate hotel cancellation deadline optimizer","status":"rejected_first_party_feature","summary":"Booking and cancellation deadlines are machine-readable, but current corporate travel software already auto-cancels bookings/trips to avoid no-show fees and lost value."},
+    {"seq":20,"type":"rejection","candidate":"Vendor credit memo application before payment","status":"rejected_exact_competition","summary":"ERP/AP tools already track unapplied vendor credits and surface or automatically apply them in payment runs."},
+    {"seq":21,"type":"search_insight","summary":"Fresh quota evidence outside AI confirms the mechanism is broader: annual e-signature envelope allowances and monthly security/SaaS usage quotas can create overage/reset boundaries. The remaining challenge is finding one vertical with meaningful movable workload and enough leakage to support a tollbooth."}
   ],
   "current_leader": {
-    "id": "corporate-promised-refund-settlement-watchdog",
-    "name": "Corporate promised-refund settlement watchdog",
-    "score": 46,
+    "id": "quota-boundary-workload-timing-optimizer",
+    "name": "Quota-boundary workload timing optimizer",
+    "score": 45,
     "max_score": 60,
     "component_scores": {
-      "flow_scale": 5,
-      "leakage_magnitude": 2,
+      "flow_scale": 4,
+      "leakage_magnitude": 3,
       "trigger_independence": 5,
-      "permission_non_invasiveness": 5,
+      "permission_non_invasiveness": 4,
       "delta_measurability": 5,
       "monetization": 4,
       "first_party_gap": 4,
-      "competitive_whitespace": 3,
+      "competitive_whitespace": 4,
       "regulation": 5,
       "integration_friction": 3,
       "distribution_burden": 2,
-      "build_simplicity": 3
+      "build_simplicity": 2
     },
-    "state_transition": "vendor or merchant promises a refund or credit -> expected receivable is created from email/ERP/card context -> card or bank credit does not arrive, arrives short, or arrives late -> system detects mismatch before escalation/dispute deadline -> evidence-based recovery action -> recovered amount is measured",
-    "why_survived": "The event exists naturally in email, ERP, card and bank data; the intervention can remain read-only until escalation; the dollar delta is exact; performance pricing maps to each recovered receivable; consumer and single-merchant products validate the event, while broad enterprise reconciliation products create adjacent rather than yet-proven exact competition.",
+    "state_transition": "included or prepaid quota plus reset/expiry boundary -> already-planned non-urgent work exists -> executing on the wrong side of the boundary causes overage or destroys paid allowance -> recommend safe timing/reassignment -> verified incremental spend avoided",
+    "why_survived": "Fresh research found the same objective quota/overage structure across non-AI SaaS categories, including annual e-signature envelope allowances and monthly security-scanning or API allowances. Billing/usage state exists independently, a read-only sidecar can recommend timing rather than proxy requests, and the avoided overage is measurable. No dominant general buyer-side quota-boundary scheduler was found.",
     "gates": {
-      "money_flow_scale": "pass",
+      "money_flow_scale": "pass_with_scope_uncertainty",
       "recurring_leakage": "uncertain",
       "independent_trigger": "pass",
       "permission_non_invasive": "pass",
       "measurable_delta": "pass",
-      "monetization": "pass_with_uncertainty",
+      "monetization": "uncertain",
       "no_transaction_ownership": "pass",
       "competitive_whitespace": "uncertain"
     },
     "strongest_evidence": [
-      "Consumer refund-matching tools prove that refund promises can be matched against bank activity and escalated when missing.",
-      "Single-merchant recovery tools prove bank matching plus dispute-draft generation can recover missing refunds.",
-      "Enterprise reconciliation software explicitly identifies missing or mismatched refunds, proving that the data can be reconciled at scale but also creating incumbent pressure.",
-      "Corporate card dispute processes commonly use finite windows and supporting-document requirements, creating an external intervention deadline."
+      "Current SaaS products expose non-rollover allowances plus explicit overage prices, creating real financial reset boundaries.",
+      "Docusign terms define annual envelope allowances and per-envelope overage charges, confirming the mechanism outside AI inference.",
+      "Security-scanning products expose included monthly scans plus per-scan overage, another non-AI example.",
+      "Usage dashboards and billing APIs/exports make quota state machine-readable without customer-created labels."
     ],
-    "closest_threat": "Broad reconciliation and spend-management platforms can already identify refund mismatches and could absorb promise-to-settlement tracking. The enterprise dollar pool of vendor-promised refunds that never or incorrectly settle is not yet quantified.",
-    "smallest_intervention": "Read authorized email/ERP/accounting/card/bank feeds; extract each refund promise as an expected receivable with amount/date/reference; match incoming credits including partial credits; flag overdue/short settlement; generate evidence and escalation/dispute draft. Do not move funds or sit on the payment path.",
-    "monetization": "Small percentage of objectively recovered missing/short refunds or fixed fee per recovered refund.",
-    "biggest_unresolved_risk": "Need evidence that missing or short corporate refunds are frequent and large enough outside platform-specific reconciliation, and that broad reconciliation/expense suites do not already neutralize this narrow workflow.",
-    "next_research_test": "Quantify enterprise vendor-refund leakage and search exact B2B expected-refund-receivable software that ingests refund promises/credit memos, matches them to corporate card/bank credits, tracks deadlines, and recovers missing/short refunds on a performance basis. Kill if incumbents already do it end-to-end or leakage is trivial."
+    "closest_threat": "The mechanism may remain too heterogeneous, and individual SaaS platforms expose first-party budgets/usage dashboards. It fails if safe workload timing is uncommon or if useful intervention requires becoming an inline request router.",
+    "smallest_intervention": "Read usage/billing APIs or exports plus an existing job queue/calendar; compute remaining allowance, reset/expiry time, overage price and job deadlines; recommend RUN BEFORE RESET, DEFER UNTIL RESET, or USE EXISTING ALLOWANCE. No proxy or payment execution initially.",
+    "monetization": "Small per-success fee or capped percentage of objectively avoided overage/forfeited allowance.",
+    "biggest_unresolved_risk": "Need one sufficiently large non-AI vertical with high per-customer leakage, machine-readable work deadlines and enough safe timing flexibility to support repeated savings without request-path ownership.",
+    "next_research_test": "Narrow the quota-boundary mechanism to enterprise e-signature envelopes, security scanning, communications and other non-AI metered SaaS. Quantify overage economics and test whether workflow systems already schedule work against quota boundaries. Promote only a vertical where queue/deadline data is available and savings recur at meaningful scale."
   },
   "latest_run": {
-    "run_key": "2026-08-28T15:45:00+05:30",
+    "run_key": "2026-08-28T16:41:26+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
-    "current_leader": "corporate-promised-refund-settlement-watchdog",
-    "score": 46,
-    "run_file": "data/money-flow-runs/2026-08-28T154500+0530.json",
-    "promotions": ["corporate-promised-refund-settlement-watchdog"],
-    "demotions": ["subscription-grace-period-cost-recovery-optimizer"],
-    "rejections": ["unused-shipping-label-refund-recovery", "prior-auth-expiry-before-service-watchdog"],
+    "current_leader": "quota-boundary-workload-timing-optimizer",
+    "score": 45,
+    "run_file": "data/money-flow-runs/2026-08-28T164126+0530.json",
+    "promotions": ["quota-boundary-workload-timing-optimizer"],
+    "demotions": ["corporate-promised-refund-settlement-watchdog"],
+    "rejections": ["ecr-excess-balance-expiry-optimizer", "automotive-core-deposit-return-recovery", "corporate-hotel-cancellation-deadline-optimizer", "vendor-credit-memo-application-before-payment"],
     "runner_ups": [
-      {"rank":2,"id":"quota-boundary-workload-timing-optimizer","score":45,"reason":"Strong trigger and attribution but no proven high-value vertical yet."},
+      {"rank":2,"id":"corporate-promised-refund-settlement-watchdog","score":44,"reason":"Excellent attribution and non-invasive recovery, but closer reconciliation competition and still-unproven leakage magnitude."},
       {"rank":3,"id":"subscription-grace-period-cost-recovery-optimizer","score":44,"reason":"Real economic tradeoff but infrequent/app-wide and hard to performance-price."},
       {"rank":4,"id":"expiring-enterprise-messaging-capacity-allocator","score":40,"reason":"Real expiry but routing incumbents can absorb expiry awareness."}
     ],
     "new_search_rules": [
-      "A non-trivial configuration choice is still a weak tollbooth if it changes only occasionally; favor repeated unit-level events with per-event attribution.",
-      "Cross-system promised-value versus actual-settlement events are attractive because an unstructured promise can be converted into a machine-readable receivable and matched to objective cash/card settlement.",
-      "Finite dispute or claim deadlines strengthen intervention value only when the expected-value event is independently machine-readable."
+      "A large visible leak is not enough if a first-party sweep, target-balance feature or adjacent treasury module already makes the optimal action routine.",
+      "Quota-boundary opportunities are stronger when both the financial unit and work unit are independently machine-readable and the action is timing rather than routing through our infrastructure.",
+      "Before promoting a refundable-deposit or deadline candidate, search vertical operational software because niche industries often already have exact tracking products.",
+      "Treat products that already ingest both operational and bank data as stronger Gate-8 threats to cross-system reconciliation wedges even when they stop short of performance-priced recovery."
     ]
   },
   "run_history": [
     {"run_key":"2026-08-28T13:50:47+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"superseded"},
     {"run_key":"2026-08-28T14:43:15+05:30","leader":"subscription-grace-period-cost-recovery-optimizer","score":47,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T144315+0530.json"},
-    {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"}
+    {"run_key":"2026-08-28T15:45:00+05:30","leader":"corporate-promised-refund-settlement-watchdog","score":46,"status":"superseded","run_file":"data/money-flow-runs/2026-08-28T154500+0530.json"},
+    {"run_key":"2026-08-28T16:41:26+05:30","leader":"quota-boundary-workload-timing-optimizer","score":45,"status":"current","run_file":"data/money-flow-runs/2026-08-28T164126+0530.json"}
   ],
   "known_rejected_or_demoted": [
     "expiring contractual financial entitlements broad family",
@@ -151,6 +158,10 @@
     "generic creator revenue-share reconciliation",
     "generic commercial-energy timing optimization",
     "unused shipping-label refund recovery",
-    "prior-authorization expiry before scheduled service watchdog"
+    "prior-authorization expiry before scheduled service watchdog",
+    "ECR excess-balance expiry optimization",
+    "automotive core-deposit return recovery",
+    "corporate hotel cancellation deadline optimization",
+    "vendor credit memo application before payment"
   ]
 }

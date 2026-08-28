@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-28",
+  "objective": "Find and execute repeatable AI-assisted money tasks that require minimal one-time setup, then improve them continuously from accumulated evidence.",
+  "global_constraints": [
+    "Do not build a new AI model; use the best available external models and APIs.",
+    "Prefer existing private money flows, APIs, platforms, workflows and transaction systems over creating new demand.",
+    "Prefer tasks that are immediately or quickly executable with available software/API interfaces.",
+    "A recurring task must learn from prior runs and should not restart from the original prompt alone.",
+    "Self-evolution may change the path, search, provider routing and execution strategy, but not silently change the user's goal.",
+    "Avoid opportunities that require holding customer funds or rebuilding underlying payment/marketplace infrastructure.",
+    "Avoid tenders, government procurement, generic buyer-seller matchmaking, generic business ideas and long lead-time sourcing as the core opportunity engine.",
+    "Do not treat individual people or specific companies as the primary opportunity target; focus on systems, rails, workflows and structural money flows."
+  ],
+  "scenarios": [
+    {
+      "id": "programmable-money-flow-search",
+      "name": "Programmable money-flow opportunity search",
+      "category": "core_search_strategy",
+      "status": "active",
+      "goal": "Discover a large existing private transaction flow where a small software/AI intervention can measurably recover, save or create money and charge a tiny usage/performance fee.",
+      "one_time_setup": ["connect research/search sources", "define threshold gates", "persist rejected paths and evidence"],
+      "repeatable_loop": ["scan structural money flows", "score candidates", "attack best candidate", "reject or freeze", "carry evidence forward"],
+      "acceptance_gates": [
+        "huge existing money flow",
+        "recurring measurable leakage/opportunity",
+        "machine-readable trigger",
+        "permission/ability to intervene",
+        "objectively measurable money recovered or created",
+        "tiny usage/performance fee possible",
+        "no need to own underlying transaction",
+        "no dominant incumbent already doing substantially the same thing"
+      ],
+      "current_best_path": "SEARCH until a candidate crosses all gates, then VALIDATE -> ATTACK -> BUILD.",
+      "next_gaps": [
+        "find new structural transaction flows not already dominated by incumbents",
+        "identify machine-readable event triggers with intervention permission",
+        "prove attribution and charging mechanism before build"
+      ],
+      "evidence_strength": 0.95,
+      "source_type": "user_requirement_and_prior_research"
+    },
+    {
+      "id": "llm-batch-flex-savings",
+      "name": "Delay-tolerant LLM requests routed to provider Batch/Flex",
+      "category": "programmable_money_flow",
+      "status": "rejected",
+      "goal": "Route delay-tolerant inference to cheaper provider-native lanes and take a share of verified savings.",
+      "rejection_reasons": [
+        "machine trigger depended too much on customer annotation/self-serve configuration",
+        "intervention required sitting on the request/prompt path",
+        "provider-native Batch/Flex lanes reduce differentiation",
+        "15% performance-fee model competes poorly with flat gateways",
+        "dominant/native alternatives weakened the incumbent gate"
+      ],
+      "gates": {"money_flow":"pass","leakage":"pass","trigger":"weak","permission":"weak","measurement":"pass","fee":"weak","ownership":"weak","incumbent":"fail"},
+      "reuse_rule": "Do not resurface unless a materially new trigger, integration method or market structure changes the failed gates.",
+      "evidence_strength": 0.98,
+      "source_type": "prior_research"
+    },
+    {
+      "id": "contractual-entitlements-recovery",
+      "name": "Expiring contractual financial entitlements",
+      "category": "programmable_money_flow",
+      "status": "rejected",
+      "examples": ["cloud SLA credits", "carrier late guarantees", "FBA reimbursements", "healthcare underpayments", "AP credits/rebates"],
+      "rejection_reasons": ["incumbent products already cover major subcategories", "failed no-dominant-incumbent gate"],
+      "known_incumbent_examples": ["AllCaps", "LateShipment", "Share A Refund", "ProfitTrust", "Getida", "Refunds Manager", "MD Clarity", "Xelix", "Enable"],
+      "reuse_rule": "Do not revisit the broad family unless a genuinely uncovered entitlement class appears.",
+      "evidence_strength": 0.95,
+      "source_type": "prior_research"
+    },
+    {
+      "id": "rubber-glove-sales",
+      "name": "Rubber glove sales workflow",
+      "category": "existing_business_revenue",
+      "status": "active_manual",
+      "goal": "Convert existing rubber glove supply into sales using catalogues, quotations, outreach and follow-up.",
+      "known_data": {
+        "moq_pairs": 500,
+        "supplier_prices_inr_per_pair": {"10in":60,"12in":72,"14in":84,"16in":96,"18in":108,"20in":120,"22in":132},
+        "target_margin_approx": 0.10,
+        "shipping_options": ["India Post", "parcel services"],
+        "payment_terms": "flexible / mutually agreeable"
+      },
+      "automation_opportunity": ["lead intake", "quotation generation", "catalogue attachment", "follow-up detection", "reply drafting", "order readiness scoring"],
+      "money_event": "confirmed buyer/order/payment",
+      "next_gaps": ["structured lead pipeline", "reply-to-opportunity scoring", "automatic follow-up timing", "conversion tracking"],
+      "evidence_strength": 0.9,
+      "source_type": "user_business_data"
+    },
+    {
+      "id": "church-mass-app",
+      "name": "Church Mass Timings / Find Mass Anywhere",
+      "category": "owned_digital_asset",
+      "status": "existing_asset_possible_revenue",
+      "asset": "churchmasstiming.vercel.app",
+      "goal": "Grow an existing Mass-timing utility into a monetizable directory/SaaS asset.",
+      "previous_paths": ["featured listings", "subscriptions", "ads", "parish SaaS", "diaspora/global expansion"],
+      "data_needs": ["verified parish/mass data", "usage analytics", "conversion evidence", "willingness-to-pay evidence"],
+      "caution": "Earlier revenue numbers were estimates, not verified actual revenue.",
+      "next_gaps": ["verify current traffic", "identify lowest-friction monetization event", "measure one paid conversion path before broad expansion"],
+      "evidence_strength": 0.6,
+      "source_type": "prior_project_context"
+    },
+    {
+      "id": "small-ai-fintech-utilities",
+      "name": "Small AI/fintech utility family",
+      "category": "historical_idea_family",
+      "status": "unvalidated",
+      "examples": ["statement analyzer", "PDF-to-Excel", "EMI comparison", "GST/invoice parser", "reconciliation", "risk dashboard", "market signal journal"],
+      "rule": "Do not prioritize as generic product ideas. Only revive one if current evidence shows an existing money flow, machine-readable trigger, immediate executability and measurable monetization.",
+      "next_gaps": ["evidence of existing transaction flow", "distribution path", "machine trigger", "measurable economic event"],
+      "evidence_strength": 0.4,
+      "source_type": "historical_ideation"
+    },
+    {
+      "id": "taskman-private-money-ai",
+      "name": "Taskman private money-making orchestration system",
+      "category": "meta_system",
+      "status": "building",
+      "goal": "Use structured data, deterministic algorithms, external AI layers and execution interfaces to identify and fulfill repeatable money-making tasks with minimal one-time setup.",
+      "core_loop": ["data", "ranked gap", "minimal relevant context", "best current model/tool", "evidence", "knowledge update", "next gap", "execution", "money event"],
+      "success_metric": "measurable economic outcomes with progressively less human intervention",
+      "next_gaps": ["structured scenario persistence", "scenario scoring engine", "evidence ingestion", "money-event tracking", "next-gap selector", "self-evolving scheduler integration"],
+      "evidence_strength": 1.0,
+      "source_type": "current_project_decision"
+    }
+  ]
+}

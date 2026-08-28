@@ -1,7 +1,10 @@
 {
-  "schema_version": 2,
-  "updated_at": "2026-08-28",
-  "objective": "Find and execute repeatable AI-assisted money tasks that require minimal one-time setup, then improve them continuously from accumulated evidence.",
+  "decision_protocol": {
+    "at_threshold": "Freeze broad discovery and move VALIDATE -> ATTACK -> BUILD.",
+    "before_threshold": "SEARCH and try to beat the current leader.",
+    "immediate_revenue_filter": "Reject or heavily demote slow, speculative, unsupported or human-wait-dependent paths.",
+    "revisit_rejected": "Only when materially new evidence changes the failed gate or structural condition."
+  },
   "global_constraints": [
     "Do not build a new AI model; use the best available external models and APIs.",
     "Prefer existing private money flows, APIs, platforms, workflows and transaction systems over creating new demand.",
@@ -16,22 +19,9 @@
     "Immediate-revenue means the path to the first measurable economic event should be short and machine-executable, not merely theoretically monetizable.",
     "Ethical correctness is a hard constraint: no deceptive or manipulative monetization path should be treated as acceptable."
   ],
-  "decision_protocol": {
-    "before_threshold": "SEARCH and try to beat the current leader.",
-    "at_threshold": "Freeze broad discovery and move VALIDATE -> ATTACK -> BUILD.",
-    "revisit_rejected": "Only when materially new evidence changes the failed gate or structural condition.",
-    "immediate_revenue_filter": "Reject or heavily demote slow, speculative, unsupported or human-wait-dependent paths."
-  },
+  "objective": "Find and execute repeatable AI-assisted money tasks that require minimal one-time setup, then improve them continuously from accumulated evidence.",
   "scenarios": [
     {
-      "id": "programmable-money-flow-search",
-      "name": "Programmable money-flow opportunity search",
-      "category": "core_search_strategy",
-      "status": "active",
-      "decision": "selected_search_framework",
-      "goal": "Discover a large existing private transaction flow where a small software/AI intervention can measurably recover, save or create money and charge a tiny usage/performance fee.",
-      "one_time_setup": ["connect research/search sources", "define threshold gates", "persist rejected paths and evidence"],
-      "repeatable_loop": ["scan structural money flows", "score candidates", "attack best candidate", "reject or freeze", "carry evidence forward"],
       "acceptance_gates": [
         "huge existing money flow",
         "recurring measurable leakage/opportunity",
@@ -42,22 +32,168 @@
         "no need to own underlying transaction",
         "no dominant incumbent already doing substantially the same thing"
       ],
-      "current_best_path": "SEARCH until a candidate crosses all gates, then VALIDATE -> ATTACK -> BUILD.",
-      "next_gaps": [
-        "find new structural transaction flows not already dominated by incumbents",
-        "identify machine-readable event triggers with intervention permission",
-        "prove attribution and charging mechanism before build"
-      ],
+      "category": "core_search_strategy",
+      "current_best_path": "SEARCH. Attack marketplace payout exception autopilot (50/60) on intervention permission and incumbent whitespace; freeze only if it reaches 52/60 with every gate at or above 70%.",
+      "decision": "selected_search_framework",
       "evidence_strength": 0.99,
-      "source_type": "user_requirement_and_prior_research"
+      "goal": "Discover a large existing private transaction flow where a small software/AI intervention can measurably recover, save or create money and charge a tiny usage/performance fee.",
+      "id": "programmable-money-flow-search",
+      "name": "Programmable money-flow opportunity search",
+      "next_gaps": [
+        "Quantify failed-payout frequency, blocked value and support cost from a real platform dataset.",
+        "Map exact third-party permissions for Stripe Connect and Adyen remediation without collecting bank credentials or holding funds.",
+        "Attack the competitive whitespace across payout-ops, bank-verification and PSP-native recovery products.",
+        "Test whether platforms will pay per resolved exception or a small share of verified operational savings."
+      ],
+      "one_time_setup": [
+        "connect research/search sources",
+        "define threshold gates",
+        "persist rejected paths and evidence"
+      ],
+      "repeatable_loop": [
+        "scan structural money flows",
+        "score candidates",
+        "attack best candidate",
+        "reject or freeze",
+        "carry evidence forward"
+      ],
+      "source_type": "user_requirement_and_prior_research",
+      "status": "active",
+      "current_leader": {
+        "scenario_id": "marketplace-payout-exception-autopilot",
+        "score_total": 50,
+        "score_max": 60,
+        "freeze_threshold_crossed": false
+      },
+      "current_ranked_candidates": [
+        {
+          "below_gate_floor": [
+            "intervention_permission",
+            "incumbent_whitespace"
+          ],
+          "freeze_threshold_crossed": false,
+          "name": "Marketplace payout exception autopilot",
+          "rank": 1,
+          "scenario_id": "marketplace-payout-exception-autopilot",
+          "score_max": 60,
+          "score_total": 50
+        },
+        {
+          "below_gate_floor": [
+            "intervention_permission",
+            "incumbent_whitespace"
+          ],
+          "freeze_threshold_crossed": false,
+          "name": "Marketplace transaction-fee liability drift controller",
+          "rank": 2,
+          "scenario_id": "marketplace-fee-liability-drift-controller",
+          "score_max": 60,
+          "score_total": 49
+        },
+        {
+          "below_gate_floor": [
+            "intervention_permission",
+            "incumbent_whitespace"
+          ],
+          "freeze_threshold_crossed": false,
+          "name": "Commercial-card enhanced-data quality autopilot",
+          "rank": 3,
+          "scenario_id": "cedp-commercial-card-data-quality-autopilot",
+          "score_max": 60,
+          "score_total": 48
+        },
+        {
+          "below_gate_floor": [
+            "intervention_permission",
+            "incumbent_whitespace"
+          ],
+          "freeze_threshold_crossed": false,
+          "name": "Usage-based SaaS overage governor",
+          "rank": 4,
+          "scenario_id": "usage-based-saas-overage-governor",
+          "score_max": 60,
+          "score_total": 47
+        },
+        {
+          "below_gate_floor": [
+            "objective_measurement",
+            "fee_mechanism",
+            "incumbent_whitespace"
+          ],
+          "freeze_threshold_crossed": false,
+          "name": "Returned-inventory unlock latency controller",
+          "rank": 5,
+          "scenario_id": "return-inventory-unlock-latency-controller",
+          "score_max": 60,
+          "score_total": 46
+        }
+      ],
+      "scoring_rubric": {
+        "freeze_threshold": {
+          "hard_rule": "Numeric total cannot override any failed gate. Freeze only after all eight gates survive adversarial validation.",
+          "minimum_each_gate_ratio": 0.7,
+          "minimum_total": 52
+        },
+        "gates": {
+          "fee_mechanism": {
+            "max": 7,
+            "question": "Can a tiny usage or performance fee be charged and attributed?"
+          },
+          "incumbent_whitespace": {
+            "max": 7,
+            "question": "Is there no dominant/native solution already doing substantially the same thing?"
+          },
+          "intervention_permission": {
+            "max": 8,
+            "question": "Can software intervene with realistic permission?"
+          },
+          "machine_trigger": {
+            "max": 8,
+            "question": "Is there a machine-readable event or state transition?"
+          },
+          "money_flow": {
+            "max": 8,
+            "question": "Is the existing private money flow large enough?"
+          },
+          "objective_measurement": {
+            "max": 7,
+            "question": "Can money recovered, saved or created be measured objectively?"
+          },
+          "recurring_leakage": {
+            "max": 8,
+            "question": "Is leakage/opportunity recurring and economically material?"
+          },
+          "transaction_independence": {
+            "max": 7,
+            "question": "Can it work without holding funds or owning the underlying transaction?"
+          }
+        },
+        "max_score": 60,
+        "version": "wide-search-v1"
+      },
+      "latest_research_run": "data/research-runs/2026-08-28-wide-search-01.json"
     },
     {
-      "id": "llm-batch-flex-savings",
-      "name": "Delay-tolerant LLM requests routed to provider Batch/Flex",
       "category": "programmable_money_flow",
-      "status": "rejected",
       "decision": "rejected_after_attack",
+      "evidence_strength": 0.99,
+      "gates": {
+        "fee": "weak",
+        "incumbent": "fail",
+        "leakage": "pass",
+        "measurement": "pass",
+        "money_flow": "pass",
+        "ownership": "weak",
+        "permission": "weak",
+        "trigger": "weak"
+      },
       "goal": "Route delay-tolerant inference to cheaper provider-native lanes and take a share of verified savings.",
+      "id": "llm-batch-flex-savings",
+      "known_competitive_pressure": [
+        "provider-native Batch/Flex lanes",
+        "automatic routing gateways such as Tessera"
+      ],
+      "name": "Delay-tolerant LLM requests routed to provider Batch/Flex",
       "rejection_reasons": [
         "machine trigger depended too much on customer annotation/self-serve configuration",
         "intervention required sitting on the request/prompt path",
@@ -65,51 +201,83 @@
         "15% performance-fee model competes poorly with flat gateways",
         "dominant/native alternatives weakened the incumbent gate"
       ],
-      "gates": {"money_flow":"pass","leakage":"pass","trigger":"weak","permission":"weak","measurement":"pass","fee":"weak","ownership":"weak","incumbent":"fail"},
-      "known_competitive_pressure": ["provider-native Batch/Flex lanes", "automatic routing gateways such as Tessera"],
       "reuse_rule": "Do not resurface unless a materially new trigger, integration method or market structure changes the failed gates.",
-      "evidence_strength": 0.99,
-      "source_type": "prior_research"
+      "source_type": "prior_research",
+      "status": "rejected"
     },
     {
-      "id": "contractual-entitlements-recovery",
-      "name": "Expiring contractual financial entitlements",
       "category": "programmable_money_flow",
-      "status": "rejected",
       "decision": "rejected_family",
-      "examples": ["cloud SLA credits", "carrier late guarantees", "FBA reimbursements", "healthcare underpayments", "AP credits/rebates"],
-      "rejection_reasons": ["incumbent products already cover major subcategories", "failed no-dominant-incumbent gate"],
-      "known_incumbent_examples": ["AllCaps", "LateShipment", "Share A Refund", "ProfitTrust", "Getida", "Refunds Manager", "MD Clarity", "Xelix", "Enable"],
-      "reuse_rule": "Do not revisit the broad family unless a genuinely uncovered entitlement class appears.",
       "evidence_strength": 0.98,
-      "source_type": "prior_research"
+      "examples": [
+        "cloud SLA credits",
+        "carrier late guarantees",
+        "FBA reimbursements",
+        "healthcare underpayments",
+        "AP credits/rebates"
+      ],
+      "id": "contractual-entitlements-recovery",
+      "known_incumbent_examples": [
+        "AllCaps",
+        "LateShipment",
+        "Share A Refund",
+        "ProfitTrust",
+        "Getida",
+        "Refunds Manager",
+        "MD Clarity",
+        "Xelix",
+        "Enable"
+      ],
+      "name": "Expiring contractual financial entitlements",
+      "rejection_reasons": [
+        "incumbent products already cover major subcategories",
+        "failed no-dominant-incumbent gate"
+      ],
+      "reuse_rule": "Do not revisit the broad family unless a genuinely uncovered entitlement class appears.",
+      "source_type": "prior_research",
+      "status": "rejected"
     },
     {
+      "category": "historical_opportunity_search",
+      "decision": "rejected_by_time_to_money",
+      "evidence_strength": 0.95,
+      "failed_dimensions": [
+        "time_to_money",
+        "existing_demand_capture",
+        "immediate_executability"
+      ],
+      "goal": "Identify something to build first and monetize after users or buyers arrive.",
       "id": "buildscout-slow-build-opportunities",
       "name": "BuildScout / build-now-wait-for-users opportunity path",
-      "category": "historical_opportunity_search",
-      "status": "rejected",
-      "decision": "rejected_by_time_to_money",
-      "goal": "Identify something to build first and monetize after users or buyers arrive.",
       "rejection_reasons": [
         "required creating a product first and waiting for adoption",
         "did not satisfy immediate-revenue requirement",
         "money event depended on future demand rather than an existing transaction flow"
       ],
-      "failed_dimensions": ["time_to_money", "existing_demand_capture", "immediate_executability"],
       "reuse_rule": "Only revive if the build can attach immediately to an existing transaction flow and produce measurable value without waiting for market creation.",
-      "evidence_strength": 0.95,
-      "source_type": "user_rejection"
+      "source_type": "user_rejection",
+      "status": "rejected"
     },
     {
+      "attempted_variants": [
+        "mutual-help emails",
+        "Christian-believer needs outreach",
+        "cashback/relevant-value email",
+        "company-specific outreach"
+      ],
+      "category": "outbound_service_revenue",
+      "decision": "rejected_distribution_method",
+      "evidence_strength": 0.93,
+      "goal": "Find people or organizations with needs, send relevant help or offers by email, and convert responses into revenue.",
       "id": "cold-email-help-cashback-outreach",
       "name": "Cold-email help / cashback / free-value outreach",
-      "category": "outbound_service_revenue",
-      "status": "rejected",
-      "decision": "rejected_distribution_method",
-      "goal": "Find people or organizations with needs, send relevant help or offers by email, and convert responses into revenue.",
-      "attempted_variants": ["mutual-help emails", "Christian-believer needs outreach", "cashback/relevant-value email", "company-specific outreach"],
-      "observed_failures": ["email delivery/spam-folder issues", "human response required", "manual targeting burden", "weak repeatability", "revenue not directly attributable to an automated money event"],
+      "observed_failures": [
+        "email delivery/spam-folder issues",
+        "human response required",
+        "manual targeting burden",
+        "weak repeatability",
+        "revenue not directly attributable to an automated money event"
+      ],
       "rejection_reasons": [
         "distribution depended on cold outbound email",
         "spam/deliverability risk was observed",
@@ -117,17 +285,20 @@
         "not a reusable transaction-rail intervention"
       ],
       "reuse_rule": "Do not use cold email as the core engine. Email may remain a notification/follow-up connector after a machine-readable opportunity already exists.",
-      "evidence_strength": 0.93,
-      "source_type": "observed_attempt_and_user_feedback"
+      "source_type": "observed_attempt_and_user_feedback",
+      "status": "rejected"
     },
     {
+      "attempted_evidence": [
+        "short-pilot outreach was pursued",
+        "at least one TBN press email attempt bounced/rejected"
+      ],
+      "category": "service_work",
+      "decision": "outside_current_core_strategy",
+      "evidence_strength": 0.82,
+      "goal": "Earn through AI Bible filmmaking, Christian short-form video, digital evangelism, creative production, AI content strategy or workflow orchestration for ministries.",
       "id": "christian-ministry-freelance-ai-content",
       "name": "AI Bible filmmaking / ministry freelance service outreach",
-      "category": "service_work",
-      "status": "deprioritized",
-      "decision": "outside_current_core_strategy",
-      "goal": "Earn through AI Bible filmmaking, Christian short-form video, digital evangelism, creative production, AI content strategy or workflow orchestration for ministries.",
-      "attempted_evidence": ["short-pilot outreach was pursued", "at least one TBN press email attempt bounced/rejected"],
       "reasons_deprioritized": [
         "service/freelance model depends on individual client acquisition",
         "human sales cycle and waiting period",
@@ -135,47 +306,53 @@
         "cannot be the autonomous core money engine"
       ],
       "reuse_rule": "Can remain a separate business/service path, but should not compete for brain cycles intended for automated structural money-flow discovery.",
-      "evidence_strength": 0.82,
-      "source_type": "prior_outreach_history"
+      "source_type": "prior_outreach_history",
+      "status": "deprioritized"
     },
     {
+      "category": "excluded_opportunity_family",
+      "decision": "hard_scope_exclusion",
+      "evidence_strength": 1,
       "id": "tenders-government-procurement",
       "name": "Tenders and government/public procurement",
-      "category": "excluded_opportunity_family",
-      "status": "rejected",
-      "decision": "hard_scope_exclusion",
       "rejection_reasons": [
         "user explicitly removed tenders/government procurement from the strategy",
         "long cycles and procedural friction conflict with immediate revenue",
         "often requires bid preparation and human institutional processes"
       ],
       "reuse_rule": "Do not search or rank this family unless the user explicitly changes the strategy.",
-      "evidence_strength": 1.0,
-      "source_type": "user_constraint"
+      "source_type": "user_constraint",
+      "status": "rejected"
     },
     {
+      "category": "excluded_opportunity_family",
+      "decision": "hard_scope_exclusion",
+      "evidence_strength": 1,
+      "historical_context": [
+        "manufacturer/distributor matching and country-specific sourcing were previously explored"
+      ],
       "id": "manufacturer-distributor-sourcing-matchmaking",
       "name": "Manufacturer/distributor sourcing and buyer-seller matchmaking",
-      "category": "excluded_opportunity_family",
-      "status": "rejected",
-      "decision": "hard_scope_exclusion",
-      "historical_context": ["manufacturer/distributor matching and country-specific sourcing were previously explored"],
       "rejection_reasons": [
         "user explicitly removed manufacturer/distributor sourcing and buyer-seller matchmaking as the core opportunity",
         "depends on individual counterparties rather than structural machine-readable events",
         "human sales/negotiation cycles weaken autonomous repeatability"
       ],
       "reuse_rule": "Specific companies may be examples or infrastructure references only, not the primary opportunity target.",
-      "evidence_strength": 1.0,
-      "source_type": "user_constraint_and_prior_search_history"
+      "source_type": "user_constraint_and_prior_search_history",
+      "status": "rejected"
     },
     {
+      "category": "excluded_opportunity_family",
+      "decision": "hard_scope_exclusion",
+      "evidence_strength": 1,
+      "examples": [
+        "generic SaaS ideas",
+        "build a website then wait",
+        "undifferentiated utility apps without transaction attachment"
+      ],
       "id": "generic-business-ideas-demand-creation",
       "name": "Generic business ideas / create-new-demand products",
-      "category": "excluded_opportunity_family",
-      "status": "rejected",
-      "decision": "hard_scope_exclusion",
-      "examples": ["generic SaaS ideas", "build a website then wait", "undifferentiated utility apps without transaction attachment"],
       "rejection_reasons": [
         "requires creating demand",
         "weak immediate monetization",
@@ -183,111 +360,170 @@
         "does not begin with a proven existing money flow"
       ],
       "reuse_rule": "Only revive a product idea if it is reframed as an intervention inside an existing measurable transaction flow.",
-      "evidence_strength": 1.0,
-      "source_type": "user_constraint"
+      "source_type": "user_constraint",
+      "status": "rejected"
     },
     {
-      "id": "hosted-website-immediate-revenue",
-      "name": "Hosted website intended to generate immediate revenue",
-      "category": "historical_idea_family",
-      "status": "unvalidated",
-      "decision": "concept_retained_but_not_selected",
-      "goal": "Use a website and free tools to generate even small real-time revenue.",
-      "positive_aspects": ["one-time setup potential", "could become autonomous", "fits desire for measurable online revenue"],
       "blocking_reasons": [
         "no sufficiently strong structural money-flow wedge was identified",
         "website alone does not solve distribution or create a money event",
         "must attach to an existing transaction source rather than merely exist online"
       ],
-      "next_gaps": ["identify an existing transaction/event source feeding the site", "define automatic value intervention", "define attributable charging event"],
-      "reuse_rule": "Treat the website as an interface/deployment surface, not the opportunity itself.",
+      "category": "historical_idea_family",
+      "decision": "concept_retained_but_not_selected",
       "evidence_strength": 0.7,
-      "source_type": "historical_ideation"
+      "goal": "Use a website and free tools to generate even small real-time revenue.",
+      "id": "hosted-website-immediate-revenue",
+      "name": "Hosted website intended to generate immediate revenue",
+      "next_gaps": [
+        "identify an existing transaction/event source feeding the site",
+        "define automatic value intervention",
+        "define attributable charging event"
+      ],
+      "positive_aspects": [
+        "one-time setup potential",
+        "could become autonomous",
+        "fits desire for measurable online revenue"
+      ],
+      "reuse_rule": "Treat the website as an interface/deployment surface, not the opportunity itself.",
+      "source_type": "historical_ideation",
+      "status": "unvalidated"
     },
     {
+      "category": "payment_option",
+      "decision": "not_an_opportunity_by_itself",
+      "evidence_strength": 0.9,
+      "goal": "Allow money outcomes to be received or represented via crypto where practical.",
       "id": "crypto-as-money-output",
       "name": "Crypto as payment/output rail",
-      "category": "payment_option",
-      "status": "supporting_only",
-      "decision": "not_an_opportunity_by_itself",
-      "goal": "Allow money outcomes to be received or represented via crypto where practical.",
-      "reasons_not_primary": ["crypto does not itself create the economic value", "opportunity must first satisfy the core money-flow gates"],
+      "reasons_not_primary": [
+        "crypto does not itself create the economic value",
+        "opportunity must first satisfy the core money-flow gates"
+      ],
       "reuse_rule": "Use only as a payment/settlement option after a valid revenue mechanism exists.",
-      "evidence_strength": 0.9,
-      "source_type": "user_preference_in_prior_opportunity_search"
+      "source_type": "user_preference_in_prior_opportunity_search",
+      "status": "supporting_only"
     },
     {
-      "id": "rubber-glove-sales",
-      "name": "Rubber glove sales workflow",
+      "automation_opportunity": [
+        "lead intake",
+        "quotation generation",
+        "catalogue attachment",
+        "follow-up detection",
+        "reply drafting",
+        "order readiness scoring"
+      ],
       "category": "existing_business_revenue",
-      "status": "active_manual",
       "decision": "real_business_but_not_core_autonomous_engine",
+      "evidence_strength": 0.9,
       "goal": "Convert existing rubber glove supply into sales using catalogues, quotations, outreach and follow-up.",
+      "id": "rubber-glove-sales",
       "known_data": {
         "moq_pairs": 500,
-        "supplier_prices_inr_per_pair": {"10in":60,"12in":72,"14in":84,"16in":96,"18in":108,"20in":120,"22in":132},
-        "target_margin_approx": 0.10,
-        "shipping_options": ["India Post", "parcel services"],
-        "payment_terms": "flexible / mutually agreeable"
+        "payment_terms": "flexible / mutually agreeable",
+        "shipping_options": [
+          "India Post",
+          "parcel services"
+        ],
+        "supplier_prices_inr_per_pair": {
+          "10in": 60,
+          "12in": 72,
+          "14in": 84,
+          "16in": 96,
+          "18in": 108,
+          "20in": 120,
+          "22in": 132
+        },
+        "target_margin_approx": 0.1
       },
-      "automation_opportunity": ["lead intake", "quotation generation", "catalogue attachment", "follow-up detection", "reply drafting", "order readiness scoring"],
+      "limitations_for_core_brain": [
+        "depends on buyer acquisition",
+        "physical fulfillment",
+        "manual commercial negotiation can remain"
+      ],
       "money_event": "confirmed buyer/order/payment",
-      "next_gaps": ["structured lead pipeline", "reply-to-opportunity scoring", "automatic follow-up timing", "conversion tracking"],
-      "limitations_for_core_brain": ["depends on buyer acquisition", "physical fulfillment", "manual commercial negotiation can remain"],
-      "evidence_strength": 0.9,
-      "source_type": "user_business_data"
+      "name": "Rubber glove sales workflow",
+      "next_gaps": [
+        "structured lead pipeline",
+        "reply-to-opportunity scoring",
+        "automatic follow-up timing",
+        "conversion tracking"
+      ],
+      "source_type": "user_business_data",
+      "status": "active_manual"
     },
     {
+      "asset": "churchmasstiming.vercel.app",
+      "category": "owned_digital_asset",
+      "caution": "Earlier revenue numbers were estimates, not verified actual revenue.",
+      "data_needs": [
+        "verified parish/mass data",
+        "usage analytics",
+        "conversion evidence",
+        "willingness-to-pay evidence"
+      ],
+      "decision": "unvalidated_monetization_asset",
+      "evidence_strength": 0.6,
+      "goal": "Grow an existing Mass-timing utility into a monetizable directory/SaaS asset.",
       "id": "church-mass-app",
       "name": "Church Mass Timings / Find Mass Anywhere",
-      "category": "owned_digital_asset",
-      "status": "existing_asset_possible_revenue",
-      "decision": "unvalidated_monetization_asset",
-      "asset": "churchmasstiming.vercel.app",
-      "goal": "Grow an existing Mass-timing utility into a monetizable directory/SaaS asset.",
-      "previous_paths": ["featured listings", "subscriptions", "ads", "parish SaaS", "diaspora/global expansion"],
-      "data_needs": ["verified parish/mass data", "usage analytics", "conversion evidence", "willingness-to-pay evidence"],
-      "caution": "Earlier revenue numbers were estimates, not verified actual revenue.",
-      "next_gaps": ["verify current traffic", "identify lowest-friction monetization event", "measure one paid conversion path before broad expansion"],
-      "evidence_strength": 0.6,
-      "source_type": "prior_project_context"
+      "next_gaps": [
+        "verify current traffic",
+        "identify lowest-friction monetization event",
+        "measure one paid conversion path before broad expansion"
+      ],
+      "previous_paths": [
+        "featured listings",
+        "subscriptions",
+        "ads",
+        "parish SaaS",
+        "diaspora/global expansion"
+      ],
+      "source_type": "prior_project_context",
+      "status": "existing_asset_possible_revenue"
     },
     {
+      "category": "historical_idea_family",
+      "decision": "deprioritized_generic_ideas",
+      "evidence_strength": 0.4,
+      "examples": [
+        "statement analyzer",
+        "PDF-to-Excel",
+        "EMI comparison",
+        "GST/invoice parser",
+        "reconciliation",
+        "risk dashboard",
+        "market signal journal"
+      ],
       "id": "small-ai-fintech-utilities",
       "name": "Small AI/fintech utility family",
-      "category": "historical_idea_family",
-      "status": "unvalidated",
-      "decision": "deprioritized_generic_ideas",
-      "examples": ["statement analyzer", "PDF-to-Excel", "EMI comparison", "GST/invoice parser", "reconciliation", "risk dashboard", "market signal journal"],
+      "next_gaps": [
+        "evidence of existing transaction flow",
+        "distribution path",
+        "machine trigger",
+        "measurable economic event"
+      ],
       "rule": "Do not prioritize as generic product ideas. Only revive one if current evidence shows an existing money flow, machine-readable trigger, immediate executability and measurable monetization.",
-      "next_gaps": ["evidence of existing transaction flow", "distribution path", "machine trigger", "measurable economic event"],
-      "evidence_strength": 0.4,
-      "source_type": "historical_ideation"
+      "source_type": "historical_ideation",
+      "status": "unvalidated"
     },
     {
+      "category": "job_or_gig_search",
+      "decision": "outside_strategy",
+      "evidence_strength": 1,
       "id": "remote-ai-content-job-search",
       "name": "Remote/freelance AI content and creative job search",
-      "category": "job_or_gig_search",
-      "status": "rejected",
-      "decision": "outside_strategy",
       "rejection_reasons": [
         "user explicitly does not want a job-search strategy",
         "requires applications and human hiring decisions",
         "not an autonomous one-time-setup money engine"
       ],
       "reuse_rule": "Do not rank job/gig listings as opportunities for the core brain.",
-      "evidence_strength": 1.0,
-      "source_type": "user_constraint_and_prior_attempt"
+      "source_type": "user_constraint_and_prior_attempt",
+      "status": "rejected"
     },
     {
-      "id": "taskman-private-money-ai",
-      "name": "Taskman private money-making orchestration system",
       "category": "meta_system",
-      "status": "building",
-      "decision": "current_build_focus",
-      "goal": "Use structured data, deterministic algorithms, external AI layers and execution interfaces to identify and fulfill repeatable money-making tasks with minimal one-time setup.",
-      "core_loop": ["data", "ranked gap", "minimal relevant context", "best current model/tool", "evidence", "knowledge update", "next gap", "execution", "money event"],
-      "success_metric": "measurable economic outcomes with progressively less human intervention",
       "completed_build_steps": [
         "structured scenario seed",
         "scenario scoring engine",
@@ -300,6 +536,22 @@
         "brain-cycle persistence",
         "dashboard brain panel"
       ],
+      "core_loop": [
+        "data",
+        "ranked gap",
+        "minimal relevant context",
+        "best current model/tool",
+        "evidence",
+        "knowledge update",
+        "next gap",
+        "execution",
+        "money event"
+      ],
+      "decision": "current_build_focus",
+      "evidence_strength": 1,
+      "goal": "Use structured data, deterministic algorithms, external AI layers and execution interfaces to identify and fulfill repeatable money-making tasks with minimal one-time setup.",
+      "id": "taskman-private-money-ai",
+      "name": "Taskman private money-making orchestration system",
       "next_gaps": [
         "connect a live PostgreSQL instance",
         "configure at least one live AI provider credential",
@@ -308,8 +560,427 @@
         "add outcome-based score updates from real brain cycles",
         "add automatic suppression of repeatedly unproductive scenario branches"
       ],
-      "evidence_strength": 1.0,
-      "source_type": "current_project_decision"
+      "source_type": "current_project_decision",
+      "status": "building",
+      "success_metric": "measurable economic outcomes with progressively less human intervention"
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "wide_search_leader_not_frozen",
+      "evidence_refs": [
+        "https://docs.stripe.com/connect/webhooks",
+        "https://docs.stripe.com/connect/payouts-connected-accounts",
+        "https://docs.adyen.com/marketplaces/payout-webhooks",
+        "https://ipid.tech/use-case/ecommerce-marketplace"
+      ],
+      "evidence_strength": 0.82,
+      "gate_score": {
+        "below_gate_floor": [
+          "intervention_permission",
+          "incumbent_whitespace"
+        ],
+        "freeze_threshold_crossed": false,
+        "notes": {
+          "negative": [
+            "recipient action is required for closed/incorrect accounts or KYC",
+            "platform authorization scopes and retry semantics vary",
+            "bank-account verification and payout-ops vendors create competitive pressure",
+            "platform willingness to pay a success fee remains unproven"
+          ],
+          "positive": [
+            "PSPs expose precise failure events, codes and remediation actions",
+            "blocked amount and final payout status create strong attribution",
+            "service need not custody funds"
+          ]
+        },
+        "rubric_version": "wide-search-v1",
+        "score_max": 60,
+        "score_total": 50,
+        "values": {
+          "fee_mechanism": 5,
+          "incumbent_whitespace": 4,
+          "intervention_permission": 5,
+          "machine_trigger": 8,
+          "money_flow": 7,
+          "objective_measurement": 7,
+          "recurring_leakage": 7,
+          "transaction_independence": 7
+        }
+      },
+      "goal": "Detect failed marketplace payouts, classify the PSP/bank failure, route the smallest compliant remediation to the payee or platform, and confirm/retry the payout without holding funds.",
+      "id": "marketplace-payout-exception-autopilot",
+      "intervention": [
+        "classify recoverable versus terminal failure",
+        "request only missing bank/address/KYC correction through provider-hosted or platform-approved flow",
+        "retry or resume through PSP API when permitted",
+        "verify payout.paid or transfer completion"
+      ],
+      "money_event": "previously blocked payout reaches the intended recipient; exact recovered amount and resolution time are recorded",
+      "name": "Marketplace payout exception autopilot",
+      "next_gaps": [
+        "Quantify failed-payout frequency, blocked value and support cost from a real platform dataset.",
+        "Map exact third-party permissions for Stripe Connect and Adyen remediation without collecting bank credentials or holding funds.",
+        "Attack the competitive whitespace across payout-ops, bank-verification and PSP-native recovery products.",
+        "Test whether platforms will pay per resolved exception or a small share of verified operational savings."
+      ],
+      "repeatable_loop": [
+        "receive payout exception",
+        "classify failure code",
+        "execute allowed remediation",
+        "observe payout completion",
+        "charge only on verified resolution"
+      ],
+      "status": "unvalidated",
+      "structural_flow": "marketplace/platform seller payouts",
+      "trigger": [
+        "Stripe Connect payout.failed and account.external_account.updated webhooks",
+        "Adyen transfer failure webhooks and reason codes"
+      ]
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "runner_up_not_frozen",
+      "evidence_refs": [
+        "https://docs.adyen.com/marketplaces/transaction-fees",
+        "https://docs.stripe.com/connect/marketplace/tasks/app-fees",
+        "https://docs.stripe.com/connect/destination-charges"
+      ],
+      "evidence_strength": 0.78,
+      "gate_score": {
+        "below_gate_floor": [
+          "intervention_permission",
+          "incumbent_whitespace"
+        ],
+        "freeze_threshold_crossed": false,
+        "notes": {
+          "negative": [
+            "must touch payment configuration before or during the transaction",
+            "economic value can be a contractual reallocation rather than net system value",
+            "PSPs already provide native split/application-fee primitives",
+            "legal contract interpretation must stay outside autonomous action"
+          ],
+          "positive": [
+            "per-transaction split and fee records are machine-readable",
+            "settlement makes the economic delta measurable",
+            "no funds custody is required if operating through PSP APIs"
+          ]
+        },
+        "rubric_version": "wide-search-v1",
+        "score_max": 60,
+        "score_total": 49,
+        "values": {
+          "fee_mechanism": 5,
+          "incumbent_whitespace": 4,
+          "intervention_permission": 5,
+          "machine_trigger": 8,
+          "money_flow": 8,
+          "objective_measurement": 7,
+          "recurring_leakage": 7,
+          "transaction_independence": 5
+        }
+      },
+      "goal": "Compare contractually agreed marketplace fee allocation with live PSP split instructions and settlement results, then prevent the platform liable balance from absorbing fees assigned elsewhere by contract.",
+      "id": "marketplace-fee-liability-drift-controller",
+      "intervention": [
+        "validate split instructions before payment",
+        "flag or correct configuration when API permission exists",
+        "reconcile realized fee allocation after settlement"
+      ],
+      "money_event": "contractually permitted processing fees no longer leak into the platform liable balance; exact fee delta is observed",
+      "name": "Marketplace transaction-fee liability drift controller",
+      "next_gaps": [
+        "Prove that allocation errors recur after correct initial PSP setup rather than being a one-time implementation defect.",
+        "Find transaction-level settlement fields that permit deterministic expected-versus-actual comparison across at least two PSPs.",
+        "Confirm a safe read-only audit mode can create measurable value before any payment-path mutation.",
+        "Attack whether PSP-native configuration and payment-reconciliation vendors already remove the wedge."
+      ],
+      "repeatable_loop": [
+        "read contract rule",
+        "inspect transaction split",
+        "compare settlement",
+        "correct future instruction",
+        "measure fee delta"
+      ],
+      "status": "unvalidated",
+      "structural_flow": "marketplace split payments, application fees and processor fee allocation",
+      "trigger": [
+        "payment or capture creation",
+        "PSP settlement/fee report",
+        "difference between expected contractual allocation and actual balance-account booking"
+      ]
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "runner_up_not_frozen",
+      "evidence_refs": [
+        "https://docs.stripe.com/payments/payment-line-items",
+        "https://docs.adyen.com/payment-methods/cards/enhanced-scheme-data",
+        "https://www.nmi.com/blog/understanding-level-2-3-interchange-rates-an-essential-guide/",
+        "https://paytrace.net/interchange-optimization"
+      ],
+      "evidence_strength": 0.86,
+      "gate_score": {
+        "below_gate_floor": [
+          "intervention_permission",
+          "incumbent_whitespace"
+        ],
+        "freeze_threshold_crossed": false,
+        "notes": {
+          "negative": [
+            "limited to eligible commercial cards and merchant categories",
+            "data must be present on the payment path",
+            "PSPs, gateways and specialist processors already automate enhanced-data optimization",
+            "Visa program changes and data-quality rules add scheme dependency"
+          ],
+          "positive": [
+            "Stripe, Adyen and PayPal expose enhanced-data fields",
+            "Adyen states eligible Visa/Mastercard savings can reach 1%",
+            "actual interchange delta is measurable under IC+/IC++ pricing"
+          ]
+        },
+        "rubric_version": "wide-search-v1",
+        "score_max": 60,
+        "score_total": 48,
+        "values": {
+          "fee_mechanism": 5,
+          "incumbent_whitespace": 3,
+          "intervention_permission": 5,
+          "machine_trigger": 8,
+          "money_flow": 7,
+          "objective_measurement": 7,
+          "recurring_leakage": 7,
+          "transaction_independence": 6
+        }
+      },
+      "goal": "For eligible private B2B commercial-card payments, validate and enrich invoice/order line-item data so transactions qualify for lower interchange, then verify actual qualification from processor data.",
+      "id": "cedp-commercial-card-data-quality-autopilot",
+      "intervention": [
+        "map ERP/order fields to processor enhanced-data fields",
+        "validate completeness and data quality before authorization/capture",
+        "monitor realized qualification and repair mappings"
+      ],
+      "money_event": "processor-reported interchange cost falls on otherwise-equivalent eligible transactions",
+      "name": "Commercial-card enhanced-data quality autopilot",
+      "next_gaps": [
+        "Identify a narrow cross-processor quality-monitoring function not already supplied by NMI, PayTrace, Optimized Payments or the PSPs.",
+        "Verify settlement-report fields that prove qualification and exact savings without estimates.",
+        "Test whether read-only CEDP drift detection alone has a chargeable outcome.",
+        "Reject if cross-processor remediation still requires owning the authorization request path."
+      ],
+      "repeatable_loop": [
+        "detect eligible payment",
+        "validate/enrich line items",
+        "submit through existing PSP",
+        "read settlement qualification",
+        "attribute savings"
+      ],
+      "status": "unvalidated",
+      "structural_flow": "US private B2B commercial-card acceptance under Visa CEDP and Mastercard enhanced-data programs",
+      "trigger": [
+        "eligible commercial-card payment intent",
+        "missing or low-quality required line-item fields",
+        "post-settlement downgrade or non-qualification"
+      ]
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "runner_up_not_frozen",
+      "evidence_refs": [
+        "https://docs.datadoghq.com/api/latest/usage-metering/",
+        "https://docs.datadoghq.com/account_management/billing/usage_metrics/",
+        "https://zylo.com/blog/new-trend-saas-pricing-usage-based-model"
+      ],
+      "evidence_strength": 0.73,
+      "gate_score": {
+        "below_gate_floor": [
+          "intervention_permission",
+          "incumbent_whitespace"
+        ],
+        "freeze_threshold_crossed": false,
+        "notes": {
+          "negative": [
+            "safe mutation differs by vendor and workload",
+            "counterfactual savings and avoided business value can be hard to prove",
+            "SaaS-management and FinOps incumbents cover adjacent visibility/optimization",
+            "initial integrations are not yet reusable across enough vendors"
+          ],
+          "positive": [
+            "usage APIs and real-time estimated usage metrics exist",
+            "overages are recurring and invoice-visible",
+            "service can remain outside the vendor's billing transaction"
+          ]
+        },
+        "rubric_version": "wide-search-v1",
+        "score_max": 60,
+        "score_total": 47,
+        "values": {
+          "fee_mechanism": 5,
+          "incumbent_whitespace": 4,
+          "intervention_permission": 4,
+          "machine_trigger": 7,
+          "money_flow": 7,
+          "objective_measurement": 6,
+          "recurring_leakage": 7,
+          "transaction_independence": 7
+        }
+      },
+      "goal": "Monitor machine-readable consumption near contractual tiers or overage boundaries and execute only pre-approved, reversible waste controls before avoidable overage is billed.",
+      "id": "usage-based-saas-overage-governor",
+      "intervention": [
+        "apply pre-approved sampling, retention, seat or non-production usage controls through vendor APIs",
+        "escalate when business semantics make automation unsafe"
+      ],
+      "money_event": "verified invoice reduction relative to contract pricing and observed usage without reducing approved production outcomes",
+      "name": "Usage-based SaaS overage governor",
+      "next_gaps": [
+        "Choose one high-cost usage family with an official usage API plus a reversible cost-control API.",
+        "Define a safety policy that forbids throttling production value and permits only pre-approved waste controls.",
+        "Prove invoice attribution using contract tiers rather than estimated usage alone.",
+        "Map incumbents that already automate the selected vendor's exact control action."
+      ],
+      "repeatable_loop": [
+        "read usage",
+        "forecast threshold",
+        "apply safe control",
+        "verify service health",
+        "reconcile invoice"
+      ],
+      "status": "unvalidated",
+      "structural_flow": "usage-based SaaS and API spend",
+      "trigger": [
+        "vendor usage-metering API",
+        "estimated billable-usage metric",
+        "forecast crossing a contract threshold"
+      ]
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "runner_up_not_frozen",
+      "evidence_refs": [
+        "https://shopify.dev/docs/apps/build/orders-fulfillment/returns-apps/migrate-to-return-processing",
+        "https://shopify.dev/docs/api/admin-graphql/latest/enums/RefundLineItemRestockType",
+        "https://shopify.dev/docs/api/webhooks/latest"
+      ],
+      "evidence_strength": 0.76,
+      "gate_score": {
+        "below_gate_floor": [
+          "objective_measurement",
+          "fee_mechanism",
+          "incumbent_whitespace"
+        ],
+        "freeze_threshold_crossed": false,
+        "notes": {
+          "negative": [
+            "saleable-condition proof often depends on warehouse operations",
+            "incremental sale attribution is counterfactual and delayed",
+            "returns/WMS platforms already cover much of the workflow",
+            "performance-fee charging is weaker than direct cash recovery"
+          ],
+          "positive": [
+            "Shopify exposes return, restock and webhook primitives",
+            "inventory can be changed without owning checkout or funds",
+            "returned goods represent recurring stranded inventory"
+          ]
+        },
+        "rubric_version": "wide-search-v1",
+        "score_max": 60,
+        "score_total": 46,
+        "values": {
+          "fee_mechanism": 4,
+          "incumbent_whitespace": 3,
+          "intervention_permission": 6,
+          "machine_trigger": 8,
+          "money_flow": 8,
+          "objective_measurement": 4,
+          "recurring_leakage": 6,
+          "transaction_independence": 7
+        }
+      },
+      "goal": "Detect saleable returned units that are physically received/refunded but remain unavailable in commerce inventory, then restore availability through approved inventory APIs.",
+      "id": "return-inventory-unlock-latency-controller",
+      "intervention": [
+        "reconcile return state with inventory availability",
+        "apply approved inventory adjustment when proof of receipt and saleable condition exist",
+        "escalate quality-uncertain items"
+      ],
+      "money_event": "a previously unavailable returned unit becomes sellable and is later sold; time-to-relist and realized resale value are recorded",
+      "name": "Returned-inventory unlock latency controller",
+      "next_gaps": [
+        "Measure how often completed saleable returns remain unavailable after the expected processing window.",
+        "Find a deterministic proof-of-condition and proof-of-receipt signal before inventory mutation.",
+        "Define attributable value as avoided write-off or observed resale without overstating counterfactual revenue.",
+        "Attack coverage by Shopify-native returns, WMS and reverse-logistics incumbents."
+      ],
+      "repeatable_loop": [
+        "observe return receipt",
+        "verify saleable state",
+        "detect inventory lock",
+        "restore availability",
+        "observe resale"
+      ],
+      "status": "unvalidated",
+      "structural_flow": "e-commerce returns into resale inventory",
+      "trigger": [
+        "return processed webhook",
+        "refund/restock instruction",
+        "warehouse receipt or inventory mismatch"
+      ]
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "rejected_after_live_attack",
+      "evidence_refs": [
+        "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method",
+        "https://docs.adyen.com/online-payments/adjust-authorisation",
+        "https://shopify.dev/docs/api/admin-rest/latest/resources/transaction"
+      ],
+      "evidence_strength": 0.92,
+      "gates": {
+        "fee": "weak",
+        "incumbent": "fail",
+        "machine_trigger": "pass",
+        "measurement": "pass",
+        "money_flow": "pass",
+        "permission": "partial",
+        "recurring_leakage": "partial",
+        "transaction_independence": "partial"
+      },
+      "goal": "Protect authorized-but-uncaptured commerce payments from expiring before fulfillment.",
+      "id": "expiring-payment-authorization-protection",
+      "latest_score_total": 47,
+      "name": "Expiring payment authorization protection",
+      "prior_provisional_score": 45,
+      "rejection_reasons": [
+        "Stripe documents automatic capture shortly before authorization expiry for its overcapture workflow.",
+        "Adyen exposes authorization adjustment and configurable validity behavior.",
+        "Shopify exposes authorization lifecycle data, reducing the standalone trigger/data wedge.",
+        "A cross-provider layer still has to touch the payment path and competes with PSP-native functionality."
+      ],
+      "reuse_rule": "Revisit only if a platform-agnostic intervention is found that does not duplicate PSP auto-capture/adjustment and does not require owning the payment path.",
+      "score_max": 60,
+      "status": "rejected"
+    },
+    {
+      "category": "programmable_money_flow",
+      "decision": "rejected_after_incumbent_attack",
+      "evidence_refs": [
+        "https://terminal49.com/detention-demurrage-charges",
+        "https://www.project44.com/press-releases/project44-launches-detention-demurrage-optimization-to-better-manage-risk-and-reduce-costs/",
+        "https://dockflow.com/platform/demurrage-tracking/"
+      ],
+      "evidence_strength": 0.95,
+      "goal": "Use container events and last-free-day data to prevent avoidable detention and demurrage fees.",
+      "id": "demurrage-free-time-expiry-prevention",
+      "name": "Container demurrage/free-time expiry prevention",
+      "rejection_reasons": [
+        "Terminal49, project44, Dockflow, Windward and other logistics platforms already provide real-time risk, free-time tracking, automated alerts or D&D optimization.",
+        "Operational intervention often requires customs, trucker, warehouse or port coordination rather than a fully machine-executable action.",
+        "The family fails the no-dominant-incumbent/white-space gate despite measurable fees and machine-readable events."
+      ],
+      "reuse_rule": "Revisit only for a new transaction state or autonomous action not already covered by visibility and D&D optimization platforms.",
+      "status": "rejected"
     }
-  ]
+  ],
+  "schema_version": 3,
+  "updated_at": "2026-08-28"
 }

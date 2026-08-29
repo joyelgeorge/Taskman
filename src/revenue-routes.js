@@ -7,6 +7,12 @@ import {
   QUALIFICATION_PROFILES, capabilitySnapshot, resolveQueueName
 } from './orchestration-profiles.js';
 import { normalizeCandidate, qualifyCandidate, missingCapabilities } from './qualification-engine.js';
+import {
+  listScheduledJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable
+} from './durable-scheduler.js';
+import { runDiscoverWorker } from './workers/discover.js';
+import { runValidateWorker } from './workers/validate.js';
+import { runExecuteWorker } from './workers/execute.js';
 
 function send(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -24,6 +30,8 @@ export async function handleRevenueRequest(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/revenue/status') {
     return send(res, 200, {
       storage: revenueStorageMode(),
+      schedulerDurable: isSchedulerDurable(),
+      internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
       pipeline: ['DISCOVER', 'VALIDATE', 'EXECUTE', 'LEARN'],
       canonicalQueues: CANONICAL_QUEUES,
       legacyAliases: LEGACY_QUEUE_ALIASES,
@@ -41,8 +49,66 @@ export async function handleRevenueRequest(req, res, url) {
       queues: CANONICAL_QUEUES,
       legacyAliases: LEGACY_QUEUE_ALIASES,
       discoverySources: DISCOVERY_SOURCES,
-      qualificationProfiles: QUALIFICATION_PROFILES
+      qualificationProfiles: QUALIFICATION_PROFILES,
+      scheduler: {
+        durable: isSchedulerDurable(),
+        internalEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        staggeredCadence: {
+          discover: '0 * * * *',
+          validate: '10 * * * *',
+          execute: '20 * * * *'
+        }
+      }
     });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/scheduler/jobs') {
+    return send(res, 200, {
+      durable: isSchedulerDurable(),
+      internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+      jobs: await listScheduledJobs()
+    });
+  }
+
+  if (req.method === 'POST' && url.pathname.match(/^\/api\/scheduler\/jobs\/([^/]+)\/trigger$/)) {
+    const match = url.pathname.match(/^\/api\/scheduler\/jobs\/([^/]+)\/trigger$/);
+    const workerName = decodeURIComponent(match[1]).toLowerCase();
+    const input = await body(req);
+    const claimedBy = input.claimedBy || 'manual-trigger';
+
+    const claim = await claimScheduledJob(workerName, { claimedBy });
+    if (!claim) {
+      return send(res, 409, {
+        error: 'Job cannot be claimed (not due or active lease owned by another worker)',
+        workerName
+      });
+    }
+
+    let result = null;
+    let error = null;
+    try {
+      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy });
+      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy });
+      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy });
+      else throw new Error(`Unknown worker: ${workerName}`);
+
+      await finishScheduledJobRun({
+        jobId: claim.job.id,
+        runKey: claim.runKey,
+        status: 'COMPLETED',
+        result
+      });
+      return send(res, 200, { ok: true, claim, result });
+    } catch (err) {
+      error = err.message;
+      await finishScheduledJobRun({
+        jobId: claim.job.id,
+        runKey: claim.runKey,
+        status: 'FAILED',
+        error
+      });
+      return send(res, 500, { ok: false, claim, error });
+    }
   }
 
   if (req.method === 'GET' && url.pathname === '/api/capabilities') {

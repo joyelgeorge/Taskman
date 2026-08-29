@@ -14,6 +14,12 @@ import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
 } from './task-store.js';
+import {
+  initializeScheduler, reconcileOverdueJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable, DEFAULT_SCHEDULES
+} from './durable-scheduler.js';
+import { runDiscoverWorker } from './workers/discover.js';
+import { runValidateWorker } from './workers/validate.js';
+import { runExecuteWorker } from './workers/execute.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -21,6 +27,7 @@ const port = Number(process.env.PORT || 3000);
 const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 let brainTimer = null;
+let internalSchedulerTimer = null;
 
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -130,6 +137,61 @@ function startBrainScheduler() {
   console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
 }
 
+async function tickInternalScheduler() {
+  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') return;
+  const now = new Date();
+
+  for (const scheduleDef of DEFAULT_SCHEDULES) {
+    const workerName = scheduleDef.workerName;
+    const claim = await claimScheduledJob(scheduleDef.id, {
+      now,
+      claimedBy: `taskman-internal-scheduler-${process.pid}`
+    });
+
+    if (!claim) continue;
+
+    console.log(`[Taskman Scheduler] Claimed scheduled firing for worker: ${workerName} (runKey: ${claim.runKey})`);
+
+    let result = null;
+    let error = null;
+    try {
+      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy: claim.claimedBy });
+      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy: claim.claimedBy });
+      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy: claim.claimedBy });
+
+      await finishScheduledJobRun({
+        jobId: claim.job.id,
+        runKey: claim.runKey,
+        status: 'COMPLETED',
+        result,
+        now: new Date()
+      });
+      console.log(`[Taskman Scheduler] Completed scheduled firing for worker: ${workerName}`);
+    } catch (err) {
+      error = err.message;
+      console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
+      await finishScheduledJobRun({
+        jobId: claim.job.id,
+        runKey: claim.runKey,
+        status: 'FAILED',
+        error,
+        now: new Date()
+      });
+    }
+  }
+}
+
+function startInternalSchedulerLoop() {
+  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') {
+    console.log('[Taskman Scheduler] Internal scheduler loop disabled (TASKMAN_INTERNAL_SCHEDULER_ENABLED != true)');
+    return;
+  }
+  console.log('[Taskman Scheduler] Internal durable scheduler loop enabled. Polling schedule queue every 15s.');
+  tickInternalScheduler().catch(console.error);
+  internalSchedulerTimer = setInterval(() => tickInternalScheduler().catch(console.error), 15_000);
+  internalSchedulerTimer.unref();
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -145,6 +207,8 @@ const server = http.createServer(async (req, res) => {
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
+        schedulerDurable: isSchedulerDurable(),
+        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
         brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
       });
     }
@@ -213,8 +277,13 @@ if (databaseEnabled) {
   const migration = await migrate();
   const scenarios = await seedScenarios();
   const tasks = await seedCoreTasks();
-  console.log('Taskman database ready', { migration, scenarios, tasks });
+  await initializeScheduler();
+  const overdue = await reconcileOverdueJobs();
+  console.log('Taskman database ready', { migration, scenarios, tasks, overdueCount: overdue.length });
+} else {
+  await initializeScheduler();
 }
 await restoreSchedules();
 startBrainScheduler();
+startInternalSchedulerLoop();
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));

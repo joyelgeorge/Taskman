@@ -102,7 +102,7 @@ function normalizeTask(task = {}) {
       acceptanceCriteriaClear: Boolean(task.acceptance_criteria || task.acceptanceCriteria || task.description),
       deliveryPathExecutable: true,
       noContradictoryInstructions: !task.blocked && !task.do_not_claim,
-      payoutPathExecutable: Boolean(task.payout_method || task.escrow_funded ?? task.escrowFunded),
+      payoutPathExecutable: Boolean(task.payout_method || (task.escrow_funded ?? task.escrowFunded)),
       noRecurringManualStep: task.requires_call !== true && task.requires_manual_presence !== true,
       noUpfrontSpend: Number(task.worker_cost || task.upfront_cost || 0) === 0,
       noUnsupportedSigning: task.requires_wallet_signature !== true,

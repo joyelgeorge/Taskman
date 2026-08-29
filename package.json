@@ -8,6 +8,10 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "migrate": "node scripts/migrate.js",
+    "worker": "node src/worker.js",
+    "worker:discover": "node src/workers/discover.js",
+    "worker:validate": "node src/workers/validate.js",
+    "worker:execute": "node src/workers/execute.js",
     "import:history": "node scripts/import-opportunity-history.js",
     "import:money-flow-history": "node scripts/import-money-flow-search-history.js",
     "test": "node --test"

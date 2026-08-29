@@ -15,8 +15,9 @@ import {
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
 } from './task-store.js';
 import {
-  initializeScheduler, reconcileOverdueJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable, DEFAULT_SCHEDULES
+  initializeScheduler, reconcileOverdueJobs, claimScheduledJob, isSchedulerDurable, DEFAULT_SCHEDULES
 } from './durable-scheduler.js';
+import { runClaimedSchedule } from './scheduled-runner.js';
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
@@ -152,31 +153,24 @@ async function tickInternalScheduler() {
 
     console.log(`[Taskman Scheduler] Claimed scheduled firing for worker: ${workerName} (runKey: ${claim.runKey})`);
 
-    let result = null;
-    let error = null;
-    try {
-      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy: claim.claimedBy });
+    const outcome = await runClaimedSchedule({
+      claim,
+      workerName,
+      runWorker: async ({ claimedBy }) => {
+        if (workerName === 'discover') return runDiscoverWorker({ claimedBy });
+        if (workerName === 'validate') return runValidateWorker({ claimedBy });
+        if (workerName === 'execute') return runExecuteWorker({ claimedBy });
+        throw new Error(`Unknown scheduled worker: ${workerName}`);
+      }
+    });
 
-      await finishScheduledJobRun({
-        jobId: claim.job.id,
-        runKey: claim.runKey,
-        status: 'COMPLETED',
-        result,
-        now: new Date()
-      });
+    if (!outcome.ok) {
+      console.warn(`[Taskman Scheduler] Fenced completion for worker: ${workerName}`, outcome.finishResult);
+    } else if (outcome.error) {
+      console.error(`[Taskman Scheduler] Worker failed: ${workerName}`, outcome.error);
+    } else {
       console.log(`[Taskman Scheduler] Completed scheduled firing for worker: ${workerName}`);
-    } catch (err) {
-      error = err.message;
-      console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
-      await finishScheduledJobRun({
-        jobId: claim.job.id,
-        runKey: claim.runKey,
-        status: 'FAILED',
-        error,
-        now: new Date()
-      });
+    }
     }
   }
 }

@@ -18,6 +18,10 @@ const providers = [
     }
   },
   {
+    id: 'openai', env: 'OPENAI_API_KEY', model: 'gpt-4o-mini',
+    async call(prompt, key) { return openAICompatible('https://api.openai.com/v1/chat/completions', this.model, prompt, key); }
+  },
+  {
     id: 'groq', env: 'GROQ_API_KEY', model: 'llama-3.1-8b-instant',
     async call(prompt, key) { return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key); }
   },

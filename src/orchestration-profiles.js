@@ -83,10 +83,12 @@ export const DEFAULT_CAPABILITIES = Object.freeze({
   'funds.move': false
 });
 
+import { getRuntimeCapabilityMap } from './capability-registry.js';
+
 export function resolveQueueName(name) {
   return LEGACY_QUEUE_ALIASES[name] || name;
 }
 
 export function capabilitySnapshot(overrides = {}) {
-  return { ...DEFAULT_CAPABILITIES, ...overrides };
+  return getRuntimeCapabilityMap(overrides);
 }

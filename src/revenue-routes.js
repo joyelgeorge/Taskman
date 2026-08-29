@@ -13,17 +13,12 @@ import {
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { readJsonBody } from './limits.js';
 
 function send(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
   res.end(JSON.stringify(body));
   return true;
-}
-
-async function body(req) {
-  let raw = '';
-  for await (const chunk of req) raw += chunk;
-  return raw ? JSON.parse(raw) : {};
 }
 
 export async function handleRevenueRequest(req, res, url) {
@@ -73,7 +68,7 @@ export async function handleRevenueRequest(req, res, url) {
   if (req.method === 'POST' && url.pathname.match(/^\/api\/scheduler\/jobs\/([^/]+)\/trigger$/)) {
     const match = url.pathname.match(/^\/api\/scheduler\/jobs\/([^/]+)\/trigger$/);
     const workerName = decodeURIComponent(match[1]).toLowerCase();
-    const input = await body(req);
+    const input = await readJsonBody(req);
     const claimedBy = input.claimedBy || 'manual-trigger';
 
     const claim = await claimScheduledJob(workerName, { claimedBy });
@@ -116,7 +111,7 @@ export async function handleRevenueRequest(req, res, url) {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/qualification') {
-    const input = await body(req);
+    const input = await readJsonBody(req);
     const candidate = normalizeCandidate(input.candidate || input);
     const profile = input.profile || candidate.profile || 'programmable_money_flow_v1';
     const capabilities = capabilitySnapshot(input.capabilities || {});
@@ -136,7 +131,7 @@ export async function handleRevenueRequest(req, res, url) {
     }));
   }
   if (req.method === 'POST' && list) {
-    const input = await body(req);
+    const input = await readJsonBody(req);
     const records = Array.isArray(input) ? input : [input];
     const output = [];
     const queueName = resolveQueueName(decodeURIComponent(list[1]));
@@ -146,7 +141,7 @@ export async function handleRevenueRequest(req, res, url) {
 
   const claim = url.pathname.match(/^\/api\/revenue\/queues\/([^/]+)\/claim$/);
   if (req.method === 'POST' && claim) {
-    const input = await body(req);
+    const input = await readJsonBody(req);
     const queueName = resolveQueueName(decodeURIComponent(claim[1]));
     return send(res, 200, await claimRevenueRecords(queueName, {
       limit: input.limit || 10,
@@ -156,14 +151,14 @@ export async function handleRevenueRequest(req, res, url) {
 
   const record = url.pathname.match(/^\/api\/revenue\/records\/([^/]+)$/);
   if (req.method === 'PATCH' && record) {
-    const updated = await updateRevenueRecord(record[1], await body(req));
+    const updated = await updateRevenueRecord(record[1], await readJsonBody(req));
     return updated ? send(res, 200, updated) : send(res, 404, { error: 'record not found' });
   }
 
   const state = url.pathname.match(/^\/api\/revenue\/state\/([^/]+)$/);
   if (req.method === 'GET' && state) return send(res, 200, { key: state[1], value: await getRevenueState(state[1]) });
   if (req.method === 'PUT' && state) {
-    const input = await body(req);
+    const input = await readJsonBody(req);
     return send(res, 200, await setRevenueState(state[1], input.value ?? input));
   }
   return false;

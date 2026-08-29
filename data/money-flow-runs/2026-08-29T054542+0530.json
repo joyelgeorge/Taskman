@@ -1,0 +1,98 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T05:45:42+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "processor balance eligible -> free payout ETA and paid speed tiers known -> external liquidity and obligations reveal actual shortfall -> choose zero/next-day/same-day/instant and minimum amount -> verify acceleration fees avoided",
+    "why_survived": "Fresh families tested this run did not beat it. The leader still has recurring paid-speed events, independent machine-readable balances/ETAs, deterministic marginal fees, and a read-only intervention. The key unresolved issue remains whether paid acceleration materially exceeds genuine liquidity need.",
+    "strongest_evidence": "Prior Adyen/Vagaro evidence establishes repeated instant-payout use; current processor fee ladders make the monetary delta deterministic.",
+    "closest_threat": "First-party payout controls plus treasury forecasting can absorb the wedge; exact cross-system minimum-necessary-acceleration functionality remains unconfirmed.",
+    "smallest_intervention": "Read PSP balances, settlement ETAs and fee tiers plus bank liquidity and near-term obligations; recommend no acceleration or the cheapest sufficient speed and minimum amount. No custody or payout execution.",
+    "monetization": "Small per-success recommendation fee, micro subscription, or capped share of verified acceleration fees avoided versus competent cash management.",
+    "biggest_unresolved_risk": "Repeated accelerated payouts may be rational working-capital demand rather than avoidable leakage.",
+    "next_research_test": "Find merchant-level or anonymized evidence connecting accelerated payout amounts to external liquidity and obligations; calculate avoidable acceleration ratio. Kill if immaterial or if an exact incumbent is found."
+  },
+  "candidates_tested": [
+    {
+      "id": "ap-unapplied-vendor-credit-auto-netting",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8: exact or sufficiently close AP products already track and automatically apply vendor credits before payment, while recovery-audit software explicitly detects missed credits and overpayments.",
+      "sources": [
+        "https://www.lido.app/automations/extract-credit-memo-data",
+        "https://cloudsquid.io/solutions/recovery-audits/",
+        "https://help.sap.com/docs/CONCUR_INVOICE/d9aa00d6d10d4318804a4f12ac80230e/886d71da707b45e7a915e5c30bedc56e.html"
+      ]
+    },
+    {
+      "id": "snowflake-cloud-services-threshold-timing-optimizer",
+      "status": "demoted",
+      "score": 43,
+      "why": "The daily 10% cloud-services billing threshold is real and machine-readable, but Snowflake already documents direct remediation for dynamic tables and several Snowflake FinOps products continuously optimize cloud-services/compute. A timing-only wedge is narrow and risks becoming ordinary Snowflake cost optimization.",
+      "sources": [
+        "https://docs.snowflake.com/en/user-guide/dynamic-tables/cost",
+        "https://docs.snowflake.com/en/user-guide/cost-understanding-compute",
+        "https://snoptimizer.com/solution/",
+        "https://c.select.dev/"
+      ]
+    },
+    {
+      "id": "cpaas-idle-phone-number-release-optimizer",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8 / monetization: Twilio itself identifies inactive numbers using traffic/configuration status, explicitly recommends releasing them to stop recurring charges, and exposes API deletion. The residual wedge is too close to a first-party checklist/checkbox.",
+      "sources": [
+        "https://www.twilio.com/docs/usage/manage-unused-resources",
+        "https://help.twilio.com/articles/223183028-Cancel-or-release-a-Twilio-number",
+        "https://help.twilio.com/articles/223182908-How-much-does-a-phone-number-cost-"
+      ]
+    },
+    {
+      "id": "hotel-ota-commission-cancellation-recovery",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8: multiple exact hotel products audit OTA commissions for cancellations, no-shows, wrong rates, and virtual-card gaps and prepare/execute recovery workflows.",
+      "sources": [
+        "https://getstayaid.com/",
+        "https://www.reconcileota.com/",
+        "https://otasystems.ai/",
+        "https://www.otarecovery.com/"
+      ]
+    }
+  ],
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45},
+    {"rank": 4, "id": "off-cycle-payroll-deferral-batching-optimizer", "score": 43}
+  ],
+  "new_search_rules": [
+    "If the first party already exposes both an inactivity signal and the exact one-click/API cost-elimination action, treat the wedge as a likely checkbox rather than a defensible programmable tollbooth unless a materially richer cross-system decision remains.",
+    "Threshold quirks such as Snowflake's daily included-credit boundary are not enough by themselves; prove that timing/reconfiguration creates incremental savings beyond first-party documented remediation and existing FinOps optimizers."
+  ]
+}

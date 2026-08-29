@@ -6,6 +6,7 @@ import {
 function send(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
   res.end(JSON.stringify(body));
+  return true;
 }
 
 async function body(req) {

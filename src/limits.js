@@ -74,8 +74,6 @@ export function createDeadline(timeoutMs, {
       controller.abort(new TaskmanError(message, { code }));
     }
   }, timeoutMs);
-  timer.unref?.();
-
   return {
     signal: controller.signal,
     cleanup() {

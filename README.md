@@ -1,5 +1,7 @@
 # Taskman
 
+**PRIVATE. Personal. Do not change visibility to Public. Do not open-source. Do not enable GitHub Pages.**
+
 Taskman is a private, lightweight orchestration system designed to turn **data + deterministic algorithms + external AI intelligence + execution interfaces** into repeatable money-producing workflows.
 
 ## Top-level goal

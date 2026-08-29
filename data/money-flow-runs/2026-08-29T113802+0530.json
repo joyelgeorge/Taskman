@@ -1,0 +1,92 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T11:38:02+05:30",
+  "scenario_id": "programmable-money-flow-search",
+  "persistence_scope": "revenue-opportunity research only",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "card-authorization-integrity-fee-prevention-engine",
+    "name": "Card authorization integrity-fee prevention engine",
+    "score": 49,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 3,
+      "build_simplicity": 4
+    },
+    "state_transition": "approved authorization -> capture/reversal absent as scheme deadline approaches -> combine PSP lifecycle state with merchant order/fulfillment state -> recommend CAPTURE/REVERSE/NO ACTION before integrity-fee trigger -> reconcile avoided fee",
+    "why_survived": "Fresh 2026 fee schedules confirm materially sized deterministic penalties: Mastercard processing-integrity fees reach 0.452% with a $0.113 minimum in Moneris' published 2026 schedule, Visa US misuse-of-authorization is $0.15 per non-compliant transaction, and Mastercard introduced a separate 0.0339% authorization-validity fee for final transactions cleared 72-168 hours after authorization. The corrective state is machine-readable and can remain recommendation-only. However Tagada now provides cross-processor authorization-expiry monitoring and automatic capture/re-authorization, reducing competitive whitespace from 4 to 3.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "Moneris 2026: Mastercard Processing Integrity Final Auth and Not Reversed/Cleared Preauthorization fee 0.452% with $0.113 minimum.",
+      "Moneris/TD 2026: Mastercard Authorization Validity Fee 0.0339% on final transactions cleared 72-168 hours after authorization; daily batch close can avoid it.",
+      "Visa US misuse-of-authorization fee increased to $0.15 per non-compliant transaction in 2025.",
+      "Tagada tracks expiry windows across processors and can alert/auto-capture/re-authorize, demonstrating strong adjacent competition but not an explicit fulfillment-aware stale-authorization reversal-before-integrity-fee product."
+    ],
+    "closest_threat": "Tagada payment orchestration is now the strongest adjacent threat because it centrally tracks cross-processor authorization windows and can auto-capture or re-authorize. Shopify also warns before authorization expiry and supports capture-at-fulfillment. Broad scheme-fee intelligence products such as CardTraq, SchemeSense and Recivr cover fee visibility/optimization mainly for issuers/acquirers/processors. No exact merchant-side cross-PSP fulfillment-aware reversal sentinel was found.",
+    "smallest_intervention": "Read authorization/capture/reversal webhooks and order/fulfillment state; maintain network/MCC/region deadline rules; output REVERSE NOW, CAPTURE NOW, or NO ACTION plus projected avoidable fee. Keep execution merchant-confirmed.",
+    "monetization": "Per prevented-fee event, capped share of reconciled integrity fees avoided, or low monitoring fee only for merchants whose measured exposure exceeds the fee.",
+    "biggest_unresolved_risk": "Incidence remains unquantified. At Visa's $0.15 misuse fee, low stale-auth rates may not support a product; Mastercard percentage penalties improve economics but may affect a limited subset. Tagada-like orchestration may absorb the control for sophisticated merchants.",
+    "next_research_test": "Obtain merchant/acquirer evidence of processing-integrity fee incidence and dollars per 100k authorizations, segmented by delayed-capture vertical. Search specifically for products that automatically reverse cancelled/unfulfillable authorizations before scheme integrity deadlines. If incidence is low or Tagada/orchestration products already perform this exact reversal decision, demote or reject."
+  },
+  "serious_new_candidate": {
+    "id": "merchant-card-network-behavior-fee-sentinel",
+    "name": "Merchant card-network behavior-fee sentinel",
+    "score": 47,
+    "state_transition": "authorization/decline/capture behavior accumulates toward Visa/Mastercard behavioral-fee threshold -> predict fee before threshold -> recommend configuration/remediation action -> reconcile avoided fee",
+    "why_survived": "Adyen documents Visa Data Quality fees and Mastercard excessive-authorization fees with explicit machine-readable thresholds; Moneris documents Merchant Advice Code and processing-integrity fee increases. This broadens the money pool beyond stale authorizations while staying potentially read-only.",
+    "fatal_or_unresolved_risk": "Several remedies require changing retry/risk behavior in the transaction path, and scheme-fee optimization is already served broadly by CardTraq, SchemeSense, PayIP, Recivr and processor-native controls. Therefore it remains below the narrow leader."
+  },
+  "fresh_family_findings": [
+    {"family":"restaurant/service no-show fee recovery","status":"rejected","reason":"Exact first-party/booking software already stores cards and automatically charges no-show fees when status changes, e.g. Resos and SchedulingKit."},
+    {"family":"commercial energy demand-charge peak optimizer","status":"rejected","reason":"Exact real-time meter/battery/control products already forecast peaks and automatically dispatch/load-shift, e.g. Torus and VolTwin."},
+    {"family":"off-cycle payroll batching","status":"demoted","score":43,"reason":"Fee is real and recurring (UKG lists $55 per off-cycle payroll), but economics are modest and legal/pay-date constraints reduce the decision space."},
+    {"family":"creator payout-fee batching","status":"weak","score":41,"reason":"Per-payout fees and instant-vs-standard spreads are real, but the optimization is usually an obvious cash-timing choice and easy self-serve arithmetic."}
+  ],
+  "runner_ups": [
+    {"rank":2,"id":"merchant-card-network-behavior-fee-sentinel","score":47},
+    {"rank":3,"id":"cloud-support-plan-right-sizing-engine","score":46},
+    {"rank":4,"id":"merchant-settlement-acceleration-decision-engine","score":45},
+    {"rank":5,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45}
+  ],
+  "promotions": ["merchant-card-network-behavior-fee-sentinel"],
+  "demotions": ["card-authorization-integrity-fee-prevention-engine: 50->49 due stronger adjacent competition"],
+  "rejections": ["restaurant-service-no-show-fee-recovery","commercial-energy-demand-charge-peak-optimizer"],
+  "new_search_rules": [
+    "For network behavioral-fee wedges, measure incidence separately from fee rate; a high deterministic penalty does not prove a large recoverable pool.",
+    "Treat cross-processor orchestration that already monitors the same state transition as a serious Gate-8 threat even when it markets revenue capture rather than fee prevention.",
+    "Prefer the narrow corrective action that does not require sitting in the transaction path; if prevention requires blocking/retrying live payments, penalize Gate 7 and permission scores.",
+    "Behavioral scheme fees may form a larger adjacent family, but do not broaden the leader unless the umbrella remains monetizable and less crowded than the narrow wedge."
+  ],
+  "source_urls": [
+    "https://www.moneris.com/support/additional-resources/payment-card-network-fee-updates",
+    "https://www.td.com/ca/en/business-banking/merchant-solutions/fee-change-summary",
+    "https://verisave.com/blog/january-2025-credit-card-processing-rate-changes",
+    "https://www.tagada.io/glossary/capture",
+    "https://help.adyen.com/knowledge/finance/invoices/what-are-non-transactional-scheme-fees",
+    "https://www.cardtraq.com/",
+    "https://www.schemesense.com/",
+    "https://recivr.com/",
+    "https://resos.com/feature/no-show-fee/",
+    "https://www.ukg.com/ukg-payroll-services-miscellaneous-pricing-schedule-current"
+  ]
+}

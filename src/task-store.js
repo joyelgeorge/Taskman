@@ -17,9 +17,15 @@ function rowToTask(row) {
   };
 }
 
+import { normalizeIntervalMinutes } from './interval-validator.js';
+
 export async function createTaskRecord({ id, scenarioId, title, prompt, intervalMinutes }) {
+  const norm = normalizeIntervalMinutes(intervalMinutes);
+  if (!norm.valid) throw new Error(norm.error);
+  const canonicalInterval = norm.value;
+
   if (!databaseEnabled) {
-    const task = { id, scenarioId, title, prompt, intervalMinutes, status: 'active', createdAt: new Date().toISOString() };
+    const task = { id, scenarioId, title, prompt, intervalMinutes: canonicalInterval, status: 'active', createdAt: new Date().toISOString() };
     memory.tasks.unshift(task);
     return task;
   }
@@ -37,15 +43,15 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
       [id, prompt]
     );
 
-    if (intervalMinutes) {
+    if (canonicalInterval) {
       await client.query(
         `INSERT INTO triggers (task_id, type, interval_seconds, timezone, next_fire_at, enabled)
          VALUES ($1,'interval',$2,'Asia/Kolkata',now() + ($2 || ' seconds')::interval,TRUE)`,
-        [id, Math.max(60, Math.round(intervalMinutes * 60))]
+        [id, canonicalInterval * 60]
       );
     }
 
-    return rowToTask({ ...taskResult.rows[0], source_prompt: prompt, interval_seconds: intervalMinutes ? intervalMinutes * 60 : null });
+    return rowToTask({ ...taskResult.rows[0], source_prompt: prompt, interval_seconds: canonicalInterval ? canonicalInterval * 60 : null });
   });
 }
 

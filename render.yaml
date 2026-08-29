@@ -1,0 +1,45 @@
+# render.yaml — Render deployment configuration for Taskman
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: taskman
+    runtime: node
+    plan: free                        # upgrade to starter/standard for always-on
+    region: oregon                    # us-west-2
+    branch: main
+    buildCommand: npm install --omit=dev && node scripts/migrate.js
+    startCommand: npm start
+    healthCheckPath: /api/status
+    autoDeploy: true                  # redeploy on every push to main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: taskman
+          property: port
+      - key: TASKMAN_BASE_URL
+        fromService:
+          type: web
+          name: taskman
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskman-db
+          property: connectionString
+      # Set manually in Render dashboard — never commit values:
+      - key: TASKMAN_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: MOLTJOBS_API_KEY
+        sync: false
+
+databases:
+  - name: taskman-db
+    databaseName: taskman
+    user: taskman
+    plan: free                        # upgrade to starter for production persistence
+    region: oregon

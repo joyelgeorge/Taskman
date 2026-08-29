@@ -7,6 +7,8 @@ Taskman now supports PostgreSQL as the durable store for its evolving brain.
 - scenarios and their structured data
 - tasks and immutable task versions
 - triggers/schedules
+- scheduled_jobs and scheduled_job_runs (durable scheduler leases and idempotency keys)
+- revenue_records and revenue_scan_state (canonical candidate_queue, validation_queue, execution_queue, economic_outcomes, learning_inference)
 - runs and run steps
 - append-only knowledge events
 - derived knowledge snapshots

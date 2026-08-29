@@ -185,8 +185,60 @@ Learning is shared across the entire pipeline. Each learning record should inclu
 
 Old guidance should be periodically classified as useful, misleading or inconclusive so the system can self-correct.
 
+## Durable Scheduler Architecture
+
+```text
+Cron triggers.
+PostgreSQL coordinates.
+Taskman owns run state.
+Workers are reusable/stateless where possible.
+```
+
+### Schedule Cadence (Staggered Hourly Defaults)
+
+- `:00` (`0 * * * *`) — **Taskman Discover**: Scan sources, normalize hypotheses, qualify with hard gates, enqueue into `candidate_queue`.
+- `:10` (`10 * * * *`) — **Taskman Validate**: Claim candidates, reuse evidence, perform adversarial checks, promote to `validation_queue` and `execution_queue`.
+- `:20` (`20 * * * *`) — **Taskman Execute**: Claim executable items, check capability registry, run deterministic actions, record in `economic_outcomes`.
+
+### Coordination & Durability
+
+1. **PostgreSQL Coordination**: Atomic lease acquisition via `FOR UPDATE SKIP LOCKED` on `scheduled_jobs`.
+2. **Idempotency Keys**: Each scheduled firing generates a deterministic `run_key` (`{jobId}:{YYYY-MM-DDTHH:MM:00Z}`) recorded in `scheduled_job_runs`.
+3. **Lease Expiry & Crash Recovery**: Crashed workers release their lease after expiry (`lease_expires_at <= now()`), allowing automatic recovery without duplicate executions.
+4. **Bounded Catch-Up**: On restart, overdue firings execute at most once before calculating the next future interval.
+5. **Memory Fallback**: When `DATABASE_URL` is omitted, an in-memory scheduler operates for local development, clearly reporting non-durable mode.
+
+### Controlled Internal Scheduler Cutover
+
+To run the internal scheduler loop inside the Taskman process:
+
+```bash
+export TASKMAN_INTERNAL_SCHEDULER_ENABLED=true
+```
+
+Or trigger individual worker runs via OS cron / external orchestrators:
+
+```bash
+# Crontab example
+0 * * * *   cd /path/to/taskman && node src/worker.js discover
+10 * * * *  cd /path/to/taskman && node src/worker.js validate
+20 * * * *  cd /path/to/taskman && node src/worker.js execute
+```
+
+### Worker Entrypoints
+
+- CLI: `node src/worker.js <discover|validate|execute|all>`
+- Individual workers:
+  - `node src/workers/discover.js`
+  - `node src/workers/validate.js`
+  - `node src/workers/execute.js`
+- API endpoints:
+  - `GET /api/scheduler/jobs`
+  - `POST /api/scheduler/jobs/:workerName/trigger`
+
 ## Why this replaces overlapping agents
 
 The former Money Flow Wedge Scout and TaskBounty Queue Watch scheduled jobs are absorbed as discovery-source/profile combinations. The former Autonomous Income Engine becomes Taskman Execute. Revenue Explorer becomes Taskman Discover. Opportunity Deep Dive becomes Taskman Validate.
 
 Instead of multiple large prompts each implementing their own search, scoring, validation and execution logic, Taskman now centralizes those concerns into reusable code and narrow worker roles.
+

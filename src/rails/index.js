@@ -43,4 +43,4 @@ export function disableRailExecution(name) {
   return setRailMode(name, 'read_only');
 }
 
-export { evaluateExecutionGate, assertExecutionAllowed };
+export { listRails, registerRail, getRail, setRailMode, evaluateExecutionGate, assertExecutionAllowed };

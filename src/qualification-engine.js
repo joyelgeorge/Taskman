@@ -1,4 +1,5 @@
 import { QUALIFICATION_PROFILES } from './orchestration-profiles.js';
+import { getRuntimeCapabilityMap } from './capability-registry.js';
 
 function clamp01(value) {
   const n = Number(value);
@@ -24,7 +25,22 @@ export function qualifyCandidate(candidate = {}, profileName = 'programmable_mon
 
   const normalized = positiveWeight > 0 ? Math.max(0, Math.min(10, (weighted / positiveWeight) * 10)) : 0;
   const hardGateFailures = profile.hardGates.filter(key => clamp01(metrics[key]) < 0.5);
+  
+  // Capabilities check
+  const capabilities = getRuntimeCapabilityMap();
+  const required = Array.isArray(candidate.requiredCapabilities) ? candidate.requiredCapabilities : [];
+  const missingCaps = required.filter(key => !capabilities[key]);
+
   const passes = normalized >= profile.threshold && hardGateFailures.length === 0;
+  const evidenceList = Array.isArray(candidate.evidence) ? candidate.evidence : [];
+  const hasEvidence = evidenceList.length > 0 || Boolean(candidate.gateEvidence && Object.keys(candidate.gateEvidence).length > 0);
+
+  let recommendedStatus = 'REJECTED';
+  if (passes) {
+    recommendedStatus = missingCaps.length === 0 ? 'EXECUTABLE' : 'SETUP_CANDIDATE';
+  } else if (hardGateFailures.length === 0 && normalized >= 5.0) {
+    recommendedStatus = 'WATCH';
+  }
 
   return {
     profile: profileName,
@@ -32,7 +48,10 @@ export function qualifyCandidate(candidate = {}, profileName = 'programmable_mon
     threshold: profile.threshold,
     passes,
     hardGateFailures,
-    components
+    components,
+    missingCapabilities: missingCaps,
+    hasEvidence,
+    recommendedStatus
   };
 }
 
@@ -49,6 +68,7 @@ export function normalizeCandidate(input = {}) {
     trigger: input.trigger || null,
     estimatedValue: input.estimatedValue ?? input.estimated_value ?? null,
     evidence: Array.isArray(input.evidence) ? input.evidence : [],
+    gateEvidence: input.gateEvidence || {},
     sourceTimestamp: input.sourceTimestamp || input.source_timestamp || null,
     confidence: clamp01(input.confidence),
     metrics: input.metrics || input.scores || {},

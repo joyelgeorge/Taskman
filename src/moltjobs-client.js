@@ -49,3 +49,92 @@ export async function sendMoltJobsHeartbeat({
   }
   return body;
 }
+
+export async function getAgentIdentity({
+  apiKey = process.env.MOLTJOBS_API_KEY,
+  baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
+  fetchImpl = fetch
+} = {}) {
+  if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
+  const root = baseUrl.replace(/\/$/, '');
+  const response = await fetchImpl(`${root}/agents/me`, {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey, 'accept': 'application/json' }
+  });
+  if (!response.ok) throw new Error(`MoltJobs identity check failed: HTTP ${response.status}`);
+  const data = await response.json();
+  // Return non-secret identity fields only
+  return {
+    id: data.id || data.agent_id || null,
+    name: data.name || data.agent_name || null,
+    status: data.status || 'ACTIVE',
+    reputation: data.reputation ?? null,
+    verified: Boolean(data.verified)
+  };
+}
+
+export async function listOpenJobs({
+  apiKey = process.env.MOLTJOBS_API_KEY,
+  baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
+  fetchImpl = fetch
+} = {}) {
+  if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
+  const root = baseUrl.replace(/\/$/, '');
+  const response = await fetchImpl(`${root}/jobs?status=open`, {
+    method: 'GET',
+    headers: { 'X-Api-Key': apiKey, 'accept': 'application/json' }
+  });
+  if (!response.ok) throw new Error(`MoltJobs list jobs failed: HTTP ${response.status}`);
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data.jobs || []);
+}
+
+export function evaluateJobExecutionGate(job = {}) {
+  const payerVerified = Boolean(job.escrow_funded ?? job.escrowFunded ?? job.payer_verified);
+  const taskOpen = ['open', 'available', 'active'].includes(String(job.status || '').toLowerCase());
+  const acceptanceCriteriaClear = Boolean(job.acceptance_criteria || job.acceptanceCriteria || job.description);
+  const deliveryPathAccessible = true;
+  const noContradictions = !job.blocked && !job.do_not_claim;
+  const payoutPathWorks = Boolean(job.payout_method || (job.escrow_funded ?? job.escrowFunded));
+  const zeroUpfrontSpend = Number(job.worker_cost || job.upfront_cost || 0) === 0;
+  const noUnsupportedSigning = job.requires_wallet_signature !== true && job.requires_gas !== true;
+  const noRecurringManualStep = job.requires_call !== true && job.requires_manual_presence !== true;
+  const completeDeliverableProducible = Boolean(job.deliverable_schema || job.title || job.name);
+
+  const allPassed = payerVerified && taskOpen && acceptanceCriteriaClear && deliveryPathAccessible &&
+                    noContradictions && payoutPathWorks && zeroUpfrontSpend && noUnsupportedSigning &&
+                    noRecurringManualStep && completeDeliverableProducible;
+
+  let classification = 'REJECTED';
+  let reason = 'Failed execution chain hard gates';
+
+  if (allPassed) {
+    classification = 'EXECUTABLE';
+    reason = 'All execution chain hard gates passed with verified payout and acceptance criteria';
+  } else if (!payerVerified || !payoutPathWorks) {
+    classification = 'WATCH';
+    reason = 'Unverified payer or unconfirmed escrow/payout path';
+  } else if (!acceptanceCriteriaClear || !completeDeliverableProducible) {
+    classification = 'SETUP-CANDIDATE';
+    reason = 'Missing clear acceptance criteria or deliverable definition requires setup';
+  }
+
+  return {
+    passed: allPassed,
+    classification,
+    reason,
+    gates: {
+      payerVerified,
+      taskOpen,
+      acceptanceCriteriaClear,
+      deliveryPathAccessible,
+      noContradictions,
+      payoutPathWorks,
+      zeroUpfrontSpend,
+      noUnsupportedSigning,
+      noRecurringManualStep,
+      completeDeliverableProducible
+    }
+  };
+}
+

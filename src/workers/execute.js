@@ -27,10 +27,13 @@ import {
  * - Candidate estimatedValue is NEVER realized attributable value.
  * - Realized attributableValue must be 0 / null until verified by an actual execution outcome.
  */
+import { sharedReasoningEngine } from '../reasoning-engine.js';
+
 export async function runExecuteWorker({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
-  executorFn = null
+  executorFn = null,
+  mockAiReasoning = null
 } = {}) {
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
@@ -43,6 +46,20 @@ export async function runExecuteWorker({
     const candidate = item.payload.candidate || item.payload;
     const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
 
+    let aiPlan = null;
+    if (sharedReasoningEngine.isConfigured() || mockAiReasoning) {
+      try {
+        const planResult = await sharedReasoningEngine.planExecution({
+          candidate,
+          availableCapabilities: capabilities,
+          mockProvider: mockAiReasoning
+        });
+        if (planResult.ok) aiPlan = planResult.data;
+      } catch {
+        // Fall back gracefully
+      }
+    }
+
     let outcomeStatus = 'BLOCKED';
     let outcomeReason = 'No concrete authorized execution adapter available for candidate';
     let attributableValue = 0; // Invariant: candidate estimates are NOT realized value
@@ -54,7 +71,7 @@ export async function runExecuteWorker({
       outcomeReason = `Missing required capabilities: ${missing.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
-        stepOutput = await executorFn(candidate, capabilities);
+        stepOutput = await executorFn(candidate, capabilities, aiPlan);
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
         // Only set attributable value if verified and provided by real executor output

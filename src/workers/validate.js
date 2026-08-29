@@ -158,10 +158,13 @@ export function evaluateEvidenceGates(candidate = {}) {
  * - Missing evidence must produce NEEDS_EVIDENCE.
  * - Programmable-money-flow THRESHOLD_CROSSED requires explicit evidence-backed PASS on all 8 gates.
  */
+import { sharedReasoningEngine } from '../reasoning-engine.js';
+
 export async function runValidateWorker({
   limit = 10,
   claimedBy = 'taskman-validate-worker',
-  validatorFn = null
+  validatorFn = null,
+  mockAiReasoning = null
 } = {}) {
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
@@ -173,8 +176,27 @@ export async function runValidateWorker({
   const needsEvidence = [];
 
   for (const item of claimed) {
-    const candidate = item.payload.candidate || item.payload;
+    let candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
+
+    // If AI reasoning is available and candidate is missing gate evidence, run adversarial validation
+    if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) && (!candidate.gateEvidence || Object.keys(candidate.gateEvidence).length === 0)) {
+      try {
+        const aiValidation = await sharedReasoningEngine.validateAdversarial({
+          candidate,
+          freshEvidence: candidate.evidence || [],
+          mockProvider: mockAiReasoning
+        });
+        if (aiValidation.ok && aiValidation.data?.gateEvidence) {
+          candidate = {
+            ...candidate,
+            gateEvidence: aiValidation.data.gateEvidence
+          };
+        }
+      } catch {
+        // Fall back gracefully to existing evidence
+      }
+    }
     
     // 1. Initial qualification check
     const qual = qualifyCandidate(candidate, profileName);

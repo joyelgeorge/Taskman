@@ -121,18 +121,39 @@ export async function discoverFromRealSources({
  * It must NOT execute candidate work or perform the full adversarial validation stage.
  * It must NEVER fabricate synthetic candidates or hardcode positive metrics.
  */
+import { sharedReasoningEngine } from '../reasoning-engine.js';
+
 export async function runDiscoverWorker({
   sources = Object.keys(DISCOVERY_SOURCES),
   sampleCandidates = [],
-  claimedBy = 'taskman-discover-worker'
+  claimedBy = 'taskman-discover-worker',
+  mockAiReasoning = null
 } = {}) {
   const startedAt = new Date().toISOString();
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
   const existingCandidates = await listRevenueRecords(CANONICAL_QUEUES.candidates, { limit: 500 });
   const existingNoveltyKeys = new Set(existingCandidates.map(c => c.noveltyKey).filter(Boolean));
 
-  // Gather real candidates only
-  const candidatesToProcess = await discoverFromRealSources({ sources, sampleCandidates });
+  // Gather baseline candidates from configured real sources
+  let candidatesToProcess = await discoverFromRealSources({ sources, sampleCandidates });
+
+  // If reasoning engine is available and we have source evidence / sample items, synthesize with AI
+  if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) && sampleCandidates.length > 0) {
+    try {
+      const aiResult = await sharedReasoningEngine.synthesizeDiscovery({
+        sourceEvidence: sampleCandidates,
+        existingHypotheses: existingCandidates.slice(0, 10),
+        mockProvider: mockAiReasoning
+      });
+      if (aiResult.ok && Array.isArray(aiResult.data?.candidates)) {
+        for (const aiCand of aiResult.data.candidates) {
+          candidatesToProcess.push(normalizeCandidate(aiCand));
+        }
+      }
+    } catch {
+      // Fail safely without blocking baseline discovery
+    }
+  }
 
   const enqueued = [];
   const rejected = [];

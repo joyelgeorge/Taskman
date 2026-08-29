@@ -1,0 +1,74 @@
+{
+  "run_key": "2026-08-29T09:47:06+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "card-authorization-integrity-fee-prevention-engine",
+    "name": "Card authorization integrity-fee prevention engine",
+    "score": 50,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 3,
+      "build_simplicity": 4
+    },
+    "state_transition": "approved card authorization -> no matching clearing/reversal as scheme deadline approaches -> detect fee-triggering stale state -> recommend capture/reverse/leave based on merchant order state -> verify scheme integrity fee avoided",
+    "why_survived": "Visa and Mastercard impose explicit integrity/misuse fees when approved authorizations are not cleared or reversed within defined windows. Payment systems expose authorization/capture/reversal states and webhooks/APIs, creating an independent machine trigger. The narrow wedge can remain read-only by identifying stale authorizations and recommending the exact action before the fee deadline. Current searches found broad payment optimization and fee-audit products, but no dominant exact product focused on cross-PSP pre-deadline authorization-integrity fee prevention.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": [
+      "Mastercard introduced/raised time-based and processing-integrity fees in 2026; Moneris documents a 0.0339% fee for cleared approved final transactions submitted 72-168 hours after authorization and fees for unreversed/uncleared preauthorizations.",
+      "Visa misuse/integrity fees apply to approved authorizations lacking matching clearing or reversal; merchant guidance requires timely reversals/settlement.",
+      "Braintree explicitly warns merchants to void authorized transactions they do not intend to settle to avoid misuse-of-authorization fees.",
+      "Adyen and Braintree expose authorization/capture/reversal lifecycle states and APIs; Adyen documents late capture can incur scheme/interchange fees."
+    ],
+    "closest_threat": "Broad payment-optimization/orchestration suites, interchange/scheme-fee auditors, and processor-native lifecycle tooling could absorb the feature. Some processors already auto-expire authorizations, but their expiry windows may not align with earlier scheme-fee deadlines; this must be tested per PSP/network/MCC.",
+    "smallest_intervention": "Read PSP authorization/capture/reversal webhooks plus merchant order/fulfillment state. Before each card-network deadline, output one of CAPTURE NOW, REVERSE NOW, or NO ACTION with projected scheme fee avoided. Keep execution merchant-confirmed or optionally invoke the existing PSP reversal/capture endpoint under explicit authorization; never route or custody funds.",
+    "monetization": "Per prevented-fee event, low monthly monitoring fee, or capped percentage of verified scheme integrity fees avoided. Verified savings can be reconciled against processor/network fee reports.",
+    "biggest_unresolved_risk": "Processor-native auto-expiry/reversal behavior may already prevent most fees for common PSPs, and fee rules differ by network, region, MCC and authorization type. Broad enterprise payment-optimization vendors may already cover the same narrow control even if not marketed separately.",
+    "next_research_test": "Switch to ATTACK only if cross-PSP evidence shows material recurring integrity-fee incidence. Quantify fee incidence per 100k authorizations, map exact deadlines by Visa/Mastercard/PSP/MCC, and search enterprise payment-operations products for automatic stale-authorization reversal or pre-deadline fee prevention. Kill if processors already neutralize most exposure or exact incumbent coverage is widespread."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "cloud-support-plan-right-sizing-engine", "score": 46},
+    {"rank": 3, "id": "merchant-settlement-acceleration-decision-engine", "score": 45},
+    {"rank": 4, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+    {"rank": 5, "id": "app-store-small-business-program-eligibility-monitor", "score": 45}
+  ],
+  "promotions": ["card-authorization-integrity-fee-prevention-engine"],
+  "demotions": ["cloud-support-plan-right-sizing-engine"],
+  "rejections": [
+    "cpaaS-idle-number-release-optimizer",
+    "business-domain-renewal-pruning"
+  ],
+  "new_search_rules": [
+    "Prefer fee rules with explicit machine deadlines over annual rightsizing decisions: deadline-driven penalties create higher intervention frequency and cleaner counterfactual attribution.",
+    "Processor auto-expiry is not equivalent to fee prevention unless the expiry/reversal occurs before the card-network fee deadline for the applicable authorization type/MCC.",
+    "For payment-network fee wedges, a read-only alert plus merchant-confirmed existing PSP action can satisfy non-ownership of the rail; avoid introducing a routing/orchestration proxy."
+  ],
+  "source_urls": [
+    "https://www.moneris.com/support/additional-resources/payment-card-network-fee-updates",
+    "https://support.payjunction.com/hc/en-us/articles/211659937-What-Is-a-Misuse-Fee-for-Visa-Authorizations",
+    "https://developer.paypal.com/braintree/docs/reference/general/statuses/",
+    "https://www.adyen.com/knowledge-hub/pre-authorizations-and-authorization-adjustments-for-developers",
+    "https://help.adyen.com/knowledge/finance/invoices/what-are-non-transactional-scheme-fees",
+    "https://www.paybyrd.com/pricing/scheme-fees"
+  ],
+  "persistence_scope": "Revenue-opportunity research only; unrelated personal/reminder/project tasks are excluded from this opportunity database."
+}

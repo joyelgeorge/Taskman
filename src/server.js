@@ -6,6 +6,7 @@ import { providerStatus, runWithFallback } from './providers.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
+import { evaluateHealth, livenessSnapshot } from './health.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import { handleMoltJobsRequest } from './moltjobs-routes.js';
@@ -196,19 +197,46 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
+    if (req.method === 'GET' && url.pathname === '/health/live') {
+      return json(res, 200, livenessSnapshot());
+    }
+
+    if (req.method === 'GET' && url.pathname === '/health/ready') {
+      const database = await dbHealth();
+      const health = evaluateHealth({
+        database,
+        providers: providerStatus(),
+        schedulerDurable: isSchedulerDurable(),
+        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true'
+      });
+      return json(res, health.ready ? 200 : 503, health);
+    }
+
     if (await handleMoltJobsRequest(req, res, url)) return;
     if (await handleRevenueRequest(req, res, url)) return;
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
-      const db = await dbHealth();
+      const database = await dbHealth();
+      const providers = providerStatus();
+      const schedulerDurable = isSchedulerDurable();
+      const internalSchedulerEnabled = process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true';
+      const health = evaluateHealth({
+        database,
+        providers,
+        schedulerDurable,
+        internalSchedulerEnabled
+      });
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
-        providers: providerStatus(), usage, database: db,
+        ...health,
+        providers,
+        usage,
+        database,
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
-        schedulerDurable: isSchedulerDurable(),
-        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        schedulerDurable,
+        internalSchedulerEnabled,
         brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
       });
     }

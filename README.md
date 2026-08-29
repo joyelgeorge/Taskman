@@ -63,6 +63,7 @@ The route can evolve continuously. The user's objective and hard constraints do 
 - [Future domino model](docs/FUTURE_DOMINO_MODEL.md)
 - [Money-task core](docs/MONEY_TASK_CORE.md)
 - [Brain architecture](docs/BRAIN_ARCHITECTURE.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
 
 Future ChatGPT/Codex work should read these before changing architecture or rediscovering earlier conclusions.
 

@@ -1,0 +1,84 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T06:45:55+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "merchant-settlement-acceleration-decision-engine",
+    "name": "Merchant settlement acceleration decision engine",
+    "score": 45,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 2,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 3,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "processor balance eligible -> free payout ETA and paid speed tiers known -> external liquidity and obligations reveal actual shortfall -> choose zero/next-day/same-day/instant and minimum amount -> verify acceleration fees avoided",
+    "why_survived": "No fresh family beat the exactness of this cross-system decision. The trigger, intervention and monetary delta remain clean. However, fresh evidence that SMBs are willing to pay substantial fees for immediate funds makes rational working-capital demand a stronger alternative explanation, so leakage magnitude is demoted from 3 to 2.",
+    "strongest_evidence": "PYMNTS reports 47% of SMBs are willing to pay a 3.2% fee or $14 fixed fee for immediate payments, indicating that paid speed can represent genuine working-capital value rather than waste. Instamojo exposes explicit instant/same-day/next-day fee tiers, preserving the programmable decision structure.",
+    "closest_threat": "First-party payout controls and treasury forecasting can absorb the wedge; the more serious economic threat is that merchants may be rationally buying liquidity rather than over-accelerating.",
+    "smallest_intervention": "Read PSP balances, settlement ETAs and speed fees plus external bank liquidity and near-term obligations; recommend no acceleration or the minimum amount at the cheapest sufficient speed. No custody or payout execution.",
+    "monetization": "Small per-success decision fee, low micro-subscription, or capped share of verified fees avoided against a competent-liquidity counterfactual.",
+    "biggest_unresolved_risk": "Avoidable acceleration may be a small fraction of total paid acceleration because merchants explicitly value immediate liquidity.",
+    "next_research_test": "Find merchant-level or anonymized data linking each accelerated payout to external cash and obligations. Estimate avoidable acceleration ratio. Kill or demote if the ratio is immaterial; move to ATTACK only if material and exact competition remains absent."
+  },
+  "candidates_tested": [
+    {
+      "id": "dormant-psp-account-minimum-fee-closure-monitor",
+      "status": "rejected",
+      "score": 40,
+      "fatal_flaw": "First-party absorption / checkbox economics. Xendit's 2026 pricing policy explicitly defines a USD 50 monthly minimum for dormant or low-invoice accounts and directly recommends closing dormant accounts to avoid it. The signal and action are both obvious, while per-account savings are small.",
+      "sources": ["https://help.xendit.co/hc/en-us/articles/59516240127129-Xendit-Pricing-Policy"]
+    },
+    {
+      "id": "cross-platform-w8-treaty-withholding-rescue",
+      "status": "rejected",
+      "score": 41,
+      "fatal_flaw": "Tax/compliance complexity plus close competition and first-party reminders. W-8 form generators already target creators/app developers, payout platforms automate W-8 collection and treaty withholding, and platforms commonly prompt renewal. A read-only detector has weak differentiation and a higher advice/liability burden.",
+      "sources": [
+        "https://w8geteasy.com/en/use-cases/w8ben-creators",
+        "https://payouts.com/creator-platforms",
+        "https://affonso.io/help/commission-payouts/payouts/tax-forms-for-affiliate-payouts"
+      ]
+    },
+    {
+      "id": "3pl-storage-and-minimum-charge-micro-optimizer",
+      "status": "rejected",
+      "fatal_flaw": "Gate 8. The surrounding 3PL billing/audit market already checks storage, minimum charges and contract rate cards, with contingency recovery models and continuous billing products. The narrower timing idea does not create enough whitespace over existing audit and warehouse billing software.",
+      "sources": [
+        "https://karaplex.com/",
+        "https://www.3plclarity.com/",
+        "https://www.freightoptics.com/platform/3pl-audit/"
+      ]
+    }
+  ],
+  "runner_ups": [
+    {"rank": 2, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+    {"rank": 3, "id": "quota-boundary-workload-timing-optimizer", "score": 45},
+    {"rank": 4, "id": "off-cycle-payroll-deferral-batching-optimizer", "score": 43}
+  ],
+  "new_search_rules": [
+    "For paid-speed products, user willingness to pay is evidence against assuming leakage: distinguish rational liquidity purchase from avoidable acceleration before scoring leakage highly.",
+    "Cross-platform tax-form/withholding rescue is not attractive merely because default withholding is large; platform reminders, existing form automation and tax-liability complexity can neutralize the wedge.",
+    "A newly announced fixed dormancy/minimum fee with an explicit first-party close-account recommendation is a checkbox, not a programmable wedge, unless cross-system context materially changes the close/keep decision."
+  ]
+}

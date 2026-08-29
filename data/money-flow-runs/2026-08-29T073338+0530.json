@@ -1,0 +1,71 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T07:33:38+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "cloud-support-plan-right-sizing-engine",
+    "name": "Cloud support-plan right-sizing engine",
+    "score": 48,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 5,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 2
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "monthly cloud spend and support-case/incident telemetry update -> current paid support tier cost is recomputed -> compare observed support need and risk against cheaper eligible tier -> recommend KEEP/DOWNGRADE/UPGRADE at the next permissible boundary -> verify support-fee delta",
+    "why_survived": "AWS paid support is explicitly monthly, percentage-of-gross-cloud-spend pricing with large minimums and tier discontinuities. Billing, support-case, incident and account telemetry are naturally machine-readable. AWS provides a pricing calculator and manual plan-change workflow, but current searches did not find a first-party or independent product that continuously combines actual support utilization/risk with projected spend to recommend the cheapest sufficient support tier.",
+    "strongest_evidence": "AWS Business Support+ is priced at the greater of $29/account or 9%/7%/5%/3% of monthly AWS charges; Enterprise Support is the greater of $5,000/month or 10%/7%/5%/3%; Unified Operations has a $50,000/month minimum. Paid plans are monthly, and AWS exposes plan-management workflows plus Support/Trusted Advisor APIs on paid tiers.",
+    "closest_threat": "AWS itself exposes plan comparison, pricing calculation and downgrade workflows; broad FinOps providers can absorb support-plan advice, and Enterprise downgrades require contacting the TAM. No exact continuous support-utilization-aware optimizer was found in this run.",
+    "smallest_intervention": "Read cloud billing forecast, current support tier, support-case history, incident/severity history and required support features; output KEEP/DOWNGRADE/UPGRADE plus deterministic next-month fee delta and risk/features lost. Do not change the plan automatically.",
+    "monetization": "Per verified plan-change event, low fixed monthly fee, or capped percentage of verified support-fee savings for a defined measurement window.",
+    "biggest_unresolved_risk": "Actual support-tier overprovisioning is not yet quantified, and support value is partly tail-risk insurance rather than observed ticket utilization; a simple annual review may capture much of the value.",
+    "next_research_test": "Attack leakage and competition: find evidence of enterprises materially overpaying for support tiers, determine how often the economically optimal tier changes, and search FinOps/MSP products specifically for continuous support-plan right-sizing. If over-tiering is mostly static or exact tooling exists, demote/reject."
+  },
+  "runner_ups": [
+    {"rank":2,"id":"merchant-settlement-acceleration-decision-engine","score":45,"note":"Clean decision, but paid acceleration increasingly looks like rational working-capital demand; avoidable fraction remains unproven."},
+    {"rank":3,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45,"note":"Programmable and measurable, but incremental savings beyond competent static tuning remain unproven."},
+    {"rank":4,"id":"quota-boundary-workload-timing-optimizer","score":45,"note":"Strong structural mechanism but still lacks a sufficiently valuable defensible vertical."}
+  ],
+  "candidate_events": [
+    {"candidate":"cloud-support-plan-right-sizing-engine","event":"promotion","reason":"Beats prior leader with larger deterministic recurring fee delta and cleaner non-invasive telemetry-driven decision; Gate 2/6/8 remain uncertain."},
+    {"candidate":"merchant-settlement-acceleration-decision-engine","event":"demotion","reason":"No new evidence of avoidable acceleration; willingness-to-pay evidence continues to support rational liquidity demand."},
+    {"candidate":"property-vacant-unit-utility-cost-recovery","event":"rejection","fatal_flaw":"Exact products already automate vacancy tracking, tenant chargebacks, deposit recovery, utility allocation and vacant-cost recovery."},
+    {"candidate":"generic-saas-license-seat-reclamation","event":"rejection","fatal_flaw":"Exact SaaS-management products already correlate activity to entitlements and automatically reclaim idle seats."},
+    {"candidate":"freight-accessorial-and-rate-audit","event":"rejection","fatal_flaw":"Already-covered rejected family; fresh exact products continue to audit linehaul, fuel, accessorials, duplicates and shipment-state mismatches."}
+  ],
+  "new_search_rules": [
+    "Treat service/support tiers as programmable money flows when price is a recurring percentage/minimum and entitlement need can be inferred from independent usage/incident telemetry.",
+    "Do not equate low observed support usage with waste: support is partly tail-risk insurance; the counterfactual must include required response times/features and risk tolerance.",
+    "A first-party pricing calculator is not by itself Gate-8 failure if it does not continuously decide the economically sufficient tier from external/operational telemetry."
+  ],
+  "sources": [
+    "https://aws.amazon.com/premiumsupport/pricing//",
+    "https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html",
+    "https://docs.aws.amazon.com/awssupport/latest/user/changing-support-plans.html",
+    "https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html",
+    "https://www.nutiliti.com/vacancy-billing-management",
+    "https://vitality.io/utility-billing-software/vacant-unit-cost-recovery",
+    "https://tekplanit.ai/platform/license-optimization/",
+    "https://www.lido.app/automations/audit-freight-invoices"
+  ]
+}

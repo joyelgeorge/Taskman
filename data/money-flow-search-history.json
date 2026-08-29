@@ -1,8 +1,15 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-29T08:40:39+05:30",
+  "updated_at": "2026-08-29T09:47:06+05:30",
   "scenario_id": "programmable-money-flow-search",
-  "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
+  "task": {
+    "stable_key": "money-flow-wedge-scout",
+    "title": "Money Flow Wedge Scout",
+    "status": "active",
+    "mode": "SEARCH",
+    "threshold_crossed": false
+  },
+  "persistence_scope": "Revenue-opportunity research only. Persist programmable money-flow/revenue candidates, evidence, scoring, gates, runner-ups, rejections and strategy lessons. Exclude unrelated reminders, personal tasks and non-revenue projects.",
   "history_archives": [
     {"type":"prior_anchor_git_blob","sha":"6343cc3c4f5e4ccc3b774361433e085ec4e36355","note":"Schema-v4 full conversation/rejection archive."},
     {"type":"prior_anchor_git_blob","sha":"bbe3044dc117562d09c7a81d13b9bd58cb4eec54","note":"Schema-v5 anchor through 2026-08-28T19:33:59+05:30."},
@@ -11,37 +18,94 @@
     {"type":"prior_anchor_git_blob","sha":"4de50743f0655cc46a1a1f2651e7ffa59d52615d","note":"Anchor through 2026-08-29T04:47:50+05:30."},
     {"type":"prior_anchor_git_blob","sha":"fcfce034b6c3ded33c22c29db480edf55460989a","note":"Anchor through 2026-08-29T05:45:42+05:30."},
     {"type":"prior_anchor_git_blob","sha":"311f17982af57e5f721d3d88b9c62412c4f1f695","note":"Anchor through 2026-08-29T06:45:55+05:30."},
-    {"type":"prior_anchor_git_blob","sha":"07c7f3bd26ac7788f70721ef72047abe2a802006","note":"Immediate prior anchor through 2026-08-29T07:33:38+05:30."}
+    {"type":"prior_anchor_git_blob","sha":"07c7f3bd26ac7788f70721ef72047abe2a802006","note":"Anchor through 2026-08-29T07:33:38+05:30."},
+    {"type":"prior_anchor_git_blob","sha":"a04d162747253e83147aefd8164dd54df38d4ae2","note":"Immediate prior anchor through 2026-08-29T08:40:39+05:30."}
   ],
-  "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
-  "current_leader": {
-    "id":"cloud-support-plan-right-sizing-engine","name":"Cloud support-plan right-sizing engine","score":46,"max_score":60,
-    "component_scores":{"flow_scale":5,"leakage_magnitude":3,"trigger_independence":4,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":3,"first_party_gap":4,"competitive_whitespace":4,"regulation":5,"integration_friction":3,"distribution_burden":2,"build_simplicity":3},
-    "state_transition":"monthly cloud spend and provider-independent operational/incident telemetry update -> recompute current support-tier cost and required SLA/features -> compare cheaper eligible tiers -> recommend KEEP/DOWNGRADE/UPGRADE at next permissible boundary -> verify support-fee delta",
-    "why_survived":"AWS, Google Cloud and Azure all expose recurring paid support plans with explicit monthly pricing/change boundaries. Current searches still did not find an exact continuous cross-cloud engine combining support-tier economics with operational criticality/incident telemetry. The wedge remains read-only and the fee delta is deterministic.",
-    "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
-    "strongest_evidence":"AWS paid support has a one-month minimum and explicit downgrade workflows; Google Cloud Standard/Enhanced/Premium have explicit minimum/percentage pricing; Azure support plans are billed monthly and can be changed/cancelled for eligible purchase channels. AWS Support API itself requires a paid plan, which constrains post-downgrade monitoring architecture.",
-    "closest_threat":"First-party calculators/change workflows, broad FinOps/MSP platforms, and partner-led support substitutes such as DoiT can absorb or economically neutralize the wedge. No exact continuous telemetry-aware optimizer was found.",
-    "smallest_intervention":"Read cloud billing forecast, current support tier, workload criticality/SLOs, incident history and required response-time/features from provider-independent telemetry; output KEEP/DOWNGRADE/UPGRADE plus next-month fee delta and feature/risk tradeoff; no automatic plan change.",
-    "monetization":"Small per-accepted plan-change fee, low recurring monitoring fee, or capped share of verified support-fee savings over a defined measurement window.",
-    "biggest_unresolved_risk":"The correct support tier may be mostly static and driven by tail-risk insurance rather than historical ticket usage; paid-plan-only support telemetry can disappear after downgrade, and most value may collapse into an annual review.",
-    "next_research_test":"Quantify real support-tier overprovisioning and change frequency; search MSP/FinOps products for explicit support-plan optimization; test whether provider-independent incident/SLO telemetry predicts tier sufficiency without paid Support APIs. Reject/demote if annual/static review captures most value or substitutes neutralize economics."
+  "operating_protocol": {
+    "discovery_floor": "Always return a best surviving hypothesis.",
+    "freeze_build_threshold": [
+      "huge existing money flow",
+      "recurring measurable leakage/unrealized value",
+      "independent machine-readable trigger",
+      "practical non-invasive permission",
+      "objectively measurable financial delta",
+      "credible tiny fee stronger than self-serve/flat-fee alternatives",
+      "no core transaction/request path ownership",
+      "no dominant/sufficiently-close incumbent or first-party feature"
+    ],
+    "persistence_rule": "Append immutable revenue-opportunity run file and update current-state anchor every run."
   },
-  "latest_run":{"run_key":"2026-08-29T08:40:39+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"cloud-support-plan-right-sizing-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T084039+0530.json","promotions":[],"demotions":["cloud-support-plan-right-sizing-engine"],"rejections":["unused-prepaid-shipping-label-refund","commercial-lease-cam-overcharge-recovery"],"runner_ups":[{"rank":2,"id":"merchant-settlement-acceleration-decision-engine","score":45},{"rank":3,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":4,"id":"app-store-small-business-program-eligibility-monitor","score":45},{"rank":5,"id":"quota-boundary-workload-timing-optimizer","score":45}]},
-  "recent_run_history":[
+  "current_leader": {
+    "id": "card-authorization-integrity-fee-prevention-engine",
+    "name": "Card authorization integrity-fee prevention engine",
+    "score": 50,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 3,
+      "build_simplicity": 4
+    },
+    "state_transition": "approved card authorization -> no matching clearing/reversal as scheme deadline approaches -> detect fee-triggering stale state -> recommend capture/reverse/leave based on merchant order state -> verify scheme integrity fee avoided",
+    "why_survived": "Visa and Mastercard impose explicit integrity/misuse fees when approved authorizations are not cleared or reversed within defined windows. PSPs expose authorization/capture/reversal states and APIs, creating independent triggers. A narrow read-only layer can identify stale authorizations and recommend the exact action before the fee deadline. Current searches found broad payment optimization and fee-audit products, but no dominant exact cross-PSP pre-deadline authorization-integrity fee prevention product.",
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "strongest_evidence": "Mastercard raised/introduced multiple authorization-integrity fees in 2026, including time-based authorization validity fees; Visa misuse/integrity fees apply when approved authorizations lack timely matching clearing/reversal. Braintree explicitly warns to void unwanted authorizations to avoid misuse fees, while Adyen exposes reversal APIs and notes late captures can incur scheme/interchange fees.",
+    "closest_threat": "Broad payment-optimization/orchestration suites, interchange/scheme-fee auditors, and processor-native lifecycle tooling could absorb the feature. Some processors auto-expire authorizations, but expiry may occur after earlier card-network fee deadlines; exact PSP/network/MCC behavior remains to be mapped.",
+    "smallest_intervention": "Read PSP authorization/capture/reversal webhooks plus merchant order/fulfillment state. Before each network deadline output CAPTURE NOW, REVERSE NOW, or NO ACTION with projected fee avoided. Keep execution merchant-confirmed or invoke the merchant's existing PSP endpoint under explicit authorization; do not route or custody funds.",
+    "monetization": "Per prevented-fee event, low monitoring fee, or capped percentage of verified scheme integrity fees avoided, reconciled against processor/network fee reports.",
+    "biggest_unresolved_risk": "Processor-native auto-expiry/reversal may already prevent most exposure for common PSPs; fee rules vary by network, region, MCC and authorization type; broad enterprise payment-operations vendors may cover this narrow control without marketing it separately.",
+    "next_research_test": "Quantify integrity-fee incidence per 100k authorizations, map exact Visa/Mastercard deadlines by PSP/MCC/auth type, and attack competition for automatic stale-authorization reversal/pre-deadline fee prevention. Demote or reject if processors already neutralize most exposure or exact incumbent coverage is widespread."
+  },
+  "latest_run": {
+    "run_key": "2026-08-29T09:47:06+05:30",
+    "mode": "SEARCH",
+    "threshold_crossed": false,
+    "current_leader": "card-authorization-integrity-fee-prevention-engine",
+    "score": 50,
+    "run_file": "data/money-flow-runs/2026-08-29T094706+0530.json",
+    "promotions": ["card-authorization-integrity-fee-prevention-engine"],
+    "demotions": ["cloud-support-plan-right-sizing-engine"],
+    "rejections": ["cpaaS-idle-number-release-optimizer", "business-domain-renewal-pruning"],
+    "runner_ups": [
+      {"rank":2,"id":"cloud-support-plan-right-sizing-engine","score":46},
+      {"rank":3,"id":"merchant-settlement-acceleration-decision-engine","score":45},
+      {"rank":4,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},
+      {"rank":5,"id":"app-store-small-business-program-eligibility-monitor","score":45}
+    ]
+  },
+  "recent_run_history": [
     {"run_key":"2026-08-29T05:45:42+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T054542+0530.json"},
     {"run_key":"2026-08-29T06:45:55+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":45,"run_file":"data/money-flow-runs/2026-08-29T064555+0530.json"},
     {"run_key":"2026-08-29T07:33:38+05:30","leader":"cloud-support-plan-right-sizing-engine","score":48,"run_file":"data/money-flow-runs/2026-08-29T073338+0530.json"},
-    {"run_key":"2026-08-29T08:40:39+05:30","leader":"cloud-support-plan-right-sizing-engine","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-29T084039+0530.json"}
+    {"run_key":"2026-08-29T08:40:39+05:30","leader":"cloud-support-plan-right-sizing-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T084039+0530.json"},
+    {"run_key":"2026-08-29T09:47:06+05:30","leader":"card-authorization-integrity-fee-prevention-engine","score":50,"status":"current","run_file":"data/money-flow-runs/2026-08-29T094706+0530.json"}
   ],
-  "recent_cross_family_findings":[
-    "Cloud support-plan right-sizing remains leader but was demoted from 48 to 46: low ticket usage cannot be treated as waste because support is tail-risk insurance; AWS Support API is paid-plan-only.",
-    "Support-plan economics generalize beyond AWS: Google Cloud has explicit monthly minimum/percentage tiers and Azure support is monthly/changeable for eligible channels.",
-    "App Store Small Business Program eligibility/requalification monitor survives at 45: Apple reduces commission to 15% for qualifying developers, but enrollment is simple and requalification is mostly annual, weakening monetization.",
-    "Unused prepaid shipping-label refund rejected: ShipStation Refund Assist now automatically detects, voids and submits eligible unused USPS labels for refund.",
-    "Commercial lease CAM overcharge recovery rejected: multiple exact products now automate lease-vs-statement audits and evidence-backed recovery/dispute workflows.",
-    "New rule: if a saving action removes access to the telemetry API used to recommend it, require provider-independent telemetry or penalize integration fragility.",
-    "New rule: do not infer support-tier waste from low support-case volume; model workload criticality, SLOs, response-time requirements and tail risk."
+  "recent_cross_family_findings": [
+    "Card authorization integrity-fee prevention promoted to 50/60 because card networks impose explicit deadline-driven penalties on stale/unreversed authorizations and PSP lifecycle events create natural triggers.",
+    "Cloud support-plan right-sizing demoted to runner-up at 46/60 because support-tier decisions may be too static/annual and partly represent tail-risk insurance.",
+    "CPaaS idle-number release remains rejected: Twilio itself documents recurring number charges, inactivity checks, and API release as a first-party obvious optimization.",
+    "Business-domain renewal pruning rejected: multiple current portfolio tools already provide registrar sync, renewal cost tracking and cancellation/triage.",
+    "New rule: prefer explicit machine deadlines that create recurring penalty-avoidance events over annual rightsizing decisions.",
+    "New rule: processor auto-expiry is not equivalent to fee prevention unless it occurs before the applicable network fee deadline.",
+    "New rule: payment-network wedges may remain non-invasive if the product is read-only and uses merchant-confirmed existing PSP actions rather than becoming a routing proxy.",
+    "Persistence scope clarified: only revenue-opportunity research belongs in this Taskman opportunity anchor/database."
   ],
-  "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
+  "known_rejected_or_demoted_summary": "Full historical revenue-opportunity rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

@@ -81,6 +81,7 @@ async function executeTask(task, reason = 'manual') {
     run.status = 'failed';
     run.error = e.code || 'PROVIDER_ERROR';
     run.errorDetail = String(e.message || e);
+    run.fallbacks = Array.isArray(e.diagnostics) ? e.diagnostics : [];
   }
 
   run.finishedAt = new Date().toISOString();

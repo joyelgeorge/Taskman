@@ -262,8 +262,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       return res.end(html);
     }
-    if (req.method === 'GET' && url.pathname === '/app.js') {
-      const js = await readFile(join(publicDir, 'app.js'));
+    if (req.method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/refresh-controller.js')) {
+      const filename = url.pathname.slice(1);
+      const js = await readFile(join(publicDir, filename));
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
       return res.end(js);
     }

@@ -14,21 +14,135 @@ import {
   getRevenueState
 } from '../revenue-store.js';
 
+export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
+  'money_flow_scale',
+  'recurring_leakage',
+  'independent_trigger',
+  'permission_non_invasive',
+  'measurable_delta',
+  'monetization',
+  'no_transaction_ownership',
+  'competitive_whitespace'
+]);
+
+/**
+ * Evaluates evidence-backed gates for a candidate.
+ * 
+ * Rules:
+ * 1. Numeric score alone must NEVER produce EXECUTABLE or THRESHOLD_CROSSED.
+ * 2. Missing or empty evidence must produce NEEDS_EVIDENCE.
+ * 3. Programmable money flow candidates require explicit PASS on all 8 gates with evidence.
+ * 4. Bounty / immediate income candidates require explicit verified payout/demand/payout path evidence.
+ */
+export function evaluateEvidenceGates(candidate = {}) {
+  const evidence = Array.isArray(candidate.evidence) ? candidate.evidence : [];
+  const profile = candidate.profile || 'programmable_money_flow_v1';
+  const rawGates = candidate.gates || candidate.raw?.gates || {};
+
+  // If candidate has zero evidence, it cannot be promoted
+  if (evidence.length === 0) {
+    return {
+      passed: false,
+      status: 'NEEDS_EVIDENCE',
+      reason: 'No verifiable evidence attached to candidate',
+      gateResults: {}
+    };
+  }
+
+  if (profile === 'programmable_money_flow_v1') {
+    const gateResults = {};
+    const failedGates = [];
+    const uncertainGates = [];
+
+    for (const gate of EIGHT_MONEY_FLOW_GATES) {
+      const val = String(rawGates[gate] || '').toLowerCase();
+      gateResults[gate] = val || 'missing';
+      if (val === 'pass') {
+        // passed
+      } else if (val === 'uncertain' || val === 'missing') {
+        uncertainGates.push(gate);
+      } else {
+        failedGates.push(gate);
+      }
+    }
+
+    if (failedGates.length > 0) {
+      return {
+        passed: false,
+        status: 'REJECTED',
+        reason: `Adversarial validation failed on gates: ${failedGates.join(', ')}`,
+        gateResults
+      };
+    }
+
+    if (uncertainGates.length > 0) {
+      return {
+        passed: false,
+        status: 'NEEDS_EVIDENCE',
+        reason: `Unresolved evidence needed on gates: ${uncertainGates.join(', ')}`,
+        gateResults
+      };
+    }
+
+    return {
+      passed: true,
+      status: 'THRESHOLD_CROSSED',
+      reason: 'All 8 money-flow gates explicitly verified with evidence',
+      gateResults
+    };
+  }
+
+  if (profile === 'bounty_execution_v1' || profile === 'immediate_income_v1') {
+    const hasPayerEvidence = evidence.some(e => typeof e === 'string' && (e.includes('escrow') || e.includes('payer') || e.includes('bounty') || e.includes('http')));
+    const hasAcceptanceCriteria = Boolean(candidate.acceptanceCriteria || candidate.raw?.acceptance_criteria || candidate.raw?.description);
+    const hasReward = Number(candidate.estimatedValue ?? candidate.raw?.reward ?? candidate.raw?.budget ?? 0) > 0;
+
+    if (!hasPayerEvidence || !hasAcceptanceCriteria || !hasReward) {
+      return {
+        passed: false,
+        status: 'NEEDS_EVIDENCE',
+        reason: 'Missing evidence of verified payer, clear acceptance criteria, or reward amount',
+        gateResults: { hasPayerEvidence, hasAcceptanceCriteria, hasReward }
+      };
+    }
+
+    return {
+      passed: true,
+      status: 'EXECUTABLE',
+      reason: 'Bounty/income criteria verified with evidence',
+      gateResults: { hasPayerEvidence, hasAcceptanceCriteria, hasReward }
+    };
+  }
+
+  return {
+    passed: false,
+    status: 'NEEDS_EVIDENCE',
+    reason: `Unknown profile ${profile} requires evidence validation`,
+    gateResults: {}
+  };
+}
+
 /**
  * Taskman Validate Worker
  * 
  * Responsibilities:
  * 1. Claim from candidate_queue.
  * 2. Reuse existing evidence first; obtain only missing/stale evidence.
- * 3. Run the validation profile appropriate to the candidate.
+ * 3. Run the adversarial validation profile appropriate to the candidate.
  * 4. Write records to validation_queue.
  * 5. Enqueue EXECUTABLE, SETUP_REQUIRED, or THRESHOLD_CROSSED items into execution_queue.
  * 6. Write reusable findings to learning_inference.
  * 7. Release/requeue items that need more evidence.
+ * 
+ * Invariants:
+ * - Numeric qualification score alone MUST NEVER produce EXECUTABLE or THRESHOLD_CROSSED.
+ * - Missing evidence must produce NEEDS_EVIDENCE.
+ * - Programmable-money-flow THRESHOLD_CROSSED requires explicit evidence-backed PASS on all 8 gates.
  */
 export async function runValidateWorker({
   limit = 10,
-  claimedBy = 'taskman-validate-worker'
+  claimedBy = 'taskman-validate-worker',
+  validatorFn = null
 } = {}) {
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
@@ -43,34 +157,30 @@ export async function runValidateWorker({
     const candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
     
-    // Evaluate candidate qualification & capabilities
+    // 1. Initial qualification check
     const qual = qualifyCandidate(candidate, profileName);
     const missing = missingCapabilities(candidate, capabilities);
 
-    // Adversarial validation checks:
-    // 1. Evidence check: does candidate have any evidence or metrics?
-    const hasEvidence = Array.isArray(candidate.evidence) && candidate.evidence.length > 0;
-    const isPassing = qual.passes;
-
-    let classification = 'REJECTED';
-    if (!isPassing) {
-      classification = 'REJECTED';
-    } else if (missing.length > 0) {
-      classification = 'SETUP_REQUIRED';
-    } else if (qual.score >= 8.5) {
-      classification = 'THRESHOLD_CROSSED';
-    } else if (qual.score >= qual.threshold) {
-      classification = 'EXECUTABLE';
-    } else if (!hasEvidence) {
-      classification = 'NEEDS_EVIDENCE';
+    // 2. Perform adversarial evidence-driven gate validation
+    let evidenceCheck;
+    if (typeof validatorFn === 'function') {
+      evidenceCheck = await validatorFn(candidate, capabilities);
     } else {
-      classification = 'PROMISING';
+      evidenceCheck = evaluateEvidenceGates(candidate);
+    }
+
+    let classification = evidenceCheck.status || 'NEEDS_EVIDENCE';
+
+    // If gates pass but capabilities are missing, classify as SETUP_REQUIRED
+    if (evidenceCheck.passed && missing.length > 0) {
+      classification = 'SETUP_REQUIRED';
     }
 
     const validationPayload = {
       candidate,
       qualification: qual,
       classification,
+      evidenceCheck,
       missingCapabilities: missing,
       validatedAt: startedAt,
       validatedBy: claimedBy
@@ -111,7 +221,7 @@ export async function runValidateWorker({
       promoted.push(execRecord);
     } else if (classification === 'REJECTED') {
       rejected.push(candidate);
-    } else if (classification === 'NEEDS_EVIDENCE') {
+    } else {
       needsEvidence.push(candidate);
     }
   }
@@ -141,6 +251,7 @@ export async function runValidateWorker({
     validatedCount: validated.length,
     promotedCount: promoted.length,
     rejectedCount: rejected.length,
+    needsEvidenceCount: needsEvidence.length,
     promotedRecords: promoted,
     timestamp: startedAt
   };

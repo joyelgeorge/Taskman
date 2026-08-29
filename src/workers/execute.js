@@ -20,6 +20,12 @@ import {
  * 4. Classify results (ADVANCED, COMPLETED, VALUE_CREATED, MONEY_EVENT, SETUP_REQUIRED, BLOCKED, REVALIDATE, REJECTED).
  * 5. Write results to economic_outcomes.
  * 6. Write execution/capability/economic lessons to learning_inference.
+ * 
+ * Invariants:
+ * - NEVER simulate VALUE_CREATED or MONEY_EVENT.
+ * - If no concrete authorized execution adapter/action is available, return BLOCKED, SETUP_REQUIRED, or REVALIDATE.
+ * - Candidate estimatedValue is NEVER realized attributable value.
+ * - Realized attributableValue must be 0 / null until verified by an actual execution outcome.
  */
 export async function runExecuteWorker({
   limit = 10,
@@ -37,12 +43,12 @@ export async function runExecuteWorker({
     const candidate = item.payload.candidate || item.payload;
     const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
 
-    let outcomeStatus = 'COMPLETED';
-    let outcomeReason = 'Execution completed successfully';
-    let attributableValue = candidate.estimatedValue || 0;
+    let outcomeStatus = 'BLOCKED';
+    let outcomeReason = 'No concrete authorized execution adapter available for candidate';
+    let attributableValue = 0; // Invariant: candidate estimates are NOT realized value
     let stepOutput = null;
 
-    // Check capabilities
+    // Check capabilities first
     if (missing.length > 0) {
       outcomeStatus = 'SETUP_REQUIRED';
       outcomeReason = `Missing required capabilities: ${missing.join(', ')}`;
@@ -50,15 +56,19 @@ export async function runExecuteWorker({
       try {
         stepOutput = await executorFn(candidate, capabilities);
         outcomeStatus = stepOutput.status || 'COMPLETED';
-        attributableValue = stepOutput.attributableValue || attributableValue;
+        outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
+        // Only set attributable value if verified and provided by real executor output
+        attributableValue = Number(stepOutput.verifiedAttributableValue || stepOutput.attributableValue || 0);
       } catch (err) {
         outcomeStatus = 'BLOCKED';
-        outcomeReason = err.message;
+        outcomeReason = `Execution error: ${err.message}`;
       }
     } else {
-      // Default safe executable action simulation
-      outcomeStatus = attributableValue > 0 ? 'MONEY_EVENT' : 'VALUE_CREATED';
-      outcomeReason = `Deterministic execution rail activated for candidate: ${candidate.title}`;
+      // Invariant: In the absence of a concrete authorized executor adapter,
+      // execution MUST NOT simulate success or money events.
+      outcomeStatus = 'BLOCKED';
+      outcomeReason = 'No authorized executable action adapter configured for this candidate type; safe default is BLOCKED';
+      attributableValue = 0;
     }
 
     const outcomePayload = {
@@ -86,7 +96,7 @@ export async function runExecuteWorker({
       queue: CANONICAL_QUEUES.outcomes,
       noveltyKey: `outcome-${candidate.noveltyKey || item.id}`,
       status: outcomeStatus,
-      priority: Math.round(attributableValue || item.priority),
+      priority: Math.round(attributableValue || 0),
       payload: outcomePayload
     });
     outcomes.push(outcomeRecord);
@@ -105,6 +115,8 @@ export async function runExecuteWorker({
         claimedCount: claimed.length,
         outcomesCount: outcomes.length,
         moneyEventsCount: outcomes.filter(o => o.status === 'MONEY_EVENT').length,
+        blockedCount: outcomes.filter(o => o.status === 'BLOCKED').length,
+        setupRequiredCount: outcomes.filter(o => o.status === 'SETUP_REQUIRED').length,
         timestamp: startedAt
       }
     });

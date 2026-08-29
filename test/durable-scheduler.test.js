@@ -13,8 +13,8 @@ import {
   resetScheduledJobsForTesting,
   isSchedulerDurable
 } from '../src/durable-scheduler.js';
-import { runDiscoverWorker } from '../src/workers/discover.js';
-import { runValidateWorker } from '../src/workers/validate.js';
+import { runDiscoverWorker, discoverFromRealSources } from '../src/workers/discover.js';
+import { runValidateWorker, evaluateEvidenceGates, EIGHT_MONEY_FLOW_GATES } from '../src/workers/validate.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
 import { CANONICAL_QUEUES, LEGACY_QUEUE_ALIASES, resolveQueueName } from '../src/orchestration-profiles.js';
 import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
@@ -182,6 +182,8 @@ test('7. Discover writes only to candidate_queue / discovery state and does not 
 
 test('8. Validate consumes candidate work and promotes executable items to execution_queue', async () => {
   const noveltyKey = `val-test-${crypto.randomUUID()}`;
+  const allPassGates = Object.fromEntries(EIGHT_MONEY_FLOW_GATES.map(g => [g, 'pass']));
+
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.candidates,
     noveltyKey,
@@ -190,7 +192,7 @@ test('8. Validate consumes candidate work and promotes executable items to execu
     payload: {
       candidate: {
         candidateId: 'cand-val-1',
-        title: 'Validatable Candidate',
+        title: 'Validatable Candidate with 8 Gates',
         noveltyKey,
         profile: 'programmable_money_flow_v1',
         metrics: {
@@ -198,8 +200,9 @@ test('8. Validate consumes candidate work and promotes executable items to execu
           deltaMeasurability: 1, monetization: 1, executionAutonomy: 1,
           competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1
         },
+        gates: allPassGates,
         requiredCapabilities: ['github.read'],
-        evidence: ['https://example.com/spec']
+        evidence: ['https://aws.amazon.com/pricing', 'https://doit.com']
       }
     }
   });
@@ -213,7 +216,7 @@ test('8. Validate consumes candidate work and promotes executable items to execu
   assert.ok(execRecords.some(r => r.noveltyKey === `exec-${noveltyKey}`));
 });
 
-test('9. Execute consumes only execution-ready items and records outcomes', async () => {
+test('9. Execute consumes execution-ready items with authorized executor or safely marks BLOCKED without simulating value', async () => {
   const noveltyKey = `exec-test-${crypto.randomUUID()}`;
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
@@ -233,16 +236,91 @@ test('9. Execute consumes only execution-ready items and records outcomes', asyn
     }
   });
 
-  const execResult = await runExecuteWorker({ limit: 5 });
+  // Test with real executor function that verifies attributable value
+  const execResult = await runExecuteWorker({
+    limit: 5,
+    executorFn: async (cand) => ({
+      status: 'MONEY_EVENT',
+      reason: 'Authorized execution completed',
+      verifiedAttributableValue: 125
+    })
+  });
+
   assert.equal(execResult.stage, 'EXECUTE');
   assert.ok(execResult.outcomesCount >= 1);
 
   // Check outcome in economic_outcomes
   const outcomeRecords = await listRevenueRecords(CANONICAL_QUEUES.outcomes);
-  assert.ok(outcomeRecords.some(o => o.noveltyKey === `outcome-${noveltyKey}`));
+  const matchedOutcome = outcomeRecords.find(o => o.noveltyKey === `outcome-${noveltyKey}`);
+  assert.ok(matchedOutcome);
+  assert.equal(matchedOutcome.status, 'MONEY_EVENT');
+  assert.equal(matchedOutcome.payload.attributableValue, 125);
 });
 
-test('10. Existing revenue queue tests and legacy aliases remain compatible', async () => {
+test('10. Negative invariant: Discover never fabricates candidates when no real source provides them', async () => {
+  // When no sample candidates and sources without real data are passed:
+  const result = await runDiscoverWorker({
+    sources: ['recent_events'],
+    sampleCandidates: []
+  });
+  assert.equal(result.evaluated, 0);
+  assert.equal(result.enqueued, 0);
+});
+
+test('11. Negative invariant: Validate requires evidence and all 8 gates for THRESHOLD_CROSSED; score alone never promotes', () => {
+  // Candidate with perfect 10/10 metrics but zero evidence
+  const zeroEvidenceCand = {
+    profile: 'programmable_money_flow_v1',
+    metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1 },
+    evidence: []
+  };
+  const zeroEvResult = evaluateEvidenceGates(zeroEvidenceCand);
+  assert.equal(zeroEvResult.passed, false);
+  assert.equal(zeroEvResult.status, 'NEEDS_EVIDENCE');
+
+  // Candidate with evidence but uncertain gate (7 passes, 1 uncertain)
+  const partialPassGates = Object.fromEntries(EIGHT_MONEY_FLOW_GATES.map((g, idx) => [g, idx === 0 ? 'uncertain' : 'pass']));
+  const partialCand = {
+    profile: 'programmable_money_flow_v1',
+    evidence: ['https://example.com/doc'],
+    gates: partialPassGates
+  };
+  const partialResult = evaluateEvidenceGates(partialCand);
+  assert.equal(partialResult.passed, false);
+  assert.equal(partialResult.status, 'NEEDS_EVIDENCE');
+});
+
+test('12. Negative invariant: Execute never simulates VALUE_CREATED or MONEY_EVENT without concrete authorized executor', async () => {
+  const noveltyKey = `exec-neg-${crypto.randomUUID()}`;
+  await upsertRevenueRecord({
+    queue: CANONICAL_QUEUES.execution,
+    noveltyKey,
+    status: 'NEW',
+    priority: 95,
+    payload: {
+      candidate: {
+        candidateId: 'cand-neg-1',
+        title: 'Unexecutable Candidate Without Adapter',
+        noveltyKey,
+        estimatedValue: 10000 // Invariant: High estimated value must NOT become realized value
+      },
+      classification: 'EXECUTABLE',
+      missingCapabilities: []
+    }
+  });
+
+  // Run execute worker without an authorized executorFn
+  const execResult = await runExecuteWorker({ limit: 10 });
+  const outcomes = await listRevenueRecords(CANONICAL_QUEUES.outcomes);
+  const matched = outcomes.find(o => o.noveltyKey === `outcome-${noveltyKey}`);
+
+  assert.ok(matched);
+  assert.equal(matched.status, 'BLOCKED');
+  assert.equal(matched.payload.attributableValue, 0); // Realized value MUST be 0
+  assert.ok(matched.payload.outcomeReason.includes('No authorized executable action adapter'));
+});
+
+test('13. Existing revenue queue tests and legacy aliases remain compatible', async () => {
   assert.equal(resolveQueueName('revenue_exploration_queue'), CANONICAL_QUEUES.candidates);
   assert.equal(resolveQueueName('revenue_opportunity_deepdives'), CANONICAL_QUEUES.validation);
   assert.equal(resolveQueueName('revenue_execution_results'), CANONICAL_QUEUES.outcomes);
@@ -260,8 +338,7 @@ test('10. Existing revenue queue tests and legacy aliases remain compatible', as
   assert.ok(canonicalRecords.some(r => r.noveltyKey === testKey));
 });
 
-test('11. Memory-mode reports clearly that durable guarantees require PostgreSQL', () => {
+test('14. Memory-mode reports clearly that durable guarantees require PostgreSQL', () => {
   const durable = isSchedulerDurable();
-  // In default test environment without DATABASE_URL:
   assert.equal(typeof durable, 'boolean');
 });

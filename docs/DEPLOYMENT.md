@@ -50,6 +50,12 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 | `NODE_ENV` | `render.yaml` | Yes | Set to `production` |
 | `OPENAI_API_KEY` | Render dashboard | Optional | AI reasoning provider |
 | `MOLTJOBS_API_KEY` | Render dashboard | Optional | MoltJobs income rail |
+| `TASKMAN_MAX_JSON_BODY_BYTES` | Config | Optional | Maximum JSON request body; default 1 MiB |
+| `TASKMAN_PROVIDER_TIMEOUT_MS` | Config | Optional | Per-provider attempt deadline; default 45s |
+| `TASKMAN_RUN_TIMEOUT_MS` | Config | Optional | Overall task execution deadline; default 5m |
+| `TASKMAN_HTTP_REQUEST_TIMEOUT_MS` | Config | Optional | Inbound request timeout; default 120s |
+| `TASKMAN_HTTP_HEADERS_TIMEOUT_MS` | Config | Optional | Header receive timeout; default 15s |
+| `TASKMAN_HTTP_KEEP_ALIVE_TIMEOUT_MS` | Config | Optional | Idle keep-alive timeout; default 5s |
 
 ---
 
@@ -134,6 +140,10 @@ DATABASE_URL=postgresql://localhost:5432/taskman node --test  # PostgreSQL mode
 | `POST /api/scheduler/jobs/:name/trigger` | Manually trigger a scheduled worker |
 
 ---
+
+## Request and execution limits
+
+All JSON routes use one byte-counted reader and return HTTP 413 before buffering beyond the configured body limit. Provider attempts receive an abort signal and a bounded share of the overall run deadline. Timeout records use stable codes such as `PROVIDER_TIMEOUT` and `RUN_DEADLINE_EXCEEDED`, plus provider ID and duration only. Increasing a limit requires a finite positive value within the hard safety bounds enforced by `src/limits.js`.
 
 ## Security notes
 

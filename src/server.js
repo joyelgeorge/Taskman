@@ -10,6 +10,10 @@ import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import { handleMoltJobsRequest } from './moltjobs-routes.js';
 import { handleRevenueRequest } from './revenue-routes.js';
+import { latestMoneyFlow, listMoneyFlowRuns } from './money-flow.js';
+import { exploreRevenueModels } from './revenue-models.js';
+import { analyzeUnbilledCapture } from './unbilled-analysis.js';
+import { compareCollectVsInvoice } from './collect-vs-invoice.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
@@ -154,6 +158,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
     if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
     if (req.method === 'POST' && url.pathname === '/api/brain/run') return json(res, 200, await executeBrainCycle('manual'));
+    if (req.method === 'GET' && url.pathname === '/api/money-flow') return json(res, 200, await latestMoneyFlow());
+    if (req.method === 'GET' && url.pathname === '/api/money-flow/runs') return json(res, 200, await listMoneyFlowRuns());
+    if (req.method === 'GET' && url.pathname === '/api/revenue-models') return json(res, 200, exploreRevenueModels());
+    if (req.method === 'GET' && url.pathname === '/api/revenue-models/unbilled') return json(res, 200, analyzeUnbilledCapture());
+    if (req.method === 'GET' && url.pathname === '/api/collect-vs-invoice') return json(res, 200, compareCollectVsInvoice());
 
     const scenarioKnowledgeMatch = url.pathname.match(/^\/api\/scenarios\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && scenarioKnowledgeMatch) {
@@ -217,4 +226,4 @@ if (databaseEnabled) {
 }
 await restoreSchedules();
 startBrainScheduler();
-server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));
+server.listen(port, '0.0.0.0', () => console.log(`Taskman running at http://0.0.0.0:${port}`));

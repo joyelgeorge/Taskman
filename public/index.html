@@ -5,26 +5,163 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Taskman</title>
   <style>
-    body{font-family:system-ui,sans-serif;margin:0;background:#f6f7f9;color:#111}.wrap{max-width:920px;margin:auto;padding:24px}.card{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:16px}textarea,input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d1d5db;border-radius:10px;margin:6px 0 12px}button{padding:10px 14px;border:0;border-radius:10px;cursor:pointer}.primary{background:#111;color:white}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.muted{color:#6b7280;font-size:14px}.pill{background:#eef2f7;border-radius:999px;padding:5px 9px;font-size:12px}.task{padding:14px 0;border-top:1px solid #eee}.result{white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:10px;margin-top:8px;max-height:220px;overflow:auto}.brain{border:1px solid #c7d2fe;background:#f8faff}.brain-gap{font-size:18px;font-weight:650;margin:10px 0}.score{font-variant-numeric:tabular-nums}h1{margin-bottom:4px}@media(max-width:600px){.wrap{padding:14px}}
+    :root {
+      --bg: #0e1110;
+      --fg: #e8ece8;
+      --muted: #8b958c;
+      --line: #243028;
+      --card: #161b18;
+      --ink: #7dcea0;
+      --warn: #e0b15a;
+      --bad: #e07a6a;
+      --ok: #6fbf8a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    }
+    .wrap { max-width: 1120px; margin: auto; padding: 22px 18px 64px; }
+    h1 { font-family: "Iowan Old Style", Georgia, serif; font-size: 2.1rem; letter-spacing: -.03em; margin: 0; }
+    h2 { font-family: Georgia, serif; font-size: 1.15rem; margin: 0 0 12px; letter-spacing: -.02em; }
+    h3 { margin: 8px 0 6px; font-size: 1.05rem; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .kpi .n { font-variant-numeric: tabular-nums; font-size: 1.55rem; font-weight: 650; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #1f2822; border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--fg);
+    }
+    .pill.ok { background: #1c3326; color: var(--ok); }
+    .pill.warn { background: #332a16; color: var(--warn); }
+    .pill.bad { background: #331c18; color: var(--bad); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink); }
+    button {
+      background: var(--ink); color: #0e1110; border: 0; border-radius: 10px;
+      padding: 9px 13px; cursor: pointer; font-weight: 650;
+    }
+    button.ghost { background: #1f2822; color: var(--fg); }
+    input, textarea {
+      width: 100%; background: #101512; color: var(--fg); border: 1px solid var(--line);
+      border-radius: 10px; padding: 10px; margin: 6px 0 10px;
+    }
+    .grid2 { display: grid; grid-template-columns: 1.2fr .8fr; gap: 12px; }
+    .item { padding: 12px 0; border-top: 1px solid var(--line); }
+    .item:first-child { border-top: 0; padding-top: 0; }
+    .gates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .result {
+      white-space: pre-wrap; background: #101512; padding: 10px; border-radius: 10px;
+      margin-top: 8px; max-height: 220px; overflow: auto; font-size: 13px;
+    }
+    @media (max-width: 860px) {
+      .kpis, .grid2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
-    <h1>Taskman</h1>
-    <p class="muted">Describe it once. Taskman runs, routes, learns and moves to the next money-relevant gap.</p>
+    <div class="row" style="margin-bottom:18px">
+      <div>
+        <p class="muted" style="margin:0 0 4px;letter-spacing:.16em;text-transform:uppercase">Taskman</p>
+        <h1>Money-flow dashboard</h1>
+      </div>
+      <span class="pill" style="margin-left:auto"><span class="dot"></span> Live book</span>
+      <span id="stamp" class="muted"></span>
+    </div>
 
-    <section class="card brain">
-      <div class="row"><h2 style="margin-right:auto">Brain</h2><button class="primary" id="runBrain">Run brain once</button></div>
-      <div id="brainState"><p class="muted">Loading brain state…</p></div>
-      <div id="brainResult"></div>
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card" style="margin-top:14px">
+      <div class="row">
+        <h2 style="margin-right:auto">Current leader</h2>
+        <span id="leaderScore" class="pill"></span>
+        <span id="leaderMode" class="pill warn"></span>
+      </div>
+      <h3 id="leaderName"></h3>
+      <p class="muted" id="leaderWhy"></p>
+      <div class="gates" id="leaderGates"></div>
+      <p class="muted" id="leaderNext" style="margin-top:10px"></p>
+    </section>
+
+    <section class="card" id="unbilled">
+      <div class="row">
+        <h2 style="margin-right:auto">Unbilled-work capture</h2>
+        <span id="ubScore" class="pill warn"></span>
+        <span id="ubDecision" class="pill"></span>
+      </div>
+      <p class="muted" id="ubVerdict"></p>
+      <p id="ubTransition"></p>
+      <div class="gates" id="ubGates"></div>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <h3>Weakest bars</h3>
+          <div id="ubWeak"></div>
+        </div>
+        <div>
+          <h3>What would freeze it</h3>
+          <div id="ubFreeze"></div>
+        </div>
+      </div>
+      <h3>Unit economics</h3>
+      <div id="ubEcon" class="muted"></div>
+      <h3>Kill if</h3>
+      <div id="ubKill"></div>
+      <p class="muted" id="ubNext" style="margin-top:10px"></p>
+    </section>
+
+    <section class="card" id="collect-vs-invoice">
+      <div class="row">
+        <h2 style="margin-right:auto">UPI collect vs invoice</h2>
+        <span id="cviWinner" class="pill ok"></span>
+      </div>
+      <p class="muted" id="cviVerdict"></p>
+      <div id="cviPaths"></div>
+      <h3>Side by side</h3>
+      <div id="cviMatrix"></div>
+      <h3>Rules</h3>
+      <div id="cviRules"></div>
+    </section>
+
+    <div class="grid2">
+      <section class="card">
+        <h2>Running activity</h2>
+        <div id="activity"></div>
+      </section>
+      <section class="card">
+        <div class="row"><h2 style="margin-right:auto">Brain</h2><button id="runBrain">Run brain once</button></div>
+        <div id="brainState"><p class="muted">Loading…</p></div>
+        <div id="brainResult"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Runner-ups and rejections</h2>
+      <div id="field"></div>
     </section>
 
     <section class="card">
-      <h2>Create task</h2>
-      <input id="title" placeholder="Optional title" />
-      <textarea id="prompt" rows="5" placeholder="Example: Every hour, research... and return only actionable results."></textarea>
-      <input id="interval" type="number" min="1" placeholder="Repeat every N minutes (leave blank for manual)" />
-      <button class="primary" id="create">Create task</button>
+      <div class="row">
+        <h2 style="margin-right:auto">Other revenue models</h2>
+        <span id="modelCount" class="muted"></span>
+      </div>
+      <p class="muted" id="modelNote"></p>
+      <div id="modelSurvivors"></div>
+      <h3 style="margin-top:16px">Closest — below freeze threshold</h3>
+      <div id="modelContenders"></div>
+      <h3 style="margin-top:16px">Blocked by hard gates</h3>
+      <div id="modelBlocked"></div>
+      <h3 style="margin-top:16px">How Taskman itself can get paid</h3>
+      <div id="modelCapture"></div>
     </section>
 
     <section class="card">
@@ -34,22 +171,26 @@
 
     <section class="card">
       <h2>Executable tasks</h2>
-      <p class="muted">Runnable schedules live here. Opportunity candidates and rejected paths are scenario records below.</p>
       <div id="tasks"></div>
+      <details style="margin-top:12px">
+        <summary class="muted">Create task</summary>
+        <input id="title" placeholder="Optional title" />
+        <textarea id="prompt" rows="4" placeholder="Describe a money-producing loop once."></textarea>
+        <input id="interval" type="number" min="1" placeholder="Repeat every N minutes" />
+        <button id="create">Create task</button>
+      </details>
     </section>
 
     <section class="card">
-      <div class="row"><h2 style="margin-right:auto">Scenario database</h2><span id="scenarioCount" class="muted"></span></div>
-      <p class="muted">The latest scored candidates, active strategy, historical attempts and rejection reasons synchronized from the repository.</p>
+      <div class="row"><h2 style="margin-right:auto">Scenarios</h2><span id="scenarioCount" class="muted"></span></div>
       <div id="scenarios"></div>
     </section>
 
     <section class="card">
-      <h2>Recent runs</h2>
+      <h2>Recent engine runs</h2>
       <div id="runs"></div>
     </section>
   </main>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
-

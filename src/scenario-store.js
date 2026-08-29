@@ -8,7 +8,11 @@ const seedPath = join(__dirname, '..', 'data', 'scenarios.json');
 const moneyFlowHistoryPath = join(__dirname, '..', 'data', 'money-flow-search-history.json');
 
 export async function loadScenarioSeed() {
-  return JSON.parse(await readFile(seedPath, 'utf8'));
+  try {
+    return JSON.parse(await readFile(seedPath, 'utf8'));
+  } catch {
+    return { scenarios: [] };
+  }
 }
 
 async function loadMoneyFlowHistorySeed() {

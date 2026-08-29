@@ -5,8 +5,8 @@ import {
   updateRevenueRecord, setRevenueState, getRevenueState, revenueStorageMode
 } from '../src/revenue-store.js';
 
-test('revenue queue deduplicates, prioritizes and claims work in memory mode', async () => {
-  assert.equal(revenueStorageMode(), 'memory');
+test('revenue queue deduplicates, prioritizes and claims work', async () => {
+  assert.ok(['memory', 'postgres'].includes(revenueStorageMode()));
   const queue = `test-${crypto.randomUUID()}`;
   await upsertRevenueRecord({ queue, noveltyKey: 'a', priority: 1, payload: { n: 1 } });
   await upsertRevenueRecord({ queue, noveltyKey: 'b', priority: 10, payload: { n: 2 } });

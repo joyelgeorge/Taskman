@@ -123,10 +123,12 @@ export async function runWithFallback(prompt, {
     }
 
     if (overall.signal.aborted) {
-      throw new TaskmanError('Task execution deadline exceeded', {
+      const failure = new TaskmanError('Task execution deadline exceeded', {
         code: 'RUN_DEADLINE_EXCEEDED',
         statusCode: 504
       });
+      failure.diagnostics = errors;
+      throw failure;
     }
 
     if (!errors.length) {
@@ -136,10 +138,12 @@ export async function runWithFallback(prompt, {
       });
     }
 
-    throw new TaskmanError(`All configured providers failed: ${JSON.stringify(errors)}`, {
+    const failure = new TaskmanError(`All configured providers failed: ${JSON.stringify(errors)}`, {
       code: 'ALL_PROVIDERS_FAILED',
       statusCode: 502
     });
+    failure.diagnostics = errors;
+    throw failure;
   } finally {
     overall.cleanup();
   }

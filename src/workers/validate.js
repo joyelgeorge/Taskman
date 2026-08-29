@@ -26,20 +26,22 @@ export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
 ]);
 
 /**
- * Evaluates evidence-backed gates for a candidate.
- * 
- * Rules:
- * 1. Numeric score alone must NEVER produce EXECUTABLE or THRESHOLD_CROSSED.
- * 2. Missing or empty evidence must produce NEEDS_EVIDENCE.
- * 3. Programmable money flow candidates require explicit PASS on all 8 gates with evidence.
- * 4. Bounty / immediate income candidates require explicit verified payout/demand/payout path evidence.
+ * Gate-result descriptor expected in candidate.gateEvidence:
+ *   { [gateName]: { verdict: 'pass' | 'fail' | 'uncertain', evidenceRef: string } }
+ *
+ * Backwards-compat: candidate.gates provides legacy flat verdict strings.
+ * If a gate has verdict='pass' in legacy gates[] but NO entry in gateEvidence with a
+ * non-empty evidenceRef, it is treated as 'missing' (unverified assertion).
  */
 export function evaluateEvidenceGates(candidate = {}) {
   const evidence = Array.isArray(candidate.evidence) ? candidate.evidence : [];
   const profile = candidate.profile || 'programmable_money_flow_v1';
-  const rawGates = candidate.gates || candidate.raw?.gates || {};
+  // Per-gate structured evidence: { [gate]: { verdict, evidenceRef } }
+  const gateEvidence = candidate.gateEvidence || {};
+  // Legacy flat verdicts — used as fallback only when gateEvidence is absent for a gate
+  const legacyGates = candidate.gates || candidate.raw?.gates || {};
 
-  // If candidate has zero evidence, it cannot be promoted
+  // If candidate has zero top-level evidence, it cannot be promoted regardless of gate assertions
   if (evidence.length === 0) {
     return {
       passed: false,
@@ -55,14 +57,31 @@ export function evaluateEvidenceGates(candidate = {}) {
     const uncertainGates = [];
 
     for (const gate of EIGHT_MONEY_FLOW_GATES) {
-      const val = String(rawGates[gate] || '').toLowerCase();
-      gateResults[gate] = val || 'missing';
-      if (val === 'pass') {
-        // passed
-      } else if (val === 'uncertain' || val === 'missing') {
-        uncertainGates.push(gate);
+      // Per-gate binding takes priority
+      const perGate = gateEvidence[gate];
+      let verdict;
+      let evidenceRef;
+
+      if (perGate) {
+        verdict = String(perGate.verdict || '').toLowerCase();
+        evidenceRef = perGate.evidenceRef ? String(perGate.evidenceRef).trim() : '';
       } else {
+        // Legacy flat string — accepted only if *some* global evidence exists AND verdict is 'pass'
+        verdict = String(legacyGates[gate] || '').toLowerCase();
+        evidenceRef = ''; // No specific citation — treated as missing for THRESHOLD_CROSSED
+      }
+
+      if (verdict === 'fail') {
+        gateResults[gate] = { verdict: 'fail', evidenceRef };
         failedGates.push(gate);
+      } else if (verdict === 'pass' && evidenceRef) {
+        // Verified: pass with specific evidence reference
+        gateResults[gate] = { verdict: 'pass', evidenceRef };
+      } else {
+        // Unverified: pass without specific evidence, uncertain, or missing
+        const displayVerdict = (verdict === 'pass') ? 'pass_unverified' : (verdict || 'missing');
+        gateResults[gate] = { verdict: displayVerdict, evidenceRef: evidenceRef || null };
+        uncertainGates.push(gate);
       }
     }
 
@@ -79,7 +98,7 @@ export function evaluateEvidenceGates(candidate = {}) {
       return {
         passed: false,
         status: 'NEEDS_EVIDENCE',
-        reason: `Unresolved evidence needed on gates: ${uncertainGates.join(', ')}`,
+        reason: `Missing per-gate evidence citations on: ${uncertainGates.join(', ')}. Each gate pass must supply gateEvidence[gate].evidenceRef.`,
         gateResults
       };
     }
@@ -87,7 +106,7 @@ export function evaluateEvidenceGates(candidate = {}) {
     return {
       passed: true,
       status: 'THRESHOLD_CROSSED',
-      reason: 'All 8 money-flow gates explicitly verified with evidence',
+      reason: 'All 8 money-flow gates verified with individual evidence citations',
       gateResults
     };
   }

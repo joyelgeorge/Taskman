@@ -5,19 +5,30 @@ import {
   generateRunKey,
   getMinuteOffset,
   DEFAULT_SCHEDULES,
+  DEFAULT_LEASE_MS,
   claimScheduledJob,
   finishScheduledJobRun,
+  renewScheduledJobLease,
   initializeScheduler,
   listScheduledJobs,
   reconcileOverdueJobs,
   resetScheduledJobsForTesting,
   isSchedulerDurable
 } from '../src/durable-scheduler.js';
-import { runDiscoverWorker, discoverFromRealSources } from '../src/workers/discover.js';
+import { runDiscoverWorker } from '../src/workers/discover.js';
 import { runValidateWorker, evaluateEvidenceGates, EIGHT_MONEY_FLOW_GATES } from '../src/workers/validate.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
-import { CANONICAL_QUEUES, LEGACY_QUEUE_ALIASES, resolveQueueName } from '../src/orchestration-profiles.js';
+import { CANONICAL_QUEUES, resolveQueueName } from '../src/orchestration-profiles.js';
 import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
+
+// Helper: build per-gate evidence with individual references
+function buildGateEvidence(gates, evidenceRefs) {
+  return Object.fromEntries(gates.map((gate, i) => [
+    gate, { verdict: 'pass', evidenceRef: evidenceRefs[i] || evidenceRefs[0] }
+  ]));
+}
+
+// ─── Scheduler / Infrastructure ────────────────────────────────────────────────
 
 test('1. Discover/Validate/Execute schedules calculate expected staggered due times (:00, :10, :20)', () => {
   assert.equal(getMinuteOffset('0 * * * *'), 0);
@@ -25,18 +36,9 @@ test('1. Discover/Validate/Execute schedules calculate expected staggered due ti
   assert.equal(getMinuteOffset('20 * * * *'), 20);
 
   const base = new Date('2026-08-29T10:00:00.000Z');
-
-  // Next Discover (:00) after 10:00:00 -> 11:00:00
-  const nextDiscover = computeNextRunAt('0 * * * *', base);
-  assert.equal(nextDiscover.toISOString(), '2026-08-29T11:00:00.000Z');
-
-  // Next Validate (:10) after 10:00:00 -> 10:10:00
-  const nextValidate = computeNextRunAt('10 * * * *', base);
-  assert.equal(nextValidate.toISOString(), '2026-08-29T10:10:00.000Z');
-
-  // Next Execute (:20) after 10:00:00 -> 10:20:00
-  const nextExecute = computeNextRunAt('20 * * * *', base);
-  assert.equal(nextExecute.toISOString(), '2026-08-29T10:20:00.000Z');
+  assert.equal(computeNextRunAt('0 * * * *', base).toISOString(),  '2026-08-29T11:00:00.000Z');
+  assert.equal(computeNextRunAt('10 * * * *', base).toISOString(), '2026-08-29T10:10:00.000Z');
+  assert.equal(computeNextRunAt('20 * * * *', base).toISOString(), '2026-08-29T10:20:00.000Z');
 });
 
 test('2. Two concurrent schedulers cannot claim the same firing', async () => {
@@ -44,19 +46,11 @@ test('2. Two concurrent schedulers cannot claim the same firing', async () => {
   const fixedNow = new Date('2026-08-29T10:00:00.000Z');
   await initializeScheduler({ now: new Date('2026-08-29T09:00:00.000Z') });
 
-  // First worker claims
-  const claim1 = await claimScheduledJob('discover', {
-    now: fixedNow,
-    claimedBy: 'worker-instance-1'
-  });
+  const claim1 = await claimScheduledJob('discover', { now: fixedNow, claimedBy: 'worker-1' });
   assert.ok(claim1, 'Worker 1 should claim successfully');
-  assert.equal(claim1.claimedBy, 'worker-instance-1');
+  assert.ok(claim1.leaseToken, 'Claim ticket must include a leaseToken');
 
-  // Second worker attempts concurrent claim for the same due firing
-  const claim2 = await claimScheduledJob('discover', {
-    now: fixedNow,
-    claimedBy: 'worker-instance-2'
-  });
+  const claim2 = await claimScheduledJob('discover', { now: fixedNow, claimedBy: 'worker-2' });
   assert.equal(claim2, null, 'Worker 2 must be blocked while lease is active');
 });
 
@@ -65,22 +59,18 @@ test('3. Expired lease can be reclaimed by another worker', async () => {
   const fixedNow = new Date('2026-08-29T10:00:00.000Z');
   await initializeScheduler({ now: new Date('2026-08-29T09:00:00.000Z') });
 
-  // Worker 1 claims with a short 1-second lease
   const claim1 = await claimScheduledJob('validate', {
-    now: fixedNow,
-    leaseMs: 1000,
-    claimedBy: 'worker-crashed'
+    now: fixedNow, leaseMs: 1000, claimedBy: 'worker-crashed'
   });
   assert.ok(claim1);
 
-  // Time advances past lease expiration (5 seconds later)
   const laterTime = new Date('2026-08-29T10:00:05.000Z');
-  const claim2 = await claimScheduledJob('validate', {
-    now: laterTime,
-    claimedBy: 'worker-recovered'
-  });
-  assert.ok(claim2, 'Worker 2 should reclaim the job after lease expiry');
+  const claim2 = await claimScheduledJob('validate', { now: laterTime, claimedBy: 'worker-recovered' });
+  assert.ok(claim2, 'Worker 2 should reclaim after lease expiry');
   assert.equal(claim2.claimedBy, 'worker-recovered');
+  assert.ok(claim2.leaseToken, 'New claim must have its own leaseToken');
+  // Fencing: the new token must differ from the original
+  assert.notEqual(claim2.leaseToken, claim1.leaseToken);
 });
 
 test('4. Same run_key cannot produce duplicate execution', async () => {
@@ -91,29 +81,99 @@ test('4. Same run_key cannot produce duplicate execution', async () => {
   const claim = await claimScheduledJob('execute', { now: fixedNow, claimedBy: 'worker-1' });
   assert.ok(claim);
 
-  // Finish run
   await finishScheduledJobRun({
     jobId: claim.job.id,
     runKey: claim.runKey,
+    leaseToken: claim.leaseToken,
     status: 'COMPLETED',
     result: { itemsProcessed: 1 },
     now: fixedNow
   });
 
-  // Attempting to claim the exact same firing again returns null
   const duplicateClaim = await claimScheduledJob('execute', { now: fixedNow, claimedBy: 'worker-2' });
-  assert.equal(duplicateClaim, null, 'Completed firing with same runKey cannot be claimed again');
+  assert.equal(duplicateClaim, null, 'Completed runKey cannot be claimed again');
 });
 
-test('5. Restart restores schedule state', async () => {
+test('5. Stale worker A cannot clear active lease held by worker B (fencing token)', async () => {
+  await resetScheduledJobsForTesting();
+  const fixedNow = new Date('2026-08-29T10:00:00.000Z');
+  await initializeScheduler({ now: new Date('2026-08-29T09:00:00.000Z') });
+
+  // Worker A claims with very short lease (1 second)
+  const claimA = await claimScheduledJob('discover', {
+    now: fixedNow, leaseMs: 1000, claimedBy: 'worker-A'
+  });
+  assert.ok(claimA);
+
+  // A's lease expires; Worker B reclaims
+  const after5s = new Date('2026-08-29T10:00:05.000Z');
+  const claimB = await claimScheduledJob('discover', { now: after5s, claimedBy: 'worker-B' });
+  assert.ok(claimB, 'Worker B must reclaim after A\'s lease expiry');
+  assert.notEqual(claimB.leaseToken, claimA.leaseToken);
+
+  // Worker A wakes up late and tries to finish with its old token — must be fenced
+  const staleFinish = await finishScheduledJobRun({
+    jobId: claimA.job.id,
+    runKey: claimA.runKey,
+    leaseToken: claimA.leaseToken, // A's old, now-invalid token
+    status: 'COMPLETED',
+    result: { late: true },
+    now: after5s
+  });
+  assert.equal(staleFinish.ok, false, 'Stale worker A must be fenced out');
+  assert.equal(staleFinish.fenced, true);
+
+  // Worker B can still cleanly finish
+  const goodFinish = await finishScheduledJobRun({
+    jobId: claimB.job.id,
+    runKey: claimB.runKey,
+    leaseToken: claimB.leaseToken,
+    status: 'COMPLETED',
+    result: { realWork: true },
+    now: new Date('2026-08-29T10:00:10.000Z')
+  });
+  assert.equal(goodFinish.ok, true, 'Worker B must finish cleanly with valid token');
+});
+
+test('6. Lease heartbeat (renew) extends lease; wrong token is rejected', async () => {
+  await resetScheduledJobsForTesting();
+  const fixedNow = new Date('2026-08-29T10:00:00.000Z');
+  await initializeScheduler({ now: new Date('2026-08-29T09:00:00.000Z') });
+
+  const claim = await claimScheduledJob('validate', {
+    now: fixedNow, leaseMs: 2000, claimedBy: 'worker-long'
+  });
+  assert.ok(claim);
+
+  // Renew with correct token succeeds
+  const renewed = await renewScheduledJobLease({
+    jobId: claim.job.id,
+    leaseToken: claim.leaseToken,
+    leaseMs: DEFAULT_LEASE_MS,
+    now: new Date('2026-08-29T10:00:01.000Z')
+  });
+  assert.equal(renewed.ok, true);
+  assert.ok(renewed.newExpiresAt);
+
+  // Renew with a wrong/forged token must be rejected
+  const forgedToken = crypto.randomUUID();
+  const rejectedRenew = await renewScheduledJobLease({
+    jobId: claim.job.id,
+    leaseToken: forgedToken,
+    leaseMs: DEFAULT_LEASE_MS,
+    now: new Date('2026-08-29T10:00:01.000Z')
+  });
+  assert.equal(rejectedRenew.ok, false);
+  assert.equal(rejectedRenew.fenced, true);
+});
+
+test('7. Restart restores schedule state', async () => {
   await resetScheduledJobsForTesting();
   const t0 = new Date('2026-08-29T08:00:00.000Z');
   await initializeScheduler({ now: t0 });
-
   const jobsBefore = await listScheduledJobs();
   assert.equal(jobsBefore.length, 3);
 
-  // Simulate restart by re-calling initializeScheduler
   const jobsAfter = await initializeScheduler({ now: t0 });
   assert.equal(jobsAfter.length, 3);
   assert.deepEqual(
@@ -122,35 +182,34 @@ test('5. Restart restores schedule state', async () => {
   );
 });
 
-test('6. Catch-up policy handles overdue runs boundedly without unbounded historical replay', async () => {
+test('8. Catch-up policy handles overdue runs boundedly without unbounded historical replay', async () => {
   await resetScheduledJobsForTesting();
-  // Schedule initialized long in the past (3 hours ago)
   const past = new Date('2026-08-29T07:00:00.000Z');
   await initializeScheduler({ now: past });
 
   const now = new Date('2026-08-29T10:00:00.000Z');
   const overdue = await reconcileOverdueJobs({ now });
-
   assert.ok(overdue.length > 0);
   assert.ok(overdue.every(o => o.catchUpApplied));
 
-  // Claim fires the overdue job once
   const claim = await claimScheduledJob('discover', { now, claimedBy: 'catchup-worker' });
   assert.ok(claim);
   await finishScheduledJobRun({
     jobId: claim.job.id,
     runKey: claim.runKey,
+    leaseToken: claim.leaseToken,
     status: 'COMPLETED',
     now
   });
 
-  // Next run is calculated to the future, not executing the 2 intermediate missed hours
   const jobs = await listScheduledJobs();
   const discoverJob = jobs.find(j => j.workerName === 'discover');
   assert.ok(new Date(discoverJob.nextRunAt).getTime() >= now.getTime());
 });
 
-test('7. Discover writes only to candidate_queue / discovery state and does not execute', async () => {
+// ─── Pipeline Stage Tests ──────────────────────────────────────────────────────
+
+test('9. Discover writes only to candidate_queue and does not execute', async () => {
   const uniqueTitle = `Unique Hypothesis ${crypto.randomUUID()}`;
   const noveltyKey = `novelty-disc-${crypto.randomUUID()}`;
   const result = await runDiscoverWorker({
@@ -171,18 +230,25 @@ test('7. Discover writes only to candidate_queue / discovery state and does not 
   assert.equal(result.status, 'COMPLETED');
   assert.ok(result.enqueued >= 1);
 
-  // Check records in candidate_queue
   const candidates = await listRevenueRecords(CANONICAL_QUEUES.candidates);
   assert.ok(candidates.some(c => c.noveltyKey === noveltyKey));
 
-  // Ensure nothing was written directly to execution_queue or outcomes
   const outcomes = await listRevenueRecords(CANONICAL_QUEUES.outcomes);
   assert.ok(!outcomes.some(o => o.payload?.title === uniqueTitle));
 });
 
-test('8. Validate consumes candidate work and promotes executable items to execution_queue', async () => {
+test('10. Validate: properly-cited 8-gate evidence promotes to THRESHOLD_CROSSED', async () => {
   const noveltyKey = `val-test-${crypto.randomUUID()}`;
-  const allPassGates = Object.fromEntries(EIGHT_MONEY_FLOW_GATES.map(g => [g, 'pass']));
+  const EVIDENCE_URLS = [
+    'https://aws.amazon.com/support/plans/',
+    'https://aws.amazon.com/premiumsupport/pricing/',
+    'https://doit.com/partner-support',
+    'https://calculator.aws/pricing',
+    'https://docs.aws.amazon.com/awssupportdocs/latest/supportapiguide',
+    'https://aws.amazon.com/premiumsupport/enterprise-on-ramp/',
+    'https://aws.amazon.com/premiumsupport/faqs/',
+    'https://aws.amazon.com/support/compare-plans/'
+  ];
 
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.candidates,
@@ -191,18 +257,18 @@ test('8. Validate consumes candidate work and promotes executable items to execu
     priority: 85,
     payload: {
       candidate: {
-        candidateId: 'cand-val-1',
-        title: 'Validatable Candidate with 8 Gates',
+        candidateId: 'cand-val-full-gates',
+        title: 'Cloud Support Right-Sizing with 8 Evidence-Cited Gates',
         noveltyKey,
         profile: 'programmable_money_flow_v1',
         metrics: {
-          flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1,
-          deltaMeasurability: 1, monetization: 1, executionAutonomy: 1,
-          competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1
+          flowScale: 1, recurrence: 0.8, triggerIndependence: 0.8, permission: 1,
+          deltaMeasurability: 1, monetization: 0.6, executionAutonomy: 0.6,
+          competitiveWhitespace: 0.8, setupBurden: 0.2, timeToMoney: 0.6
         },
-        gates: allPassGates,
-        requiredCapabilities: ['github.read'],
-        evidence: ['https://aws.amazon.com/pricing', 'https://doit.com']
+        gateEvidence: buildGateEvidence(EIGHT_MONEY_FLOW_GATES, EVIDENCE_URLS),
+        requiredCapabilities: ['web.read'],
+        evidence: EVIDENCE_URLS
       }
     }
   });
@@ -211,12 +277,11 @@ test('8. Validate consumes candidate work and promotes executable items to execu
   assert.equal(valResult.stage, 'VALIDATE');
   assert.ok(valResult.promotedCount >= 1);
 
-  // Check that item reached execution_queue
   const execRecords = await listRevenueRecords(CANONICAL_QUEUES.execution);
   assert.ok(execRecords.some(r => r.noveltyKey === `exec-${noveltyKey}`));
 });
 
-test('9. Execute consumes execution-ready items with authorized executor or safely marks BLOCKED without simulating value', async () => {
+test('11. Execute: authorized executor records MONEY_EVENT with verified attributable value', async () => {
   const noveltyKey = `exec-test-${crypto.randomUUID()}`;
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
@@ -226,7 +291,7 @@ test('9. Execute consumes execution-ready items with authorized executor or safe
     payload: {
       candidate: {
         candidateId: 'cand-exec-1',
-        title: 'Executable Revenue Task',
+        title: 'Authorized Execution Task',
         noveltyKey,
         estimatedValue: 250,
         requiredCapabilities: ['taskman.queue.read']
@@ -236,10 +301,9 @@ test('9. Execute consumes execution-ready items with authorized executor or safe
     }
   });
 
-  // Test with real executor function that verifies attributable value
   const execResult = await runExecuteWorker({
     limit: 5,
-    executorFn: async (cand) => ({
+    executorFn: async () => ({
       status: 'MONEY_EVENT',
       reason: 'Authorized execution completed',
       verifiedAttributableValue: 125
@@ -249,48 +313,70 @@ test('9. Execute consumes execution-ready items with authorized executor or safe
   assert.equal(execResult.stage, 'EXECUTE');
   assert.ok(execResult.outcomesCount >= 1);
 
-  // Check outcome in economic_outcomes
   const outcomeRecords = await listRevenueRecords(CANONICAL_QUEUES.outcomes);
-  const matchedOutcome = outcomeRecords.find(o => o.noveltyKey === `outcome-${noveltyKey}`);
-  assert.ok(matchedOutcome);
-  assert.equal(matchedOutcome.status, 'MONEY_EVENT');
-  assert.equal(matchedOutcome.payload.attributableValue, 125);
+  const matched = outcomeRecords.find(o => o.noveltyKey === `outcome-${noveltyKey}`);
+  assert.ok(matched);
+  assert.equal(matched.status, 'MONEY_EVENT');
+  assert.equal(matched.payload.attributableValue, 125);
 });
 
-test('10. Negative invariant: Discover never fabricates candidates when no real source provides them', async () => {
-  // When no sample candidates and sources without real data are passed:
-  const result = await runDiscoverWorker({
-    sources: ['recent_events'],
-    sampleCandidates: []
-  });
+// ─── Negative Invariant Tests ──────────────────────────────────────────────────
+
+test('12. Negative invariant: Discover never fabricates candidates when no real source provides them', async () => {
+  const result = await runDiscoverWorker({ sources: ['recent_events'], sampleCandidates: [] });
   assert.equal(result.evaluated, 0);
   assert.equal(result.enqueued, 0);
 });
 
-test('11. Negative invariant: Validate requires evidence and all 8 gates for THRESHOLD_CROSSED; score alone never promotes', () => {
-  // Candidate with perfect 10/10 metrics but zero evidence
-  const zeroEvidenceCand = {
-    profile: 'programmable_money_flow_v1',
-    metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1 },
-    evidence: []
+test('13. Negative invariant: 7 evidence-cited gates + 1 uncited => NEEDS_EVIDENCE, not THRESHOLD_CROSSED', () => {
+  const sevenRefs = EIGHT_MONEY_FLOW_GATES.slice(0, 7).map(g => [g, {
+    verdict: 'pass',
+    evidenceRef: 'https://example.com/' + g
+  }]);
+  // 8th gate: pass verdict but NO evidenceRef
+  const eighthGate = EIGHT_MONEY_FLOW_GATES[7];
+  const gateEvidencePartial = {
+    ...Object.fromEntries(sevenRefs),
+    [eighthGate]: { verdict: 'pass', evidenceRef: '' }  // empty ref = not cited
   };
-  const zeroEvResult = evaluateEvidenceGates(zeroEvidenceCand);
-  assert.equal(zeroEvResult.passed, false);
-  assert.equal(zeroEvResult.status, 'NEEDS_EVIDENCE');
 
-  // Candidate with evidence but uncertain gate (7 passes, 1 uncertain)
-  const partialPassGates = Object.fromEntries(EIGHT_MONEY_FLOW_GATES.map((g, idx) => [g, idx === 0 ? 'uncertain' : 'pass']));
-  const partialCand = {
+  const result = evaluateEvidenceGates({
     profile: 'programmable_money_flow_v1',
-    evidence: ['https://example.com/doc'],
-    gates: partialPassGates
-  };
-  const partialResult = evaluateEvidenceGates(partialCand);
-  assert.equal(partialResult.passed, false);
-  assert.equal(partialResult.status, 'NEEDS_EVIDENCE');
+    evidence: ['https://example.com'],
+    gateEvidence: gateEvidencePartial
+  });
+  assert.equal(result.passed, false);
+  assert.equal(result.status, 'NEEDS_EVIDENCE');
+  assert.ok(result.reason.includes('gateEvidence'));
 });
 
-test('12. Negative invariant: Execute never simulates VALUE_CREATED or MONEY_EVENT without concrete authorized executor', async () => {
+test('14. Negative invariant: flat pass verdicts without gateEvidence => NEEDS_EVIDENCE (no per-gate citation)', () => {
+  const flatGates = Object.fromEntries(EIGHT_MONEY_FLOW_GATES.map(g => [g, 'pass']));
+  const result = evaluateEvidenceGates({
+    profile: 'programmable_money_flow_v1',
+    evidence: ['https://example.com/doc'],
+    gates: flatGates  // legacy flat verdicts, no gateEvidence
+    // gateEvidence intentionally absent
+  });
+  // Legacy flat passes without evidenceRef must NOT produce THRESHOLD_CROSSED
+  assert.equal(result.passed, false);
+  assert.equal(result.status, 'NEEDS_EVIDENCE');
+});
+
+test('15. Negative invariant: zero evidence produces NEEDS_EVIDENCE regardless of gate values', () => {
+  const fullGateEvidence = buildGateEvidence(EIGHT_MONEY_FLOW_GATES,
+    EIGHT_MONEY_FLOW_GATES.map(g => 'https://example.com/' + g));
+  const result = evaluateEvidenceGates({
+    profile: 'programmable_money_flow_v1',
+    evidence: [],  // no evidence
+    gateEvidence: fullGateEvidence
+  });
+  assert.equal(result.passed, false);
+  assert.equal(result.status, 'NEEDS_EVIDENCE');
+  assert.ok(result.reason.includes('evidence'));
+});
+
+test('16. Negative invariant: Execute BLOCKED with zero attributable value when no adapter configured', async () => {
   const noveltyKey = `exec-neg-${crypto.randomUUID()}`;
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
@@ -302,25 +388,24 @@ test('12. Negative invariant: Execute never simulates VALUE_CREATED or MONEY_EVE
         candidateId: 'cand-neg-1',
         title: 'Unexecutable Candidate Without Adapter',
         noveltyKey,
-        estimatedValue: 10000 // Invariant: High estimated value must NOT become realized value
+        estimatedValue: 10000  // Must NOT become realized value
       },
       classification: 'EXECUTABLE',
       missingCapabilities: []
     }
   });
 
-  // Run execute worker without an authorized executorFn
-  const execResult = await runExecuteWorker({ limit: 10 });
+  await runExecuteWorker({ limit: 10 });  // no executorFn
+
   const outcomes = await listRevenueRecords(CANONICAL_QUEUES.outcomes);
   const matched = outcomes.find(o => o.noveltyKey === `outcome-${noveltyKey}`);
-
   assert.ok(matched);
   assert.equal(matched.status, 'BLOCKED');
-  assert.equal(matched.payload.attributableValue, 0); // Realized value MUST be 0
+  assert.equal(matched.payload.attributableValue, 0);
   assert.ok(matched.payload.outcomeReason.includes('No authorized executable action adapter'));
 });
 
-test('13. Existing revenue queue tests and legacy aliases remain compatible', async () => {
+test('17. Legacy revenue queue aliases remain compatible', async () => {
   assert.equal(resolveQueueName('revenue_exploration_queue'), CANONICAL_QUEUES.candidates);
   assert.equal(resolveQueueName('revenue_opportunity_deepdives'), CANONICAL_QUEUES.validation);
   assert.equal(resolveQueueName('revenue_execution_results'), CANONICAL_QUEUES.outcomes);
@@ -338,7 +423,6 @@ test('13. Existing revenue queue tests and legacy aliases remain compatible', as
   assert.ok(canonicalRecords.some(r => r.noveltyKey === testKey));
 });
 
-test('14. Memory-mode reports clearly that durable guarantees require PostgreSQL', () => {
-  const durable = isSchedulerDurable();
-  assert.equal(typeof durable, 'boolean');
+test('18. Memory-mode reports clearly that durable guarantees require PostgreSQL', () => {
+  assert.equal(typeof isSchedulerDurable(), 'boolean');
 });

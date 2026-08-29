@@ -82,6 +82,7 @@ function normalizeJob(row) {
     lastError: row.last_error || row.lastError || null,
     leaseOwner: row.lease_owner || row.leaseOwner || null,
     leaseExpiresAt: row.lease_expires_at ? new Date(row.lease_expires_at).toISOString() : (row.leaseExpiresAt ? new Date(row.leaseExpiresAt).toISOString() : null),
+    leaseToken: row.lease_token || row.leaseToken || null,
     runKey: row.run_key || row.runKey || null,
     enabled: row.enabled !== false,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : (row.createdAt || new Date().toISOString()),
@@ -216,6 +217,7 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
           job.nextRunAt = computeNextRunAt(job.scheduleExpression, currentTime).toISOString();
           job.leaseOwner = null;
           job.leaseExpiresAt = null;
+          job.leaseToken = null;
           continue;
         }
         if (run.status === 'RUNNING' && new Date(job.leaseExpiresAt).getTime() > currentTime.getTime()) {
@@ -224,9 +226,13 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
         }
       }
 
+      // Mint fencing token for this claim
+      const leaseToken = crypto.randomUUID();
+
       // Claim in memory
       job.leaseOwner = claimedBy;
       job.leaseExpiresAt = leaseExpiresAt.toISOString();
+      job.leaseToken = leaseToken;
       job.lastRunAt = currentTime.toISOString();
       job.runKey = runKey;
 
@@ -238,7 +244,8 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
         scheduledFor: scheduledFor.toISOString(),
         startedAt: currentTime.toISOString(),
         status: 'RUNNING',
-        claimedBy
+        claimedBy,
+        leaseToken
       });
 
       return {
@@ -246,6 +253,7 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
         runKey,
         scheduledFor: scheduledFor.toISOString(),
         claimedBy,
+        leaseToken,
         durable: false
       };
     }
@@ -295,31 +303,37 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
       }
     }
 
-    // Insert or update scheduled_job_runs entry
-    await client.query(`
-      INSERT INTO scheduled_job_runs (job_id, worker_name, run_key, scheduled_for, started_at, status, claimed_by)
-      VALUES ($1, $2, $3, $4, $5, 'RUNNING', $6)
-      ON CONFLICT (run_key) DO UPDATE
-      SET status = 'RUNNING', claimed_by = EXCLUDED.claimed_by, started_at = EXCLUDED.started_at, updated_at = now()
-    `, [row.id, row.worker_name, runKey, scheduledFor.toISOString(), currentTime.toISOString(), claimedBy]);
+    // Mint fencing token — unique per claim, persisted to both tables
+    const leaseToken = crypto.randomUUID();
 
-    // Update lease on scheduled_jobs
+    // Insert or update scheduled_job_runs entry (store leaseToken for fencing)
+    await client.query(`
+      INSERT INTO scheduled_job_runs (job_id, worker_name, run_key, scheduled_for, started_at, status, claimed_by, lease_token)
+      VALUES ($1, $2, $3, $4, $5, 'RUNNING', $6, $7)
+      ON CONFLICT (run_key) DO UPDATE
+      SET status = 'RUNNING', claimed_by = EXCLUDED.claimed_by, started_at = EXCLUDED.started_at,
+          lease_token = EXCLUDED.lease_token, updated_at = now()
+    `, [row.id, row.worker_name, runKey, scheduledFor.toISOString(), currentTime.toISOString(), claimedBy, leaseToken]);
+
+    // Update lease on scheduled_jobs — store leaseToken for fencing in finishScheduledJobRun
     const updateRes = await client.query(`
       UPDATE scheduled_jobs
       SET lease_owner = $1,
           lease_expires_at = $2,
           last_run_at = $3,
           run_key = $4,
+          lease_token = $5,
           updated_at = now()
-      WHERE id = $5
+      WHERE id = $6
       RETURNING *
-    `, [claimedBy, leaseExpiresAt.toISOString(), currentTime.toISOString(), runKey, row.id]);
+    `, [claimedBy, leaseExpiresAt.toISOString(), currentTime.toISOString(), runKey, leaseToken, row.id]);
 
     return {
       job: normalizeJob(updateRes.rows[0]),
       runKey,
       scheduledFor: scheduledFor.toISOString(),
       claimedBy,
+      leaseToken,
       durable: true
     };
   });
@@ -327,10 +341,18 @@ export async function claimScheduledJob(jobIdOrWorkerName, {
 
 /**
  * Records completion of a scheduled job run, clears the lease, and calculates next_run_at.
+ *
+ * FENCING: leaseToken must match the token stored on the job row.
+ * A late-waking stale worker (A) whose lease was reclaimed by worker (B) will have
+ * a different leaseToken than B's, so A's finish call is a no-op and cannot clobber B.
+ *
+ * If leaseToken is omitted (legacy / memory path without token), the finish succeeds
+ * unconditionally — callers should always pass the token returned by claimScheduledJob.
  */
 export async function finishScheduledJobRun({
   jobId,
   runKey,
+  leaseToken = null,
   status = 'COMPLETED',
   result = null,
   error = null,
@@ -341,9 +363,14 @@ export async function finishScheduledJobRun({
   if (!databaseEnabled) {
     const job = memoryJobs.get(jobId);
     if (job) {
+      // Fencing: if a leaseToken was given, only clear the lease if it still matches
+      if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) {
+        return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
+      }
       const nextRun = computeNextRunAt(job.scheduleExpression, finishTime);
       job.leaseOwner = null;
       job.leaseExpiresAt = null;
+      job.leaseToken = null;
       job.lastRunAt = finishTime.toISOString();
       job.nextRunAt = nextRun.toISOString();
       if (status === 'COMPLETED') {
@@ -379,11 +406,18 @@ export async function finishScheduledJobRun({
       `, [status, finishTime.toISOString(), JSON.stringify(result || {}), error ? String(error) : null, runKey]);
     }
 
-    // 2. Fetch job to get scheduleExpression
+    // 2. Fetch job to get scheduleExpression and current leaseToken
     const jobRes = await client.query('SELECT * FROM scheduled_jobs WHERE id = $1', [jobId]);
     if (jobRes.rows.length === 0) return { ok: false, error: 'job not found' };
 
     const job = jobRes.rows[0];
+
+    // Fencing: if caller provided a leaseToken, only clear the lease if it matches
+    // what is stored. A stale worker (A) will have a different token than the new owner (B).
+    if (leaseToken && job.lease_token && job.lease_token !== leaseToken) {
+      return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
+    }
+
     const nextRun = computeNextRunAt(job.schedule_expression, finishTime);
 
     // 3. Update scheduled_jobs clearing lease and advancing next_run_at
@@ -392,6 +426,7 @@ export async function finishScheduledJobRun({
       UPDATE scheduled_jobs
       SET lease_owner = NULL,
           lease_expires_at = NULL,
+          lease_token = NULL,
           next_run_at = $1,
           last_success_at = CASE WHEN $2 THEN $3 ELSE last_success_at END,
           last_error_at = CASE WHEN NOT $2 THEN $3 ELSE last_error_at END,
@@ -426,3 +461,51 @@ export async function resetScheduledJobsForTesting() {
     await query('DELETE FROM scheduled_jobs');
   }
 }
+
+/**
+ * Renews (extends) a lease for an active job run using the fencing leaseToken.
+ *
+ * Only the current token holder (B) can extend the lease.
+ * A stale worker (A) with a different/expired token is rejected.
+ *
+ * Returns { ok: true, newExpiresAt } on success,
+ *         { ok: false, fenced: true, reason } if the token does not match.
+ */
+export async function renewScheduledJobLease({
+  jobId,
+  leaseToken,
+  leaseMs = DEFAULT_LEASE_MS,
+  now = new Date()
+} = {}) {
+  if (!leaseToken) throw new Error('leaseToken is required for lease renewal');
+
+  const currentTime = new Date(now);
+  const newExpiresAt = new Date(currentTime.getTime() + leaseMs);
+
+  if (!databaseEnabled) {
+    const job = memoryJobs.get(jobId);
+    if (!job) return { ok: false, reason: 'job not found' };
+    if (job.leaseToken !== leaseToken) {
+      return { ok: false, fenced: true, reason: 'lease token mismatch — cannot renew another worker\'s lease' };
+    }
+    job.leaseExpiresAt = newExpiresAt.toISOString();
+    job.updatedAt = currentTime.toISOString();
+    return { ok: true, newExpiresAt: newExpiresAt.toISOString() };
+  }
+
+  const res = await query(`
+    UPDATE scheduled_jobs
+    SET lease_expires_at = $1,
+        updated_at = now()
+    WHERE id = $2
+      AND lease_token = $3
+      AND lease_owner IS NOT NULL
+    RETURNING id, lease_expires_at
+  `, [newExpiresAt.toISOString(), jobId, leaseToken]);
+
+  if (res.rows.length === 0) {
+    return { ok: false, fenced: true, reason: 'lease token mismatch or lease already cleared — renewal rejected' };
+  }
+  return { ok: true, newExpiresAt: new Date(res.rows[0].lease_expires_at).toISOString() };
+}
+

@@ -25,12 +25,14 @@ export async function handleMoltJobsRequest(req, res, url) {
     const body = await readJson(req);
     try {
       const result = await sendMoltJobsHeartbeat({
+        agentId: body.agentId,
         jobId: body.jobId,
-        progress: body.progress
+        statusReport: body.statusReport || body.progress,
+        runtimeMetadata: body.runtimeMetadata
       });
       sendJson(res, 200, { ok: true, result });
     } catch (error) {
-      const blocked = /MOLTJOBS_API_KEY|jobId/.test(String(error?.message || error));
+      const blocked = /MOLTJOBS_API_KEY|agentId|jobId/.test(String(error?.message || error));
       sendJson(res, blocked ? 409 : (error.status || 502), {
         ok: false,
         blocked,

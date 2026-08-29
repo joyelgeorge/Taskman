@@ -1,0 +1,76 @@
+{
+  "run_key": "2026-08-29T10:41:01+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "card-authorization-integrity-fee-prevention-engine",
+    "name": "Card authorization integrity-fee prevention engine",
+    "score": 50,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 3,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "approved authorization -> capture/reversal still absent as network-specific deadline approaches -> combine PSP lifecycle state with merchant order/fulfillment state -> recommend CAPTURE/REVERSE/NO ACTION before integrity-fee trigger -> reconcile avoided scheme fee",
+    "why_survived": "Fresh attack evidence shows processor automation does not uniformly neutralize the wedge. Stripe offers automatic delayed capture shortly before authorization expiry, but it is opt-in and addresses missed capture rather than stale authorizations that should be reversed. Adyen commonly auto-expires major-network authorizations only after 28 days, while Mastercard final/undefined authorization integrity fees can trigger after seven days. Therefore eventual PSP expiry is not equivalent to pre-fee remediation.",
+    "strongest_evidence": [
+      "Mastercard Processing Integrity Final Authorization fees can apply when a final authorization is not reversed or cleared within seven calendar days; Moneris/Nexio publish 2026 rates and fee increases.",
+      "Adyen states major-network authorizations are automatically expired after 28 days and separately notes scheme/interchange costs can increase for late captures.",
+      "Stripe documents automatic_delayed capture about six hours before authorization expiry, showing first-party mitigation exists for capture-miss risk but not a general cross-PSP reversal decision based on fulfillment state.",
+      "Braintree documents Visa Processing Integrity fees and explicitly tells merchants to reverse/cancel quickly and clear timely."
+    ],
+    "closest_threat": "PSP-native automatic capture/expiry, gateway capture settings, and broad payment-operations products. Stripe's automatic delayed capture is the strongest first-party threat found this run, but it is not an exact reversal/capture decision layer across PSPs and merchant fulfillment systems.",
+    "smallest_intervention": "Read authorization, capture, cancel/reversal webhooks plus order/fulfillment state. Maintain network/MCC/region deadline table. Before the earliest applicable fee deadline output CAPTURE NOW, REVERSE NOW, or NO ACTION with projected fee. Leave execution merchant-confirmed or use the merchant's existing PSP API under explicit authorization.",
+    "monetization": "Per prevented-fee event or capped percentage of verified integrity fees avoided, aggregated into a monthly invoice; low monitoring minimum only for merchants whose expected avoided fees exceed the charge.",
+    "biggest_unresolved_risk": "Actual merchant incidence is still unquantified. If stale authorizations are rare outside a small set of verticals, the addressable recoverable fee pool may be too small even though the mechanism is technically clean. Exact enterprise payment-operations products may also handle this control without marketing it separately.",
+    "next_research_test": "Quantify incidence and dollars per 100k authorizations using processor/acquirer fee statements or public merchant data; identify verticals with manual/delayed capture and cancellation-heavy fulfillment; search payment-operations platforms for explicit automatic stale-authorization reversal before Visa/Mastercard integrity deadlines. Gate 6/8 only pass if avoided-fee pool is material and exact incumbent coverage remains absent."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "cloud-support-plan-right-sizing-engine", "score": 46},
+    {"rank": 3, "id": "merchant-settlement-acceleration-decision-engine", "score": 45},
+    {"rank": 4, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45},
+    {"rank": 5, "id": "app-store-small-business-program-eligibility-monitor", "score": 45}
+  ],
+  "candidate_changes": {
+    "promotions": [],
+    "demotions": [],
+    "rejections": [
+      {"id": "commercial-insurance-premium-audit-optimizer", "fatal_flaw": "Exact premium-audit automation is already crowded: AuditCake, Audit1, Bevaya and V7 Go automate payroll/exposure reconciliation, classification and premium adjustments."},
+      {"id": "ach-reject-fee-prevention", "fatal_flaw": "Avoiding a reject generally requires pre-initiation bank-account validation or transaction-path intervention, weakening Gate 7; ACH verification is also mature infrastructure."}
+    ]
+  },
+  "new_search_rules": [
+    "Do not treat PSP eventual authorization expiry as equivalent to integrity-fee prevention; compare the PSP action time with the network fee deadline.",
+    "Separate CAPTURE-risk automation from REVERSE-risk automation. A first-party auto-capture feature does not neutralize a cross-system decision about whether an unfulfilled order should be reversed instead.",
+    "For deadline-fee wedges, quantify incidence before promoting beyond SEARCH; deterministic fee math is insufficient if triggering events are rare."
+  ],
+  "sources": [
+    "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method",
+    "https://help.adyen.com/knowledge/payments/captures/what-is-my-capture-expired",
+    "https://www.adyen.com/knowledge-hub/pre-authorizations-and-authorization-adjustments-for-developers",
+    "https://completemerchantsolutions.freshdesk.com/support/solutions/articles/36000106347-fee-adjustments",
+    "https://developer.paypal.com/braintree/articles/risk-and-security/compliance/network-updates/2023/visa-f23",
+    "https://www.moneris.com/support/additional-resources/payment-card-network-fee-updates"
+  ],
+  "persistence_scope": "Revenue-opportunity research only."
+}

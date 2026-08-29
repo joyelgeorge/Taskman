@@ -122,7 +122,7 @@ const refreshController = createDashboardRefreshController({
   onGlobalState(state) {
     const banner = $('#dashboardHealth');
     banner.hidden = state.status === 'live';
-    banner.textContent = state.status === 'live'
+    $('#dashboardHealthText').textContent = state.status === 'live'
       ? 'Dashboard live'
       : state.status === 'degraded'
         ? `Dashboard degraded: ${state.failedPanels.join(', ')}`

@@ -15,6 +15,16 @@ function normalizeLabel(label) {
   return String(label?.name ?? label ?? '').trim().toLowerCase();
 }
 
+export function parsePreferredIssueNumbers(value = '') {
+  return [...new Set(
+    String(value)
+      .split(',')
+      .map(item => Number(item.trim()))
+      .filter(Number.isSafeInteger)
+      .filter(number => number > 0)
+  )];
+}
+
 export function isExplicitlyBlocked(issue) {
   return (issue.labels || []).some(label => BLOCKED_LABELS.has(normalizeLabel(label)));
 }
@@ -32,12 +42,22 @@ function priorityRank(issue) {
   return 0;
 }
 
-export function selectActionableIssues(issues, pullRequests, limit = 3) {
+export function selectActionableIssues(
+  issues,
+  pullRequests,
+  limit = 3,
+  preferredIssueNumbers = []
+) {
   const take = Number.isFinite(Number(limit)) ? Math.max(1, Number(limit)) : 3;
+  const preferredRank = new Map(
+    preferredIssueNumbers.map((number, index) => [Number(number), preferredIssueNumbers.length - index])
+  );
+
   return issues
     .filter(issue => !isExplicitlyBlocked(issue))
     .filter(issue => !issueCoveredByOpenPr(issue, pullRequests))
     .sort((a, b) =>
+      (preferredRank.get(Number(b.number)) || 0) - (preferredRank.get(Number(a.number)) || 0) ||
       priorityRank(b) - priorityRank(a) ||
       Number(b.number) - Number(a.number)
     )
@@ -71,8 +91,19 @@ function scanTodos() {
   }
 }
 
-export function buildPollReport({ issues, pullRequests, todos, limit }) {
-  const pickedIssues = selectActionableIssues(issues, pullRequests, limit);
+export function buildPollReport({
+  issues,
+  pullRequests,
+  todos,
+  limit,
+  preferredIssueNumbers = []
+}) {
+  const pickedIssues = selectActionableIssues(
+    issues,
+    pullRequests,
+    limit,
+    preferredIssueNumbers
+  );
   const pullRequestsNeedingAttention = pullRequests.filter(pr =>
     pr.reviewDecision === 'CHANGES_REQUESTED' ||
     pr.isDraft === true
@@ -83,6 +114,7 @@ export function buildPollReport({ issues, pullRequests, todos, limit }) {
     checkedAt: new Date().toISOString(),
     openIssueCount: issues.length,
     openPullRequestCount: pullRequests.length,
+    preferredIssueNumbers,
     pullRequestsNeedingAttention,
     pickedIssues,
     localTodos: todos,
@@ -99,6 +131,9 @@ export function buildPollReport({ issues, pullRequests, todos, limit }) {
 export function main() {
   const repository = process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
   const limit = Number(process.env.TASKMAN_MAX_ISSUES || 3);
+  const preferredIssueNumbers = parsePreferredIssueNumbers(
+    process.env.TASKMAN_PRIORITY_ISSUES
+  );
 
   const pullRequests = ghJson([
     'pr', 'list',
@@ -120,7 +155,8 @@ export function main() {
     issues,
     pullRequests,
     todos: scanTodos(),
-    limit
+    limit,
+    preferredIssueNumbers
   });
 
   console.log(JSON.stringify(report, null, 2));

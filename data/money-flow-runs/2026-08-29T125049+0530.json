@@ -1,0 +1,81 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T12:50:49+05:30",
+  "scenario_id": "programmable-money-flow-search",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "card-authorization-integrity-fee-prevention-engine",
+    "name": "Card authorization integrity-fee prevention engine",
+    "score": 49,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 4,
+      "trigger_independence": 5,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 4,
+      "first_party_gap": 4,
+      "competitive_whitespace": 3,
+      "regulation": 4,
+      "integration_friction": 3,
+      "distribution_burden": 3,
+      "build_simplicity": 4
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "pass",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "approved authorization -> capture/reversal absent while merchant fulfillment/cancellation state changes -> scheme reversal/clearing deadline approaches -> recommend REVERSE/CAPTURE/NO ACTION -> reconcile avoided integrity fee",
+    "why_survived": "Fresh processor documentation reinforces that authorization expiry alone is not equivalent to timely scheme compliance. Chase states Mastercard card-not-present unused authorizations should be reversed within 72 hours, while Stripe documents uncaptured PaymentIntents being canceled after a default period of 7 days and Adyen commonly expires major-network authorizations after 28 days. This leaves a plausible merchant-state-driven early-reversal gap. At the same time, TD explicitly closes batches after 48 hours where possible to avoid Mastercard's new 72-hour authorization-validity fee, showing that simple batch-timing optimization is already being absorbed first-party. No dominant exact product was found for fulfillment-aware cancellation/reversal before the applicable integrity deadline.",
+    "strongest_evidence": "Chase merchant documentation says Mastercard Processing Integrity applies when an authorization is not used or reversed to Mastercard standards and says card-not-present merchants should reverse within 72 hours. Stripe documents uncaptured PaymentIntents canceling after a default 7-day period, and Adyen commonly expires major-network authorizations after 28 days. TD says it attempts to close batches after 48 hours to avoid Mastercard's 0.0339% authorization-validity fee that applies to transactions cleared after 72 hours. Visa misuse-of-authorization remains $0.15 per non-compliant US transaction; Mastercard integrity fees remain materially higher for some authorization classes.",
+    "closest_threat": "Tagada's cross-processor authorization-window automation remains the closest product threat. Stripe automatic-delayed capture, Shopify capture-at-fulfillment, Adyen capture/cancel APIs, processor batch-closing controls, and scheme-fee intelligence products can absorb parts of the workflow. The remaining whitespace is specifically merchant fulfillment/cancellation state -> early reversal recommendation before scheme penalty, without owning checkout or routing.",
+    "smallest_intervention": "Read authorization, capture and cancellation webhooks plus merchant order/fulfillment status; maintain network/MCC/region deadline rules; alert REVERSE NOW, CAPTURE NOW or NO ACTION with projected avoided fee and evidence. Merchant confirms any write action.",
+    "monetization": "Per verified prevented-fee event or a capped percentage of reconciled scheme-fee savings; only charge a recurring monitoring fee where observed exposure supports it.",
+    "biggest_unresolved_risk": "The incidence denominator remains missing: published fee rates prove loss severity but not how many merchants incur enough stale-authorisation penalties to support a scalable performance-fee business. Some processors may also send network reversals earlier than their user-visible PaymentIntent/authorization expiry state suggests.",
+    "next_research_test": "Find processor/acquirer statement datasets, merchant audits or network/acquirer statistics that reveal integrity/misuse fee count and dollars per 100,000 authorizations by vertical. Separately verify whether major PSPs send network reversal messages before user-visible expiry/cancellation. If incidence is low or PSPs already send timely reversals, demote or reject."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "merchant-card-network-behavior-fee-sentinel", "score": 47},
+    {"rank": 3, "id": "cloud-support-plan-right-sizing-engine", "score": 46},
+    {"rank": 4, "id": "merchant-settlement-acceleration-decision-engine", "score": 45},
+    {"rank": 5, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45}
+  ],
+  "candidate_events": {
+    "promotions": [],
+    "demotions": [],
+    "rejections": [
+      {
+        "id": "authorization-validity-batch-close-timing-optimizer",
+        "fatal_flaw": "Processor-native automation already attacks the micro-event directly: TD states it closes batches after 48 hours where possible to prevent Mastercard's new 72-hour authorization-validity fee. This is too close to a first-party operational control to support an independent wedge."
+      },
+      {
+        "id": "generic-prepaid-cloud-api-credit-refund-expiry-sentinel",
+        "fatal_flaw": "Refund/expiry rights are fragmented by product and often self-service or non-refundable. Alibaba Cloud documents multiple resource-plan refund paths and expiry rules directly; other API credit products either make credits non-refundable or non-expiring. The resulting wedge is heterogeneous, overlaps previously rejected broad entitlement monitoring, and is weak against simple self-service reminders."
+      }
+    ]
+  },
+  "new_search_rules": [
+    "Do not equate PSP authorization expiry with scheme-compliant reversal; verify the actual network reversal message timing.",
+    "When a processor explicitly auto-adjusts batch timing to avoid a network fee, treat that micro-wedge as first-party absorbed even if other processors do not.",
+    "For prepaid-credit opportunities, require a broadly repeatable machine-readable refund right; heterogeneous provider refund policies are not enough."
+  ],
+  "sources": [
+    {"title": "Chase Merchant Services Statement Support", "url": "https://merchantservices.chase.com/support/managing-your-account/how-to-read-your-statement"},
+    {"title": "Stripe - Place a hold on a payment method", "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"},
+    {"title": "Stripe - Payment cancellation balance transaction behavior", "url": "https://support.stripe.com/questions/changes-to-balance-transaction-behavior-for-partial-capture-and-payment-cancellation-flows"},
+    {"title": "Adyen - Pre-authorizations and authorization adjustments", "url": "https://www.adyen.com/knowledge-hub/pre-authorizations-and-authorization-adjustments-for-developers"},
+    {"title": "TD Merchant Solutions - Fee Change Summary", "url": "https://www.td.com/ca/en/business-banking/merchant-solutions/fee-change-summary"},
+    {"title": "PayJunction - Visa authorization misuse fee", "url": "https://support.payjunction.com/hc/en-us/articles/211659937-What-Is-a-Misuse-Fee-for-Visa-Authorizations"},
+    {"title": "Alibaba Cloud Simple Log Service refund policy", "url": "https://www.alibabacloud.com/help/en/sls/refunds"},
+    {"title": "Alibaba Cloud CDN refund policy", "url": "https://www.alibabacloud.com/help/doc-detail/206327.html"}
+  ],
+  "persistence_scope": "Revenue-opportunity research only."
+}

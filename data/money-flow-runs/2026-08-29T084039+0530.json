@@ -1,0 +1,84 @@
+{
+  "schema_version": 5,
+  "run_key": "2026-08-29T08:40:39+05:30",
+  "mode": "SEARCH",
+  "threshold_crossed": false,
+  "current_leader": {
+    "id": "cloud-support-plan-right-sizing-engine",
+    "name": "Cloud support-plan right-sizing engine",
+    "score": 46,
+    "max_score": 60,
+    "component_scores": {
+      "flow_scale": 5,
+      "leakage_magnitude": 3,
+      "trigger_independence": 4,
+      "permission_non_invasiveness": 5,
+      "delta_measurability": 5,
+      "monetization": 3,
+      "first_party_gap": 4,
+      "competitive_whitespace": 4,
+      "regulation": 5,
+      "integration_friction": 3,
+      "distribution_burden": 2,
+      "build_simplicity": 3
+    },
+    "gates": {
+      "money_flow_scale": "pass",
+      "recurring_leakage": "uncertain",
+      "independent_trigger": "pass",
+      "permission_non_invasive": "pass",
+      "measurable_delta": "pass",
+      "monetization": "uncertain",
+      "no_transaction_ownership": "pass",
+      "competitive_whitespace": "uncertain"
+    },
+    "state_transition": "monthly cloud spend and provider-independent operational/incident telemetry update -> recompute current support-tier cost and required SLA/features -> compare cheaper eligible tiers -> recommend KEEP/DOWNGRADE/UPGRADE at next permissible boundary -> verify support-fee delta",
+    "why_survived": "AWS, Google Cloud and Azure all expose recurring paid support plans with explicit monthly pricing/change boundaries, while current searches still did not find an exact continuous cross-cloud engine that combines support-tier economics with operational criticality/incident telemetry. The wedge remains read-only and the fee delta is deterministic.",
+    "strongest_evidence": [
+      "AWS paid support has a one-month minimum and Business Support+/Enterprise/Unified Operations have explicit monthly minimum/percentage pricing; AWS allows Business Support+ downgrade from the console and Enterprise downgrade via TAM.",
+      "Google Cloud Standard, Enhanced and Premium Support have explicit minimum/percentage pricing, including $29/3%, $100/tiered, and $15,000/tiered structures.",
+      "Azure support plans are billed monthly and can be changed or cancelled in the Azure portal for eligible purchase channels.",
+      "AWS Support API requires a paid support plan, so a durable optimizer cannot depend on that API after recommending a downgrade to Basic."
+    ],
+    "closest_threat": "First-party support-plan calculators/change workflows plus partner-led support substitutes such as DoiT can absorb or economically neutralize part of the wedge. Broad FinOps/MSP platforms can also add support-plan review even though an exact continuous telemetry-aware optimizer was not found.",
+    "smallest_intervention": "Read cloud billing forecast, current support tier, workload criticality/SLOs, incident history and required response-time/features from provider-independent telemetry; output KEEP/DOWNGRADE/UPGRADE plus next-month fee delta and feature/risk tradeoff. No automatic plan change.",
+    "monetization": "Small per-accepted plan-change fee, low recurring monitoring fee, or capped share of verified support-fee savings over a defined measurement window.",
+    "biggest_unresolved_risk": "The correct support tier may be mostly static and driven by tail-risk insurance rather than historical ticket usage, so most value may collapse into an annual review; paid-plan-only support telemetry can also disappear after downgrade.",
+    "next_research_test": "Quantify real support-tier overprovisioning and change frequency using customer/FinOps evidence; search MSP/FinOps products for explicit support-plan optimization; test whether provider-independent incident/SLO telemetry predicts tier sufficiency well enough without paid Support APIs. Reject or demote if annual/static review captures most value or substitutes neutralize the economics."
+  },
+  "runner_ups": [
+    {"rank": 2, "id": "merchant-settlement-acceleration-decision-engine", "score": 45, "note": "Still clean but avoidable accelerated-settlement leakage remains unproven."},
+    {"rank": 3, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45, "note": "Programmable and measurable; incremental savings over competent static tuning remain unproven."},
+    {"rank": 4, "id": "app-store-small-business-program-eligibility-monitor", "score": 45, "note": "Apple's 15% reduced commission can create a large deterministic delta and proceeds are machine-readable, but enrollment is simple/first-party and requalification is mostly annual, weakening recurring monetization."},
+    {"rank": 5, "id": "quota-boundary-workload-timing-optimizer", "score": 45, "note": "Strong structure but still lacks a sufficiently high-value defensible vertical."}
+  ],
+  "candidate_events": {
+    "demotions": [
+      {"id": "cloud-support-plan-right-sizing-engine", "from_score": 48, "to_score": 46, "reason": "Support is tail-risk insurance; low case usage is not equivalent to waste. AWS Support API is paid-plan-only, so telemetry disappears after a downgrade to Basic unless provider-independent signals are used. Monetizable decision frequency remains unquantified."}
+    ],
+    "new_candidates": [
+      {"id": "app-store-small-business-program-eligibility-monitor", "score": 45, "status": "runner-up", "state_transition": "App Store proceeds/account relationships update -> eligibility for reduced 15% commission/requalification becomes true -> alert and prepare enrollment evidence -> verify commission-rate delta", "fatal_or_open_issue": "Apple makes enrollment straightforward and eligibility changes mostly annually, so this risks being a one-time checklist rather than a recurring tollbooth."}
+    ],
+    "rejections": [
+      {"id": "unused-prepaid-shipping-label-refund", "fatal_flaw": "Exact first-party automation now exists: ShipStation Refund Assist automatically detects, voids and submits eligible unused USPS labels for refund; other shipping APIs expose direct void/refund primitives."},
+      {"id": "commercial-lease-cam-overcharge-recovery", "fatal_flaw": "Multiple exact products now compare lease terms with CAM/operating-expense statements, produce clause-cited overcharge findings and recovery/dispute workflows."}
+    ]
+  },
+  "new_search_rules": [
+    "Do not infer support-tier waste from low support-ticket volume; support is partly tail-risk insurance and must be evaluated against workload criticality, SLOs and feature requirements.",
+    "If a cost-saving recommendation removes access to the telemetry API used to make that recommendation, the wedge must be redesigned around provider-independent signals or penalized for integration fragility.",
+    "A large percentage fee reduction with simple first-party enrollment can still fail the monetization gate when the state transition occurs only annually or collapses to a checklist."
+  ],
+  "sources": [
+    "https://docs.aws.amazon.com/awssupport/latest/user/changing-support-plans.html",
+    "https://aws.amazon.com/premiumsupport/faqs/",
+    "https://docs.aws.amazon.com/awssupport/latest/user/about-support-api.html",
+    "https://cloud.google.com/support/premium",
+    "https://azure.microsoft.com/en-in/support/legal/faq",
+    "https://help.doit.com/docs/consulting-support/google-cloud-support",
+    "https://developer.apple.com/app-store/small-business-program/",
+    "https://docs.shipstation.com/refund-assist",
+    "https://www.leaseguard.io/",
+    "https://seethrou.com/"
+  ]
+}

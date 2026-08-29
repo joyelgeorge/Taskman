@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-29T05:45:42+05:30",
+  "updated_at": "2026-08-29T06:45:55+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {"stable_key":"money-flow-wedge-scout","title":"Money Flow Wedge Scout","status":"active","mode":"SEARCH","threshold_crossed":false},
   "history_archives": [
@@ -8,34 +8,35 @@
     {"type":"prior_anchor_git_blob","sha":"bbe3044dc117562d09c7a81d13b9bd58cb4eec54","note":"Schema-v5 anchor through 2026-08-28T19:33:59+05:30."},
     {"type":"prior_anchor_git_blob","sha":"d4cc5753f22b3a79e9d227af0150625cacd4dac3","note":"Full schema-v5 anchor through 2026-08-29T02:45:02+05:30; immutable run files preserve normalized history."},
     {"type":"prior_anchor_git_blob","sha":"c02ae6f827070bca5a0f348bd1c55615f33a7207","note":"Anchor through 2026-08-29T03:36:31+05:30."},
-    {"type":"prior_anchor_git_blob","sha":"4de50743f0655cc46a1a1f2651e7ffa59d52615d","note":"Immediate prior anchor through 2026-08-29T04:47:50+05:30."}
+    {"type":"prior_anchor_git_blob","sha":"4de50743f0655cc46a1a1f2651e7ffa59d52615d","note":"Anchor through 2026-08-29T04:47:50+05:30."},
+    {"type":"prior_anchor_git_blob","sha":"fcfce034b6c3ded33c22c29db480edf55460989a","note":"Immediate prior anchor through 2026-08-29T05:45:42+05:30."}
   ],
   "operating_protocol": {"discovery_floor":"Always return a best surviving hypothesis.","freeze_build_threshold":["huge existing money flow","recurring measurable leakage/unrealized value","independent machine-readable trigger","practical non-invasive permission","objectively measurable financial delta","credible tiny fee stronger than self-serve/flat-fee alternatives","no core transaction/request path ownership","no dominant/sufficiently-close incumbent or first-party feature"],"persistence_rule":"Append immutable run file and update current-state anchor every run."},
   "current_leader": {
-    "id":"merchant-settlement-acceleration-decision-engine","name":"Merchant settlement acceleration decision engine","score":46,"max_score":60,
-    "component_scores":{"flow_scale":5,"leakage_magnitude":3,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":3,"competitive_whitespace":3,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":4},
+    "id":"merchant-settlement-acceleration-decision-engine","name":"Merchant settlement acceleration decision engine","score":45,"max_score":60,
+    "component_scores":{"flow_scale":5,"leakage_magnitude":2,"trigger_independence":5,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":4,"first_party_gap":3,"competitive_whitespace":3,"regulation":4,"integration_friction":3,"distribution_burden":2,"build_simplicity":4},
     "state_transition":"processor balance eligible -> free payout ETA and paid speed tiers known -> external liquidity and obligations reveal actual shortfall -> choose zero/next-day/same-day/instant and minimum amount -> verify acceleration fees avoided",
-    "why_survived":"Fresh families tested in the 05:45 run did not beat it. Existing evidence still establishes recurring paid-speed events and deterministic marginal fees; exact cross-system minimum-necessary-acceleration decisioning remains unconfirmed. Leakage magnitude still lacks a merchant-level counterfactual dataset.",
+    "why_survived":"No fresh family beat the exactness of this cross-system decision. Trigger, intervention and monetary delta remain clean. Fresh evidence that SMBs willingly pay substantial fees for immediate funds strengthens the rational-working-capital explanation, so leakage magnitude is demoted from 3 to 2.",
     "gates":{"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
-    "strongest_evidence":"Prior Adyen/Vagaro evidence establishes repeated instant-payout use; processor fee ladders make the financial delta deterministic.",
-    "closest_threat":"First-party payout controls plus treasury/cash forecasting can absorb the wedge; fee-free faster-access products neutralize it for subsets.",
+    "strongest_evidence":"PYMNTS reports that 47% of SMBs are willing to pay a 3.2% fee or $14 fixed fee for immediate payments, showing paid speed can have genuine working-capital value. Instamojo still exposes explicit instant/same-day/next-day fee tiers, so the decision remains programmable.",
+    "closest_threat":"First-party payout controls plus treasury/cash forecasting can absorb the wedge; more importantly, users may be rationally buying liquidity rather than wasting fees.",
     "smallest_intervention":"Read PSP balances/ETAs/fee tiers, bank liquidity and obligations; recommend no acceleration or cheapest sufficient speed and minimum amount; no payout execution or custody.",
-    "monetization":"Small per valuable decision, low recurring micro-fee, or capped share of verified acceleration fees avoided versus competent cash management.",
-    "biggest_unresolved_risk":"Paid acceleration may be rational liquidity demand rather than waste; avoidable volume is still unquantified.",
-    "next_research_test":"Find merchant-level/anonymized evidence linking paid accelerated payouts to external liquidity and obligations, or an exact competitor combining those inputs. Kill if avoidable fraction is immaterial or exact functionality is found."
+    "monetization":"Small per valuable decision, low recurring micro-fee, or capped share of verified acceleration fees avoided versus a competent-liquidity counterfactual.",
+    "biggest_unresolved_risk":"Avoidable acceleration may be a small fraction of total paid acceleration because merchants explicitly value immediate liquidity.",
+    "next_research_test":"Find merchant-level/anonymized evidence linking each accelerated payout to external cash and obligations; estimate avoidable acceleration ratio. Kill/demote if immaterial; move toward ATTACK only if material and exact competition remains absent."
   },
-  "latest_run":{"run_key":"2026-08-29T05:45:42+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T054542+0530.json","promotions":[],"demotions":["snowflake-cloud-services-threshold-timing-optimizer"],"rejections":["ap-unapplied-vendor-credit-auto-netting","cpaas-idle-phone-number-release-optimizer","hotel-ota-commission-cancellation-recovery"],"runner_ups":[{"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":4,"id":"off-cycle-payroll-deferral-batching-optimizer","score":43}]},
+  "latest_run":{"run_key":"2026-08-29T06:45:55+05:30","mode":"SEARCH","threshold_crossed":false,"current_leader":"merchant-settlement-acceleration-decision-engine","score":45,"run_file":"data/money-flow-runs/2026-08-29T064555+0530.json","promotions":[],"demotions":["merchant-settlement-acceleration-decision-engine"],"rejections":["dormant-psp-account-minimum-fee-closure-monitor","cross-platform-w8-treaty-withholding-rescue","3pl-storage-and-minimum-charge-micro-optimizer"],"runner_ups":[{"rank":2,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},{"rank":3,"id":"quota-boundary-workload-timing-optimizer","score":45},{"rank":4,"id":"off-cycle-payroll-deferral-batching-optimizer","score":43}]},
   "recent_run_history":[
-    {"run_key":"2026-08-29T03:36:31+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T033631+0530.json"},
     {"run_key":"2026-08-29T04:47:50+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T044750+0530.json"},
-    {"run_key":"2026-08-29T05:45:42+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"status":"current","run_file":"data/money-flow-runs/2026-08-29T054542+0530.json"}
+    {"run_key":"2026-08-29T05:45:42+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T054542+0530.json"},
+    {"run_key":"2026-08-29T06:45:55+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":45,"status":"current","run_file":"data/money-flow-runs/2026-08-29T064555+0530.json"}
   ],
   "recent_cross_family_findings":[
-    "AP unapplied vendor-credit auto-netting is rejected on Gate 8: current AP/recovery products already track, reconcile and automatically apply vendor credits.",
-    "Snowflake's daily cloud-services 10% threshold is a real programmable billing boundary, but first-party remediation and continuous Snowflake FinOps products make the timing wedge insufficiently distinct; demoted at 43/60.",
-    "CPaaS idle phone-number release is rejected: Twilio itself surfaces inactivity/traffic status, explicitly recommends release to stop MRCs, and exposes the deletion API.",
-    "Hotel OTA commission recovery for cancellations/no-shows is rejected again at the narrow event level because several exact products now audit and recover those charges.",
-    "New rule: when a first party exposes both the machine signal and exact cost-elimination action, require a materially richer cross-system decision or treat the wedge as a checkbox."
+    "Dormant PSP account minimum-fee closure is rejected: Xendit explicitly defines the fee and recommends closing dormant accounts, making the signal/action first-party obvious.",
+    "Cross-platform W-8/treaty withholding rescue is rejected because guided form tools, payout-platform tax automation and platform renewal reminders already occupy the workflow, with added tax/compliance burden.",
+    "3PL storage/minimum-charge micro-optimization is rejected because exact invoice-audit and warehouse-billing products already cover storage, minimums and contract variances.",
+    "New rule: willingness to pay for speed is evidence against treating paid acceleration as leakage; only the amount beyond genuine liquidity need counts as recoverable value.",
+    "Leader demoted from 46 to 45 pending merchant-level counterfactual evidence."
   ],
   "known_rejected_or_demoted_summary":"Full historical rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

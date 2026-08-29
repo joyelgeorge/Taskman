@@ -4,78 +4,53 @@
   "scenario_id": "programmable-money-flow-search",
   "mode": "SEARCH",
   "threshold_crossed": false,
+  "reconciled_against_anchor": "2026-08-29T12:50:00+05:30",
   "current_leader": {
-    "id": "card-authorization-integrity-fee-prevention-engine",
-    "name": "Card authorization integrity-fee prevention engine",
-    "score": 49,
+    "id": "cloud-support-plan-right-sizing-engine",
+    "name": "Cloud support-plan right-sizing engine",
+    "score": 46,
     "max_score": 60,
-    "component_scores": {
-      "flow_scale": 5,
-      "leakage_magnitude": 4,
-      "trigger_independence": 5,
-      "permission_non_invasiveness": 5,
-      "delta_measurability": 5,
-      "monetization": 4,
-      "first_party_gap": 4,
-      "competitive_whitespace": 3,
-      "regulation": 4,
-      "integration_friction": 3,
-      "distribution_burden": 3,
-      "build_simplicity": 4
-    },
-    "gates": {
-      "money_flow_scale": "pass",
-      "recurring_leakage": "pass",
-      "independent_trigger": "pass",
-      "permission_non_invasive": "pass",
-      "measurable_delta": "pass",
-      "monetization": "uncertain",
-      "no_transaction_ownership": "pass",
-      "competitive_whitespace": "uncertain"
-    },
-    "state_transition": "approved authorization -> capture/reversal absent while merchant fulfillment/cancellation state changes -> scheme reversal/clearing deadline approaches -> recommend REVERSE/CAPTURE/NO ACTION -> reconcile avoided integrity fee",
-    "why_survived": "Fresh processor documentation reinforces that authorization expiry alone is not equivalent to timely scheme compliance. Chase states Mastercard card-not-present unused authorizations should be reversed within 72 hours, while Stripe documents uncaptured PaymentIntents being canceled after a default period of 7 days and Adyen commonly expires major-network authorizations after 28 days. This leaves a plausible merchant-state-driven early-reversal gap. At the same time, TD explicitly closes batches after 48 hours where possible to avoid Mastercard's new 72-hour authorization-validity fee, showing that simple batch-timing optimization is already being absorbed first-party. No dominant exact product was found for fulfillment-aware cancellation/reversal before the applicable integrity deadline.",
-    "strongest_evidence": "Chase merchant documentation says Mastercard Processing Integrity applies when an authorization is not used or reversed to Mastercard standards and says card-not-present merchants should reverse within 72 hours. Stripe documents uncaptured PaymentIntents canceling after a default 7-day period, and Adyen commonly expires major-network authorizations after 28 days. TD says it attempts to close batches after 48 hours to avoid Mastercard's 0.0339% authorization-validity fee that applies to transactions cleared after 72 hours. Visa misuse-of-authorization remains $0.15 per non-compliant US transaction; Mastercard integrity fees remain materially higher for some authorization classes.",
-    "closest_threat": "Tagada's cross-processor authorization-window automation remains the closest product threat. Stripe automatic-delayed capture, Shopify capture-at-fulfillment, Adyen capture/cancel APIs, processor batch-closing controls, and scheme-fee intelligence products can absorb parts of the workflow. The remaining whitespace is specifically merchant fulfillment/cancellation state -> early reversal recommendation before scheme penalty, without owning checkout or routing.",
-    "smallest_intervention": "Read authorization, capture and cancellation webhooks plus merchant order/fulfillment status; maintain network/MCC/region deadline rules; alert REVERSE NOW, CAPTURE NOW or NO ACTION with projected avoided fee and evidence. Merchant confirms any write action.",
-    "monetization": "Per verified prevented-fee event or a capped percentage of reconciled scheme-fee savings; only charge a recurring monitoring fee where observed exposure supports it.",
-    "biggest_unresolved_risk": "The incidence denominator remains missing: published fee rates prove loss severity but not how many merchants incur enough stale-authorisation penalties to support a scalable performance-fee business. Some processors may also send network reversals earlier than their user-visible PaymentIntent/authorization expiry state suggests.",
-    "next_research_test": "Find processor/acquirer statement datasets, merchant audits or network/acquirer statistics that reveal integrity/misuse fee count and dollars per 100,000 authorizations by vertical. Separately verify whether major PSPs send network reversal messages before user-visible expiry/cancellation. If incidence is low or PSPs already send timely reversals, demote or reject."
+    "component_scores": {"flow_scale":5,"leakage_magnitude":3,"trigger_independence":4,"permission_non_invasiveness":5,"delta_measurability":5,"monetization":3,"first_party_gap":4,"competitive_whitespace":4,"regulation":5,"integration_friction":3,"distribution_burden":2,"build_simplicity":3},
+    "gates": {"money_flow_scale":"pass","recurring_leakage":"uncertain","independent_trigger":"pass","permission_non_invasive":"pass","measurable_delta":"pass","monetization":"uncertain","no_transaction_ownership":"pass","competitive_whitespace":"uncertain"},
+    "state_transition": "monthly cloud spend + provider-independent workload criticality/SLO/incident telemetry -> recompute support-plan cost and required support capabilities -> compare eligible tiers/substitutes -> recommend KEEP/DOWNGRADE/UPGRADE -> verify support-fee delta",
+    "why_survived": "The prior anchor correctly rejected card-authorization integrity-fee prevention after finding enterprise OMS layers that already automate fulfillment-aware authorization reversal. Cloud support-plan right-sizing therefore remains the best survivor. Fresh research confirms paid AWS support remains monthly and changeable, with explicit plan-cost calculators and no long-term commitment for many plans. I still did not find an exact continuous cross-cloud product that combines operational criticality/SLOs/incidents with support-plan economics to choose the cheapest sufficient tier. However AWS's 2026-2027 support-plan transitions and partner-led support alternatives increase first-party/substitute pressure.",
+    "strongest_evidence": "AWS documents monthly paid support plans, self-service plan changes, an explicit pricing calculator, and no long-term commitment for Enterprise self-service enrollment. AWS is also discontinuing Developer, Business and Enterprise On-Ramp on January 1, 2027, with migrations to Business Support+ or Enterprise Support. DoiT offers Partner-Led Enterprise Support economics, showing support can be substituted rather than merely downgraded. No exact telemetry-aware cross-cloud right-sizing engine surfaced in current searches.",
+    "closest_threat": "AWS first-party compare/pricing/change workflows, the 2026-2027 plan migration program, partner-led support substitutes such as DoiT, and broad FinOps/MSP services. WhatPlan already simulates AWS support-plan pricing, but not operational sufficiency. The wedge only survives if telemetry-driven tier sufficiency changes often enough to justify monitoring beyond a periodic review.",
+    "smallest_intervention": "Read cloud billing forecast, current support tier, workload criticality/SLOs, incident history and required response-time/features; output cheapest sufficient support tier or partner-led substitute with exact monthly/annual fee delta and explicit capabilities lost/gained; no plan change execution.",
+    "monetization": "Small accepted-change fee, low monitoring fee, or capped share of verified support-fee savings. Percentage pricing is only credible if repeated plan/substitute decisions occur more often than an annual review.",
+    "biggest_unresolved_risk": "The economically correct support tier may be mostly static and tail-risk-driven. AWS's transition to fewer support tiers and increasingly capable Business Support+ can reduce decision frequency, while partner-led support can turn this into procurement rather than a tiny programmable wedge.",
+    "next_research_test": "Search customer case studies, partner/MSP migration data and support-plan billing histories for actual tier-change frequency and savings. Quantify how often workload criticality or spend changes alter the cheapest sufficient support option. Reject/demote if decisions are predominantly annual or if partner-led/FinOps providers already perform the same review as part of a broader service."
   },
   "runner_ups": [
-    {"rank": 2, "id": "merchant-card-network-behavior-fee-sentinel", "score": 47},
-    {"rank": 3, "id": "cloud-support-plan-right-sizing-engine", "score": 46},
-    {"rank": 4, "id": "merchant-settlement-acceleration-decision-engine", "score": 45},
-    {"rank": 5, "id": "adaptive-synthetic-monitor-frequency-optimizer", "score": 45}
+    {"rank":2,"id":"merchant-card-network-behavior-fee-sentinel","score":45},
+    {"rank":3,"id":"merchant-settlement-acceleration-decision-engine","score":45},
+    {"rank":4,"id":"adaptive-synthetic-monitor-frequency-optimizer","score":45},
+    {"rank":5,"id":"card-authorization-integrity-fee-prevention-engine","score":44,"status":"rejected_for_broad_gate_8"}
   ],
   "candidate_events": {
     "promotions": [],
     "demotions": [],
     "rejections": [
-      {
-        "id": "authorization-validity-batch-close-timing-optimizer",
-        "fatal_flaw": "Processor-native automation already attacks the micro-event directly: TD states it closes batches after 48 hours where possible to prevent Mastercard's new 72-hour authorization-validity fee. This is too close to a first-party operational control to support an independent wedge."
-      },
-      {
-        "id": "generic-prepaid-cloud-api-credit-refund-expiry-sentinel",
-        "fatal_flaw": "Refund/expiry rights are fragmented by product and often self-service or non-refundable. Alibaba Cloud documents multiple resource-plan refund paths and expiry rules directly; other API credit products either make credits non-refundable or non-expiring. The resulting wedge is heterogeneous, overlaps previously rejected broad entitlement monitoring, and is weak against simple self-service reminders."
-      }
+      {"id":"authorization-validity-batch-close-timing-optimizer","fatal_flaw":"TD explicitly says it closes batches after 48 hours where possible to avoid Mastercard's 72-hour authorization-validity fee, so this micro-control is already first-party absorbed."},
+      {"id":"generic-prepaid-cloud-api-credit-refund-expiry-sentinel","fatal_flaw":"Refund and expiry rights are fragmented, often self-service/non-refundable/non-expiring, and overlap previously rejected broad entitlement monitoring."},
+      {"id":"generic-music-royalty-reconciliation-recovery","fatal_flaw":"Current products already ingest royalty statements, reconcile earnings, detect metadata/registration issues, and in some cases charge success fees on recovered royalties, making competition too exact."}
     ]
   },
   "new_search_rules": [
-    "Do not equate PSP authorization expiry with scheme-compliant reversal; verify the actual network reversal message timing.",
-    "When a processor explicitly auto-adjusts batch timing to avoid a network fee, treat that micro-wedge as first-party absorbed even if other processors do not.",
-    "For prepaid-credit opportunities, require a broadly repeatable machine-readable refund right; heterogeneous provider refund policies are not enough."
+    "Before preserving a payment-lifecycle wedge, search enterprise OMS/business-system automation in addition to PSP features.",
+    "If a processor already adjusts timing specifically to avoid a network fee, treat that micro-wedge as first-party absorbed.",
+    "For cloud support optimization, distinguish simple price simulation from telemetry-driven sufficiency; the latter is the only remaining whitespace worth testing.",
+    "Provider plan migrations that reduce tier choice can shrink recurring decision frequency even if the fee pool remains large."
   ],
   "sources": [
-    {"title": "Chase Merchant Services Statement Support", "url": "https://merchantservices.chase.com/support/managing-your-account/how-to-read-your-statement"},
-    {"title": "Stripe - Place a hold on a payment method", "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"},
-    {"title": "Stripe - Payment cancellation balance transaction behavior", "url": "https://support.stripe.com/questions/changes-to-balance-transaction-behavior-for-partial-capture-and-payment-cancellation-flows"},
-    {"title": "Adyen - Pre-authorizations and authorization adjustments", "url": "https://www.adyen.com/knowledge-hub/pre-authorizations-and-authorization-adjustments-for-developers"},
-    {"title": "TD Merchant Solutions - Fee Change Summary", "url": "https://www.td.com/ca/en/business-banking/merchant-solutions/fee-change-summary"},
-    {"title": "PayJunction - Visa authorization misuse fee", "url": "https://support.payjunction.com/hc/en-us/articles/211659937-What-Is-a-Misuse-Fee-for-Visa-Authorizations"},
-    {"title": "Alibaba Cloud Simple Log Service refund policy", "url": "https://www.alibabacloud.com/help/en/sls/refunds"},
-    {"title": "Alibaba Cloud CDN refund policy", "url": "https://www.alibabacloud.com/help/doc-detail/206327.html"}
+    {"title":"AWS support plans end-of-support notice","url":"https://docs.aws.amazon.com/awssupport/latest/user/support-plans-eos.html"},
+    {"title":"AWS Support Plans","url":"https://docs.aws.amazon.com/awssupport/latest/user/aws-support-plans.html"},
+    {"title":"AWS Change Support Plans","url":"https://docs.aws.amazon.com/awssupport/latest/user/changing-support-plans.html"},
+    {"title":"AWS Enterprise Support self-service enrollment","url":"https://docs.aws.amazon.com/awssupport/latest/user/enterprise-support-sign-up.html"},
+    {"title":"DoiT AWS support billing","url":"https://help.doit.com/docs/billing/billing-explained/aws-support"},
+    {"title":"WhatPlan AWS support plan simulator","url":"https://www.whatplan.me/"},
+    {"title":"Royalti royalty accounting","url":"https://royalti.io/"},
+    {"title":"MusicRight.AI royalty recovery","url":"https://musicright.ai/"}
   ],
   "persistence_scope": "Revenue-opportunity research only."
 }

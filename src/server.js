@@ -9,6 +9,7 @@ import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import { handleMoltJobsRequest } from './moltjobs-routes.js';
+import { handleRevenueRequest } from './revenue-routes.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
   createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
@@ -134,6 +135,7 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
     if (await handleMoltJobsRequest(req, res, url)) return;
+    if (await handleRevenueRequest(req, res, url)) return;
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const db = await dbHealth();
@@ -142,6 +144,7 @@ const server = http.createServer(async (req, res) => {
         providers: providerStatus(), usage, database: db,
         structuredLearning: true,
         autonomousBrain: true,
+        revenueExplorerQueues: true,
         brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
       });
     }

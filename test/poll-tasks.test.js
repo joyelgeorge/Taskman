@@ -5,6 +5,7 @@ import {
   buildPollReport,
   isExplicitlyBlocked,
   issueCoveredByOpenPr,
+  parsePreferredIssueNumbers,
   selectActionableIssues
 } from '../scripts/poll-tasks.mjs';
 
@@ -69,4 +70,28 @@ test('priority labels outrank recency and report exposes picked work', () => {
 
   assert.deepEqual(report.pickedIssues.map(issue => issue.number), [22, 30]);
   assert.match(report.nextAction, /Implement each picked issue/);
+});
+
+
+test('configured issue priorities outrank newer issues until covered', () => {
+  const issues = [
+    { number: 22, title: 'Readiness probes', labels: [] },
+    { number: 23, title: 'Execution deadlines', labels: [] },
+    { number: 24, title: 'Dashboard failures', labels: [] },
+    { number: 26, title: 'Newer task', labels: [] },
+    { number: 27, title: 'Newest task', labels: [] }
+  ];
+  const preferred = parsePreferredIssueNumbers('22,23,24,23,invalid');
+
+  assert.deepEqual(preferred, [22, 23, 24]);
+  assert.deepEqual(
+    selectActionableIssues(issues, [], 3, preferred).map(issue => issue.number),
+    [22, 23, 24]
+  );
+
+  const pullRequests = [{ title: 'Health probes', body: 'Closes #22' }];
+  assert.deepEqual(
+    selectActionableIssues(issues, pullRequests, 3, preferred).map(issue => issue.number),
+    [23, 24, 27]
+  );
 });

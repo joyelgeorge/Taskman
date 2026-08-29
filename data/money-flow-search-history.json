@@ -1,6 +1,6 @@
 {
   "schema_version": 5,
-  "updated_at": "2026-08-29T09:47:06+05:30",
+  "updated_at": "2026-08-29T10:41:01+05:30",
   "scenario_id": "programmable-money-flow-search",
   "task": {
     "stable_key": "money-flow-wedge-scout",
@@ -19,7 +19,8 @@
     {"type":"prior_anchor_git_blob","sha":"fcfce034b6c3ded33c22c29db480edf55460989a","note":"Anchor through 2026-08-29T05:45:42+05:30."},
     {"type":"prior_anchor_git_blob","sha":"311f17982af57e5f721d3d88b9c62412c4f1f695","note":"Anchor through 2026-08-29T06:45:55+05:30."},
     {"type":"prior_anchor_git_blob","sha":"07c7f3bd26ac7788f70721ef72047abe2a802006","note":"Anchor through 2026-08-29T07:33:38+05:30."},
-    {"type":"prior_anchor_git_blob","sha":"a04d162747253e83147aefd8164dd54df38d4ae2","note":"Immediate prior anchor through 2026-08-29T08:40:39+05:30."}
+    {"type":"prior_anchor_git_blob","sha":"a04d162747253e83147aefd8164dd54df38d4ae2","note":"Anchor through 2026-08-29T08:40:39+05:30."},
+    {"type":"prior_anchor_git_blob","sha":"0ed52e62d601c6e0a9886a77060ec836116b07dc","note":"Immediate prior anchor through 2026-08-29T09:47:06+05:30."}
   ],
   "operating_protocol": {
     "discovery_floor": "Always return a best surviving hypothesis.",
@@ -54,8 +55,8 @@
       "distribution_burden": 3,
       "build_simplicity": 4
     },
-    "state_transition": "approved card authorization -> no matching clearing/reversal as scheme deadline approaches -> detect fee-triggering stale state -> recommend capture/reverse/leave based on merchant order state -> verify scheme integrity fee avoided",
-    "why_survived": "Visa and Mastercard impose explicit integrity/misuse fees when approved authorizations are not cleared or reversed within defined windows. PSPs expose authorization/capture/reversal states and APIs, creating independent triggers. A narrow read-only layer can identify stale authorizations and recommend the exact action before the fee deadline. Current searches found broad payment optimization and fee-audit products, but no dominant exact cross-PSP pre-deadline authorization-integrity fee prevention product.",
+    "state_transition": "approved authorization -> capture/reversal still absent as network-specific deadline approaches -> combine PSP lifecycle state with merchant order/fulfillment state -> recommend CAPTURE/REVERSE/NO ACTION before integrity-fee trigger -> reconcile avoided scheme fee",
+    "why_survived": "Fresh attack evidence shows processor automation does not uniformly neutralize the wedge. Stripe offers automatic delayed capture shortly before authorization expiry, but it is opt-in and addresses missed capture rather than stale authorizations that should be reversed. Adyen commonly auto-expires major-network authorizations only after 28 days, while Mastercard final/undefined authorization integrity fees can trigger after seven days. Therefore eventual PSP expiry is not equivalent to pre-fee remediation.",
     "gates": {
       "money_flow_scale": "pass",
       "recurring_leakage": "pass",
@@ -66,23 +67,23 @@
       "no_transaction_ownership": "pass",
       "competitive_whitespace": "uncertain"
     },
-    "strongest_evidence": "Mastercard raised/introduced multiple authorization-integrity fees in 2026, including time-based authorization validity fees; Visa misuse/integrity fees apply when approved authorizations lack timely matching clearing/reversal. Braintree explicitly warns to void unwanted authorizations to avoid misuse fees, while Adyen exposes reversal APIs and notes late captures can incur scheme/interchange fees.",
-    "closest_threat": "Broad payment-optimization/orchestration suites, interchange/scheme-fee auditors, and processor-native lifecycle tooling could absorb the feature. Some processors auto-expire authorizations, but expiry may occur after earlier card-network fee deadlines; exact PSP/network/MCC behavior remains to be mapped.",
-    "smallest_intervention": "Read PSP authorization/capture/reversal webhooks plus merchant order/fulfillment state. Before each network deadline output CAPTURE NOW, REVERSE NOW, or NO ACTION with projected fee avoided. Keep execution merchant-confirmed or invoke the merchant's existing PSP endpoint under explicit authorization; do not route or custody funds.",
-    "monetization": "Per prevented-fee event, low monitoring fee, or capped percentage of verified scheme integrity fees avoided, reconciled against processor/network fee reports.",
-    "biggest_unresolved_risk": "Processor-native auto-expiry/reversal may already prevent most exposure for common PSPs; fee rules vary by network, region, MCC and authorization type; broad enterprise payment-operations vendors may cover this narrow control without marketing it separately.",
-    "next_research_test": "Quantify integrity-fee incidence per 100k authorizations, map exact Visa/Mastercard deadlines by PSP/MCC/auth type, and attack competition for automatic stale-authorization reversal/pre-deadline fee prevention. Demote or reject if processors already neutralize most exposure or exact incumbent coverage is widespread."
+    "strongest_evidence": "Mastercard final/undefined authorization integrity fees can trigger after seven days, while Adyen's common major-network auto-expiry is 28 days. Stripe automatic_delayed capture demonstrates first-party mitigation for missed capture, but does not solve the cross-system decision to reverse an order that will not fulfill. Braintree's Visa guidance explicitly tells merchants to reverse/cancel quickly to minimize integrity fees.",
+    "closest_threat": "PSP-native automatic capture/expiry, gateway capture settings, and broad payment-operations products. Stripe's automatic delayed capture is the strongest first-party threat found this run, but it is not an exact reversal/capture decision layer across PSPs and merchant fulfillment systems.",
+    "smallest_intervention": "Read authorization, capture, cancel/reversal webhooks plus order/fulfillment state. Maintain network/MCC/region deadline table. Before the earliest applicable fee deadline output CAPTURE NOW, REVERSE NOW, or NO ACTION with projected fee. Leave execution merchant-confirmed or use the merchant's existing PSP API under explicit authorization.",
+    "monetization": "Per prevented-fee event or capped percentage of verified integrity fees avoided, aggregated monthly; use a low monitoring minimum only where expected avoided fees exceed the charge.",
+    "biggest_unresolved_risk": "Actual merchant incidence is still unquantified. If stale authorizations are rare outside a small set of verticals, the recoverable fee pool may be too small even though the mechanism is technically clean. Exact enterprise payment-operations products may also handle this control without marketing it separately.",
+    "next_research_test": "Quantify incidence and dollars per 100k authorizations using processor/acquirer fee statements or public merchant data; identify verticals with manual/delayed capture and cancellation-heavy fulfillment; search payment-operations platforms for explicit automatic stale-authorization reversal before Visa/Mastercard integrity deadlines. Gate 6/8 only pass if the avoided-fee pool is material and exact incumbent coverage remains absent."
   },
   "latest_run": {
-    "run_key": "2026-08-29T09:47:06+05:30",
+    "run_key": "2026-08-29T10:41:01+05:30",
     "mode": "SEARCH",
     "threshold_crossed": false,
     "current_leader": "card-authorization-integrity-fee-prevention-engine",
     "score": 50,
-    "run_file": "data/money-flow-runs/2026-08-29T094706+0530.json",
-    "promotions": ["card-authorization-integrity-fee-prevention-engine"],
-    "demotions": ["cloud-support-plan-right-sizing-engine"],
-    "rejections": ["cpaaS-idle-number-release-optimizer", "business-domain-renewal-pruning"],
+    "run_file": "data/money-flow-runs/2026-08-29T104101+0530.json",
+    "promotions": [],
+    "demotions": [],
+    "rejections": ["commercial-insurance-premium-audit-optimizer", "ach-reject-fee-prevention"],
     "runner_ups": [
       {"rank":2,"id":"cloud-support-plan-right-sizing-engine","score":46},
       {"rank":3,"id":"merchant-settlement-acceleration-decision-engine","score":45},
@@ -95,17 +96,19 @@
     {"run_key":"2026-08-29T06:45:55+05:30","leader":"merchant-settlement-acceleration-decision-engine","score":45,"run_file":"data/money-flow-runs/2026-08-29T064555+0530.json"},
     {"run_key":"2026-08-29T07:33:38+05:30","leader":"cloud-support-plan-right-sizing-engine","score":48,"run_file":"data/money-flow-runs/2026-08-29T073338+0530.json"},
     {"run_key":"2026-08-29T08:40:39+05:30","leader":"cloud-support-plan-right-sizing-engine","score":46,"run_file":"data/money-flow-runs/2026-08-29T084039+0530.json"},
-    {"run_key":"2026-08-29T09:47:06+05:30","leader":"card-authorization-integrity-fee-prevention-engine","score":50,"status":"current","run_file":"data/money-flow-runs/2026-08-29T094706+0530.json"}
+    {"run_key":"2026-08-29T09:47:06+05:30","leader":"card-authorization-integrity-fee-prevention-engine","score":50,"run_file":"data/money-flow-runs/2026-08-29T094706+0530.json"},
+    {"run_key":"2026-08-29T10:41:01+05:30","leader":"card-authorization-integrity-fee-prevention-engine","score":50,"status":"current","run_file":"data/money-flow-runs/2026-08-29T104101+0530.json"}
   ],
   "recent_cross_family_findings": [
-    "Card authorization integrity-fee prevention promoted to 50/60 because card networks impose explicit deadline-driven penalties on stale/unreversed authorizations and PSP lifecycle events create natural triggers.",
-    "Cloud support-plan right-sizing demoted to runner-up at 46/60 because support-tier decisions may be too static/annual and partly represent tail-risk insurance.",
-    "CPaaS idle-number release remains rejected: Twilio itself documents recurring number charges, inactivity checks, and API release as a first-party obvious optimization.",
-    "Business-domain renewal pruning rejected: multiple current portfolio tools already provide registrar sync, renewal cost tracking and cancellation/triage.",
-    "New rule: prefer explicit machine deadlines that create recurring penalty-avoidance events over annual rightsizing decisions.",
-    "New rule: processor auto-expiry is not equivalent to fee prevention unless it occurs before the applicable network fee deadline.",
-    "New rule: payment-network wedges may remain non-invasive if the product is read-only and uses merchant-confirmed existing PSP actions rather than becoming a routing proxy.",
-    "Persistence scope clarified: only revenue-opportunity research belongs in this Taskman opportunity anchor/database."
+    "Card authorization integrity-fee prevention remains leader at 50/60 after direct attack on PSP-native remediation.",
+    "Fresh evidence: Mastercard final/undefined authorization integrity fees can trigger after seven days while Adyen commonly auto-expires major-network authorizations only after 28 days; eventual expiry therefore does not neutralize earlier fee exposure.",
+    "Stripe automatic_delayed capture is a meaningful first-party threat but primarily solves missed capture and is not a cross-system reversal decision based on fulfillment state.",
+    "Commercial insurance premium-audit optimization rejected because exact automation is already crowded across policy/payroll/exposure reconciliation and premium adjustments.",
+    "ACH reject-fee prevention rejected as a standalone wedge because effective prevention generally requires pre-initiation account validation/transaction-path involvement and mature verification infrastructure already exists.",
+    "New rule: compare processor remediation timing against network fee timing; never infer fee prevention from eventual auto-expiry.",
+    "New rule: distinguish CAPTURE automation from REVERSE automation; one does not necessarily neutralize the other.",
+    "New rule: deterministic fee math is insufficient for promotion unless fee-trigger incidence is material at merchant scale.",
+    "Persistence scope remains revenue-opportunity research only."
   ],
   "known_rejected_or_demoted_summary": "Full historical revenue-opportunity rejection list is preserved in prior anchor blobs and immutable run files. Do not revive prior rejected families without materially new mechanism/evidence."
 }

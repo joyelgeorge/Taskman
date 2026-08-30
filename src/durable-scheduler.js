@@ -20,10 +20,10 @@ export const DEFAULT_SCHEDULES = Object.freeze([
     minuteOffset: 10
   },
   {
-    id: 'taskman-execute-hourly',
+    id: 'taskman-execute-5min',
     workerName: SCHEDULED_WORKERS.EXECUTE,
-    scheduleExpression: '20 * * * *', // hourly at :20
-    minuteOffset: 20
+    scheduleExpression: '*/5 * * * *', // every 5 minutes
+    minuteOffset: null
   }
 ]);
 
@@ -31,21 +31,57 @@ export const DEFAULT_LEASE_MS = 10 * 60 * 1000; // 10 minutes lease duration
 
 /**
  * Parses minute offset from cron expression like "M * * * *" or integer offset.
+ * For step expressions like "* /N * * * *", returns null.
  */
 export function getMinuteOffset(scheduleExpression) {
   if (typeof scheduleExpression === 'number') return scheduleExpression % 60;
-  const parts = String(scheduleExpression || '').trim().split(/\s+/);
-  const min = parseInt(parts[0], 10);
+  const expr = String(scheduleExpression || '').trim();
+  const parts = expr.split(/\s+/);
+  const minPart = parts[0] || '';
+  if (minPart.startsWith('*/') || minPart === '*') return null;
+  const min = parseInt(minPart, 10);
   return Number.isFinite(min) ? min % 60 : 0;
 }
 
 /**
- * Calculates the next future due time for an hourly staggered schedule starting after afterTime.
+ * Calculates the next future due time for a schedule starting after afterTime.
+ * Supports:
+ * - Specific minute offsets: "0 * * * *", "10 * * * *", "20 * * * *"
+ * - Interval expressions: "* /5 * * * *", "* /10 * * * *", etc.
  */
 export function computeNextRunAt(scheduleExpression, afterTime = new Date()) {
   const after = new Date(afterTime);
-  const offset = getMinuteOffset(scheduleExpression);
+  const expr = String(scheduleExpression || '').trim();
+  const parts = expr.split(/\s+/);
+  const minPart = parts[0] || '';
 
+  // Step expression: */N * * * *
+  if (minPart.startsWith('*/')) {
+    const step = parseInt(minPart.slice(2), 10);
+    const validStep = Number.isFinite(step) && step > 0 ? step : 5;
+
+    const currentMinute = after.getUTCMinutes();
+    const nextSlot = (Math.floor(currentMinute / validStep) + 1) * validStep;
+
+    const candidate = new Date(after);
+    candidate.setUTCSeconds(0, 0);
+
+    if (nextSlot >= 60) {
+      candidate.setUTCHours(candidate.getUTCHours() + 1);
+      candidate.setUTCMinutes(nextSlot % 60, 0, 0);
+    } else {
+      candidate.setUTCMinutes(nextSlot, 0, 0);
+    }
+
+    // Ensure strictly in future if candidate == after due to 0 seconds
+    if (candidate.getTime() <= after.getTime()) {
+      candidate.setUTCMinutes(candidate.getUTCMinutes() + validStep);
+    }
+    return candidate;
+  }
+
+  // Fixed minute offset: M * * * *
+  const offset = getMinuteOffset(scheduleExpression) || 0;
   const candidate = new Date(after);
   candidate.setUTCMinutes(offset, 0, 0);
 
@@ -98,6 +134,20 @@ export function isSchedulerDurable() {
  * Initializes default scheduled jobs in database or memory.
  */
 export async function initializeScheduler({ now = new Date() } = {}) {
+  // If migrating from older hourly execute schedule, disable/clean up legacy job
+  if (databaseEnabled) {
+    await query(`
+      UPDATE scheduled_jobs
+      SET enabled = false
+      WHERE id = 'taskman-execute-hourly'
+    `).catch(() => {});
+  } else {
+    if (memoryJobs.has('taskman-execute-hourly')) {
+      const legacy = memoryJobs.get('taskman-execute-hourly');
+      legacy.enabled = false;
+    }
+  }
+
   const initialized = [];
   for (const def of DEFAULT_SCHEDULES) {
     const nextRun = computeNextRunAt(def.scheduleExpression, now);

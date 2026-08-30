@@ -10,7 +10,7 @@ services:
     branch: main
     buildCommand: npm install --omit=dev && node scripts/migrate.js
     startCommand: npm start
-    healthCheckPath: /api/status
+    healthCheckPath: /health/ready
     autoDeploy: true                  # redeploy on every push to main
     envVars:
       - key: NODE_ENV

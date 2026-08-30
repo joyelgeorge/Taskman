@@ -3,7 +3,7 @@
 ## Overview
 
 Taskman is deployed as an always-on HTTPS service on [Render](https://render.com).  
-The live base URL is set as `TASKMAN_BASE_URL` and exposed at `/api/status`.
+The live base URL is set as `TASKMAN_BASE_URL`. Process liveness, traffic readiness, and diagnostics use separate endpoints.
 
 ---
 
@@ -75,15 +75,23 @@ The server applies `db/migrations/*.sql` in order and skips already-applied file
 
 ## Health checks
 
-Render pings `/api/status` every 30 seconds.  
-The endpoint returns HTTP 200 and a JSON body:
+Render pings `/health/ready`. The probes have separate contracts:
+
+- `GET /health/live` is a lightweight process probe. It does not query optional dependencies.
+- `GET /health/ready` returns HTTP 503 when production requirements are unavailable.
+- `GET /api/status` always returns diagnostics with a top-level `healthy`, `degraded`, or `unready` state.
+
+Production requires PostgreSQL unless `TASKMAN_ALLOW_MEMORY_MODE=true` is explicitly set. Local development without PostgreSQL remains ready but is labeled `degraded`, `memory`, and non-durable. Set `TASKMAN_REQUIRE_PROVIDER=true` only when at least one configured AI provider is a traffic-readiness requirement. Enabling the internal scheduler also requires durable scheduler storage.
+
+Health responses expose component states and provider identifiers only; they do not expose credentials, connection strings, or credential metadata.
 
 ```bash
+curl https://<TASKMAN_BASE_URL>/health/live
+curl https://<TASKMAN_BASE_URL>/health/ready
 curl https://<TASKMAN_BASE_URL>/api/status
-# → { "status": "ok", "db": { "enabled": true, "ok": true }, ... }
 ```
 
-If the health check fails three times, Render restarts the service automatically.
+If the readiness check fails repeatedly, Render removes or restarts the service according to the platform health policy.
 
 ---
 
@@ -130,7 +138,9 @@ DATABASE_URL=postgresql://localhost:5432/taskman node --test  # PostgreSQL mode
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/status` | Health check — DB state, scheduler status |
+| `GET /health/live` | Lightweight process liveness |
+| `GET /health/ready` | Traffic readiness with environment-aware dependency policy |
+| `GET /api/status` | Detailed DB, provider, scheduler, durability, and usage diagnostics |
 | `GET /api/revenue/status` | Scheduler + revenue pipeline status |
 | `POST /api/revenue/scan` | Trigger discovery scan |
 | `GET /api/scheduler/jobs` | List scheduled jobs |

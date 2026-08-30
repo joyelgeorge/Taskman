@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
+import { LIMITS, configureServerTimeouts, readJsonBody } from './limits.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
@@ -36,12 +37,6 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readBody(req) {
-  let raw = '';
-  for await (const chunk of req) raw += chunk;
-  return raw ? JSON.parse(raw) : {};
-}
-
 function compactKnowledge(knowledge) {
   return {
     knownFacts: knowledge.knownFacts.slice(-8).map(e => e.value ?? e),
@@ -70,7 +65,7 @@ async function executeTask(task, reason = 'manual') {
   let envelope = null;
   try {
     const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
-    const result = await runWithFallback(prompt);
+    const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs });
     envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
 
     run.status = 'succeeded';
@@ -86,7 +81,9 @@ async function executeTask(task, reason = 'manual') {
     memoryUsage.outputTokens += result.outputTokens;
   } catch (e) {
     run.status = 'failed';
-    run.error = String(e.message || e);
+    run.error = e.code || 'PROVIDER_ERROR';
+    run.errorDetail = String(e.message || e);
+    run.fallbacks = Array.isArray(e.diagnostics) ? e.diagnostics : [];
   }
 
   run.finishedAt = new Date().toISOString();
@@ -256,7 +253,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
 
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
-      const body = await readBody(req);
+      const body = await readJsonBody(req);
       if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
       const id = crypto.randomUUID();
       const task = await createTaskRecord({
@@ -302,9 +299,14 @@ const server = http.createServer(async (req, res) => {
     }
     json(res, 404, { error: 'not found' });
   } catch (e) {
-    json(res, 500, { error: String(e.message || e) });
+    json(res, e.statusCode || 500, {
+      error: String(e.message || e),
+      code: e.code || 'INTERNAL_ERROR'
+    });
   }
 });
+
+configureServerTimeouts(server);
 
 if (databaseEnabled) {
   const migration = await migrate();

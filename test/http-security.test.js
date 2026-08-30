@@ -94,7 +94,7 @@ test('all HTTP response classes receive the centralized policy', async (t) => {
     ['/styles.css', { method: 'GET' }, 200, 'text/css'],
     ['/api/status', { method: 'GET' }, 200, 'application/json'],
     ['/missing', { method: 'GET' }, 404, 'application/json'],
-    ['/api/tasks', { method: 'POST', body: '{' }, 500, 'application/json']
+    ['/api/tasks', { method: 'POST', body: '{' }, 400, 'application/json']
   ];
 
   for (const [path, options, status, contentType] of cases) {

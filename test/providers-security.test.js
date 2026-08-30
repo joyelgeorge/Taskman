@@ -43,7 +43,7 @@ test('Gemini sends credentials in x-goog-api-key and never in the URL', async ()
   assert.equal(captured.options.headers['x-goog-api-key'], secret);
 });
 
-test('provider failure metadata redacts raw and URL-encoded credentials', async () => {
+test('provider failure metadata excludes raw and URL-encoded credentials', async () => {
   const secret = 'sentinel key/with?sensitive=value';
   await withGeminiOnly(secret, async () => {
     throw new Error(`transport failed for ${secret} and ${encodeURIComponent(secret)}`);
@@ -51,7 +51,10 @@ test('provider failure metadata redacts raw and URL-encoded credentials', async 
     await assert.rejects(runWithFallback('test prompt'), error => {
       assert.equal(error.message.includes(secret), false);
       assert.equal(error.message.includes(encodeURIComponent(secret)), false);
-      assert.match(error.message, /\[REDACTED\]/);
+      assert.equal(error.code, 'ALL_PROVIDERS_FAILED');
+      assert.deepEqual(error.diagnostics.map(({ provider, code }) => ({ provider, code })), [
+        { provider: 'gemini', code: 'PROVIDER_ERROR' }
+      ]);
       return true;
     });
   });

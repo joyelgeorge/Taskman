@@ -1,10 +1,14 @@
 import { RailAdapter, RAIL_MODE } from './base.js';
 import { evaluateExecutionGate } from './execution-gate.js';
+import { DEFAULT_CREDENTIAL_REFS, defaultCredentialResolver, resolveCredential } from '../credential-resolver.js';
 
 export class TaskForceRail extends RailAdapter {
-  constructor({ apiKey = process.env.TASKFORCE_API_KEY, baseUrl = process.env.TASKFORCE_BASE_URL || 'https://www.task-force.app', mode = RAIL_MODE.READ_ONLY } = {}) {
+  constructor({ apiKey, credentialRef = DEFAULT_CREDENTIAL_REFS.taskforce, credentialResolver = defaultCredentialResolver, accountId = 'default', baseUrl = process.env.TASKFORCE_BASE_URL || 'https://www.task-force.app', mode = RAIL_MODE.READ_ONLY } = {}) {
     super({ name: 'taskforce', mode });
-    this.apiKey = apiKey || null;
+    this.inlineApiKey = apiKey;
+    this.credentialRef = credentialRef;
+    this.credentialResolver = credentialResolver;
+    this.accountId = accountId;
     this.baseUrl = baseUrl.replace(/\/$/, '');
   }
 
@@ -12,17 +16,22 @@ export class TaskForceRail extends RailAdapter {
     return {
       name: this.name,
       mode: this.mode,
-      configured: Boolean(this.apiKey),
+      configured: this.inlineApiKey !== undefined || this.credentialResolver.describe(this.credentialRef, { provider: this.name, accountId: this.accountId }).ready,
+      credentialRef: this.credentialRef,
       baseUrl: this.baseUrl,
       safeDefault: this.mode === RAIL_MODE.READ_ONLY
     };
   }
 
   async discover() {
-    if (!this.apiKey) {
-      return { ok: false, blocked: true, reason: 'TASKFORCE_API_KEY missing', tasks: [] };
+    try {
+      return await this.#request('/api/agent/tasks', { method: 'GET' });
+    } catch (error) {
+      if (String(error?.code || '').startsWith('CREDENTIAL_')) {
+        return { ok: false, blocked: true, reasonCode: error.code, tasks: [] };
+      }
+      throw error;
     }
-    return this.#request('/api/agent/tasks', { method: 'GET' });
   }
 
   async verify(task) {
@@ -35,7 +44,6 @@ export class TaskForceRail extends RailAdapter {
 
   async claimOrApply(taskId, payload = {}) {
     this.assertExecutable('claim/apply');
-    if (!this.apiKey) throw new Error('TASKFORCE_API_KEY missing');
     if (!taskId) throw new Error('taskId is required');
     return this.#request(`/api/agent/tasks/${encodeURIComponent(taskId)}/apply`, {
       method: 'POST',
@@ -45,7 +53,6 @@ export class TaskForceRail extends RailAdapter {
 
   async deliver(taskId, payload = {}) {
     this.assertExecutable('deliver');
-    if (!this.apiKey) throw new Error('TASKFORCE_API_KEY missing');
     if (!taskId) throw new Error('taskId is required');
     return this.#request(`/api/agent/tasks/${encodeURIComponent(taskId)}/submit`, {
       method: 'POST',
@@ -54,22 +61,28 @@ export class TaskForceRail extends RailAdapter {
   }
 
   async followUp(taskId) {
-    if (!this.apiKey) throw new Error('TASKFORCE_API_KEY missing');
     return this.#request(`/api/agent/tasks/${encodeURIComponent(taskId)}/messages`, { method: 'GET' });
   }
 
   async checkAcceptance(taskId) {
-    if (!this.apiKey) throw new Error('TASKFORCE_API_KEY missing');
     return this.#request(`/api/agent/tasks/${encodeURIComponent(taskId)}`, { method: 'GET' });
   }
 
   async checkPayment() {
-    if (!this.apiKey) throw new Error('TASKFORCE_API_KEY missing');
     return this.#request('/api/agent/wallet', { method: 'GET' });
   }
 
   async #request(path, { method = 'GET', body } = {}) {
-    const headers = { 'accept': 'application/json', 'authorization': `Bearer ${this.apiKey}` };
+    const actionCapability = method !== 'GET'
+      ? (path.endsWith('/apply') ? 'rail.claim' : 'rail.deliver')
+      : (path.endsWith('/wallet') ? 'rail.payment.read' : path.endsWith('/messages') ? 'rail.follow_up' : 'rail.discover');
+    const { value: apiKey } = await resolveCredential({
+      resolver: this.credentialResolver,
+      ref: this.credentialRef,
+      inlineValue: this.inlineApiKey,
+      context: { provider: this.name, accountId: this.accountId, capability: actionCapability, mode: this.mode }
+    });
+    const headers = { 'accept': 'application/json', 'authorization': `Bearer ${apiKey}` };
     if (body !== undefined) headers['content-type'] = 'application/json';
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,

@@ -1,4 +1,19 @@
+import { DEFAULT_CREDENTIAL_REFS, defaultCredentialResolver, resolveCredential } from './credential-resolver.js';
+
 const DEFAULT_BASE_URL = 'https://api.moltjobs.io/v1';
+
+async function resolveMoltJobsCredential(options) {
+  try {
+    return await resolveCredential(options);
+  } catch (error) {
+    if (['CREDENTIAL_VALUE_MISSING', 'CREDENTIAL_REF_UNKNOWN'].includes(error?.code)) {
+      const missing = new Error('MOLTJOBS_API_KEY is required');
+      missing.code = error.code;
+      throw missing;
+    }
+    throw error;
+  }
+}
 
 export function parseMoltJobsWebhook(body) {
   if (!body || typeof body !== 'object') throw new Error('webhook body must be an object');
@@ -13,11 +28,14 @@ export async function sendMoltJobsHeartbeat({
   progress,
   statusReport = progress,
   runtimeMetadata,
-  apiKey = process.env.MOLTJOBS_API_KEY,
+  apiKey,
+  credentialRef = DEFAULT_CREDENTIAL_REFS.moltjobs,
+  credentialResolver = defaultCredentialResolver,
   baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
   fetchImpl = fetch
 }) {
-  if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
+  if (apiKey === '') throw new Error('MOLTJOBS_API_KEY is required');
+  const { value: resolvedApiKey } = await resolveMoltJobsCredential({ resolver: credentialResolver, ref: credentialRef, inlineValue: apiKey, context: { provider: 'moltjobs', accountId: 'default', capability: 'rail.heartbeat', mode: 'execute' } });
   if (!agentId || !String(agentId).trim()) throw new Error('agentId is required');
   if (!jobId || !String(jobId).trim()) throw new Error('assigned jobId is required');
   if (!statusReport || !String(statusReport).trim()) throw new Error('statusReport is required');
@@ -32,7 +50,7 @@ export async function sendMoltJobsHeartbeat({
   const response = await fetchImpl(`${root}/agents/${encodeURIComponent(String(agentId).trim())}/heartbeat`, {
     method: 'POST',
     headers: {
-      'X-Api-Key': apiKey,
+      'X-Api-Key': resolvedApiKey,
       'content-type': 'application/json'
     },
     body: JSON.stringify(payload)
@@ -51,15 +69,17 @@ export async function sendMoltJobsHeartbeat({
 }
 
 export async function getAgentIdentity({
-  apiKey = process.env.MOLTJOBS_API_KEY,
+  apiKey,
+  credentialRef = DEFAULT_CREDENTIAL_REFS.moltjobs,
+  credentialResolver = defaultCredentialResolver,
   baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
   fetchImpl = fetch
 } = {}) {
-  if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
+  const { value: resolvedApiKey } = await resolveMoltJobsCredential({ resolver: credentialResolver, ref: credentialRef, inlineValue: apiKey, context: { provider: 'moltjobs', accountId: 'default', capability: 'rail.discover', mode: 'read_only' } });
   const root = baseUrl.replace(/\/$/, '');
   const response = await fetchImpl(`${root}/agents/me`, {
     method: 'GET',
-    headers: { 'X-Api-Key': apiKey, 'accept': 'application/json' }
+    headers: { 'X-Api-Key': resolvedApiKey, 'accept': 'application/json' }
   });
   if (!response.ok) throw new Error(`MoltJobs identity check failed: HTTP ${response.status}`);
   const data = await response.json();
@@ -74,15 +94,17 @@ export async function getAgentIdentity({
 }
 
 export async function listOpenJobs({
-  apiKey = process.env.MOLTJOBS_API_KEY,
+  apiKey,
+  credentialRef = DEFAULT_CREDENTIAL_REFS.moltjobs,
+  credentialResolver = defaultCredentialResolver,
   baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
   fetchImpl = fetch
 } = {}) {
-  if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
+  const { value: resolvedApiKey } = await resolveMoltJobsCredential({ resolver: credentialResolver, ref: credentialRef, inlineValue: apiKey, context: { provider: 'moltjobs', accountId: 'default', capability: 'rail.discover', mode: 'read_only' } });
   const root = baseUrl.replace(/\/$/, '');
   const response = await fetchImpl(`${root}/jobs?status=open`, {
     method: 'GET',
-    headers: { 'X-Api-Key': apiKey, 'accept': 'application/json' }
+    headers: { 'X-Api-Key': resolvedApiKey, 'accept': 'application/json' }
   });
   if (!response.ok) throw new Error(`MoltJobs list jobs failed: HTTP ${response.status}`);
   const data = await response.json();
@@ -137,4 +159,3 @@ export function evaluateJobExecutionGate(job = {}) {
     }
   };
 }
-

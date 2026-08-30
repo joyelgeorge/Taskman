@@ -26,6 +26,7 @@ In the Render dashboard → **taskman → Environment**, add:
 | `TASKMAN_API_KEY` | Service-to-service auth key (generate with `openssl rand -hex 32`) |
 | `OPENAI_API_KEY` | AI provider key |
 | `MOLTJOBS_API_KEY` | MoltJobs income rail key (optional) |
+| `TASKMAN_ALLOW_ENV_CREDENTIALS` | Explicitly permit the legacy environment credential adapter in production; prefer a managed-secret resolver |
 
 > **Never commit secret values.** `render.yaml` marks these `sync: false` so Render will not overwrite them.
 

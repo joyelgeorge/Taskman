@@ -1,15 +1,17 @@
 import { LIMITS, TaskmanError, abortable, createDeadline } from './limits.js';
 
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
 const providers = [
   {
     id: 'gemini',
     env: 'GEMINI_API_KEY',
     model: 'gemini-2.0-flash',
-    endpoint: key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+    endpoint: () => GEMINI_ENDPOINT,
     async call(prompt, key, { signal } = {}) {
-      const r = await fetch(this.endpoint(key), {
+      const r = await fetch(this.endpoint(), {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
         signal
       });
@@ -148,3 +150,4 @@ export async function runWithFallback(prompt, {
     overall.cleanup();
   }
 }
+

@@ -63,7 +63,7 @@ async function refresh() {
     <div class="task">
       <div class="row"><strong>${esc(t.title)}</strong><span class="pill">${esc(t.status)}</span>${t.intervalMinutes ? `<span class="pill">every ${t.intervalMinutes}m</span>` : '<span class="pill">manual</span>'}</div>
       <div class="muted">${esc(t.prompt)}</div>
-      <div class="row" style="margin-top:10px">
+      <div class="row task-actions">
         <button data-run="${t.id}">Run now</button>
         <button data-pause="${t.id}">${t.status === 'active' ? 'Pause' : 'Resume'}</button>
       </div>

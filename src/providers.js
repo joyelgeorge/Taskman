@@ -1,13 +1,15 @@
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
 const providers = [
   {
     id: 'gemini',
     env: 'GEMINI_API_KEY',
     model: 'gemini-2.0-flash',
-    endpoint: key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+    endpoint: () => GEMINI_ENDPOINT,
     async call(prompt, key) {
-      const r = await fetch(this.endpoint(key), {
+      const r = await fetch(this.endpoint(), {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
       });
       if (!r.ok) throw new Error(`Gemini ${r.status}`);
@@ -46,6 +48,15 @@ async function openAICompatible(url, model, prompt, key) {
   };
 }
 
+function redactProviderError(error, secret) {
+  let message = String(error?.message || error);
+  if (!secret) return message;
+  for (const value of new Set([secret, encodeURIComponent(secret)])) {
+    if (value) message = message.split(value).join('[REDACTED]');
+  }
+  return message;
+}
+
 export function providerStatus() {
   return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(process.env[p.env]) }));
 }
@@ -60,7 +71,7 @@ export async function runWithFallback(prompt) {
       const result = await p.call(prompt, key);
       return { ...result, provider: p.id, model: p.model, latencyMs: Date.now() - started, fallbacks: errors };
     } catch (e) {
-      errors.push({ provider: p.id, error: String(e.message || e) });
+      errors.push({ provider: p.id, error: redactProviderError(e, key) });
     }
   }
   throw new Error(errors.length ? `All configured providers failed: ${JSON.stringify(errors)}` : 'No provider API key is configured');

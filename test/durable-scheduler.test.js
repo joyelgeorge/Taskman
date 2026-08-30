@@ -34,11 +34,13 @@ test('1. Discover/Validate/Execute schedules calculate expected staggered due ti
   assert.equal(getMinuteOffset('0 * * * *'), 0);
   assert.equal(getMinuteOffset('10 * * * *'), 10);
   assert.equal(getMinuteOffset('20 * * * *'), 20);
+  assert.equal(getMinuteOffset('*/5 * * * *'), null);
 
   const base = new Date('2026-08-29T10:00:00.000Z');
   assert.equal(computeNextRunAt('0 * * * *', base).toISOString(),  '2026-08-29T11:00:00.000Z');
   assert.equal(computeNextRunAt('10 * * * *', base).toISOString(), '2026-08-29T10:10:00.000Z');
   assert.equal(computeNextRunAt('20 * * * *', base).toISOString(), '2026-08-29T10:20:00.000Z');
+  assert.equal(computeNextRunAt('*/5 * * * *', base).toISOString(), '2026-08-29T10:05:00.000Z');
 });
 
 test('2. Two concurrent schedulers cannot claim the same firing', async () => {
@@ -426,3 +428,52 @@ test('17. Legacy revenue queue aliases remain compatible', async () => {
 test('18. Memory-mode reports clearly that durable guarantees require PostgreSQL', () => {
   assert.equal(typeof isSchedulerDurable(), 'boolean');
 });
+
+test('19. 5-minute cadence computes next run at 5-min boundary and rolls over hour boundary', () => {
+  const t1 = new Date('2026-08-29T12:01:23.000Z');
+  assert.equal(computeNextRunAt('*/5 * * * *', t1).toISOString(), '2026-08-29T12:05:00.000Z');
+
+  const t2 = new Date('2026-08-29T12:05:00.000Z');
+  assert.equal(computeNextRunAt('*/5 * * * *', t2).toISOString(), '2026-08-29T12:10:00.000Z');
+
+  const t3 = new Date('2026-08-29T12:59:45.000Z');
+  assert.equal(computeNextRunAt('*/5 * * * *', t3).toISOString(), '2026-08-29T13:00:00.000Z');
+
+  const t4 = new Date('2026-08-29T23:55:00.000Z');
+  assert.equal(computeNextRunAt('*/5 * * * *', t4).toISOString(), '2026-08-30T00:00:00.000Z');
+});
+
+test('20. 5-minute execute job initializes and claims on 5-minute boundary without duplicate runs', async () => {
+  await resetScheduledJobsForTesting();
+  const fixedNow = new Date('2026-08-29T10:05:00.000Z');
+  await initializeScheduler({ now: new Date('2026-08-29T10:00:00.000Z') });
+
+  const jobs = await listScheduledJobs();
+  const execJob = jobs.find(j => j.id === 'taskman-execute-5min');
+  assert.ok(execJob, 'taskman-execute-5min job must exist in initialized schedules');
+  assert.equal(execJob.scheduleExpression, '*/5 * * * *');
+
+  const claim1 = await claimScheduledJob('taskman-execute-5min', { now: fixedNow, claimedBy: 'worker-1' });
+  assert.ok(claim1, 'Worker 1 should claim 5-minute execute job');
+  assert.equal(claim1.runKey, generateRunKey('taskman-execute-5min', fixedNow));
+
+  // Second worker cannot claim same firing
+  const claim2 = await claimScheduledJob('taskman-execute-5min', { now: fixedNow, claimedBy: 'worker-2' });
+  assert.equal(claim2, null, 'Worker 2 cannot claim active firing');
+
+  // Finish run
+  await finishScheduledJobRun({
+    jobId: claim1.job.id,
+    runKey: claim1.runKey,
+    leaseToken: claim1.leaseToken,
+    status: 'COMPLETED',
+    result: { ok: true },
+    now: fixedNow
+  });
+
+  // Next run advances to 10:10:00
+  const jobsAfter = await listScheduledJobs();
+  const updatedJob = jobsAfter.find(j => j.id === 'taskman-execute-5min');
+  assert.equal(updatedJob.nextRunAt, '2026-08-29T10:10:00.000Z');
+});
+

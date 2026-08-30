@@ -47,6 +47,9 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 | `TASKMAN_BASE_URL` | Render (injected) | Yes | Public HTTPS URL e.g. `https://taskman.onrender.com` |
 | `TASKMAN_API_KEY` | Render dashboard | Yes (after #13) | Service-to-service auth token |
 | `TASKMAN_INTERNAL_SCHEDULER_ENABLED` | Render dashboard | Optional | Set `true` to enable durable cron scheduler |
+| `TASKMAN_TRUST_PROXY` | Render dashboard | Optional | Set `true` only behind a trusted proxy that overwrites `X-Forwarded-Proto`; enables HTTPS detection for HSTS |
+| `TASKMAN_CSP_REPORT_ONLY` | Render dashboard | Optional | Set `true` to stage CSP without enforcement; unset for strict enforcement |
+| `TASKMAN_HSTS_ENABLED` | Render dashboard | Optional | Defaults on for trusted production HTTPS; set `false` for an emergency rollback |
 | `NODE_ENV` | `render.yaml` | Yes | Set to `production` |
 | `OPENAI_API_KEY` | Render dashboard | Optional | AI reasoning provider |
 | `MOLTJOBS_API_KEY` | Render dashboard | Optional | MoltJobs income rail |
@@ -152,3 +155,6 @@ DATABASE_URL=postgresql://localhost:5432/taskman node --test  # PostgreSQL mode
 - `/api/status` is public (needed for health checks).
 - Mutation endpoints will be protected by `TASKMAN_API_KEY` once issue #13 is complete.
 - `DATABASE_URL` is injected only into the Render service runtime — not exposed in logs or status output.
+- Browser-facing responses, API responses, errors, and 404s receive the same centralized CSP, framing, MIME-sniffing, referrer, and permissions policy.
+- HSTS is emitted only in production when HTTPS is directly observed or `TASKMAN_TRUST_PROXY=true` explicitly trusts the proxy protocol header. Do not enable proxy trust unless the edge overwrites `X-Forwarded-Proto`.
+- To stage a policy change, temporarily set `TASKMAN_CSP_REPORT_ONLY=true`, validate browser reports and dashboard flows, then unset it to restore enforcement.

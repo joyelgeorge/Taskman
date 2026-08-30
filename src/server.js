@@ -21,6 +21,7 @@ import {
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { applySecurityHeaders } from './http-security.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -194,6 +195,7 @@ function startInternalSchedulerLoop() {
 }
 
 const server = http.createServer(async (req, res) => {
+  applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -229,9 +231,7 @@ const server = http.createServer(async (req, res) => {
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
         ...health,
-        providers,
-        usage,
-        database,
+        providers, usage, database,
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
@@ -294,6 +294,11 @@ const server = http.createServer(async (req, res) => {
       const js = await readFile(join(publicDir, 'app.js'));
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
       return res.end(js);
+    }
+    if (req.method === 'GET' && url.pathname === '/styles.css') {
+      const css = await readFile(join(publicDir, 'styles.css'));
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      return res.end(css);
     }
     json(res, 404, { error: 'not found' });
   } catch (e) {

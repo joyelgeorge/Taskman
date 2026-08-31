@@ -234,6 +234,11 @@ const server = http.createServer(async (req, res) => {
         revenueExplorerQueues: true,
         schedulerDurable,
         internalSchedulerEnabled,
+        runtime: {
+          nodeVersion: process.versions.node,
+          nodeMajor: Number(process.versions.node.split('.')[0]),
+          supportedNodeMajor: 24
+        },
         brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
       });
     }

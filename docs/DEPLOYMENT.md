@@ -64,9 +64,11 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 
 ## Build & start
 
+Taskman supports Node.js 24 only. `.node-version` is the single pinned runtime version used by local version managers and GitHub Actions; Render also discovers this file for its Node runtime. `package.json` rejects unsupported Node major versions.
+
 ```bash
 # Build (Render runs this before starting the service)
-npm install --omit=dev && node scripts/migrate.js
+npm ci --omit=dev && node scripts/migrate.js
 
 # Start
 npm start
@@ -85,7 +87,7 @@ Render pings `/health/ready`. The probes have separate contracts:
 
 - `GET /health/live` is a lightweight process probe. It does not query optional dependencies.
 - `GET /health/ready` returns HTTP 503 when production requirements are unavailable.
-- `GET /api/status` always returns diagnostics with a top-level `healthy`, `degraded`, or `unready` state.
+- `GET /api/status` always returns diagnostics with a top-level `healthy`, `degraded`, or `unready` state and safe Node runtime metadata.
 
 Production requires PostgreSQL unless `TASKMAN_ALLOW_MEMORY_MODE=true` is explicitly set. Local development without PostgreSQL remains ready but is labeled `degraded`, `memory`, and non-durable. Set `TASKMAN_REQUIRE_PROVIDER=true` only when at least one configured AI provider is a traffic-readiness requirement. Enabling the internal scheduler also requires durable scheduler storage.
 

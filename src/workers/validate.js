@@ -1,7 +1,7 @@
 import {
-  CANONICAL_QUEUES,
-  capabilitySnapshot
+  CANONICAL_QUEUES
 } from '../orchestration-profiles.js';
+import { getRuntimeCapabilityMap } from '../capability-registry.js';
 import {
   qualifyCandidate,
   missingCapabilities
@@ -164,11 +164,12 @@ export async function runValidateWorker({
   limit = 10,
   claimedBy = 'taskman-validate-worker',
   validatorFn = null,
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  capabilityOptions = {}
 } = {}) {
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
-  const capabilities = capabilitySnapshot();
+  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
 
   const validated = [];
   const promoted = [];

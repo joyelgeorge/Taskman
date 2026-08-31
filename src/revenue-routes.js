@@ -4,8 +4,9 @@ import {
 } from './revenue-store.js';
 import {
   CANONICAL_QUEUES, LEGACY_QUEUE_ALIASES, DISCOVERY_SOURCES,
-  QUALIFICATION_PROFILES, capabilitySnapshot, resolveQueueName
+  QUALIFICATION_PROFILES, resolveQueueName
 } from './orchestration-profiles.js';
+import { getRuntimeCapabilityMap, getSafeCapabilitySnapshot } from './capability-registry.js';
 import { normalizeCandidate, qualifyCandidate, missingCapabilities } from './qualification-engine.js';
 import {
   listScheduledJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable
@@ -107,14 +108,14 @@ export async function handleRevenueRequest(req, res, url) {
   }
 
   if (req.method === 'GET' && url.pathname === '/api/capabilities') {
-    return send(res, 200, capabilitySnapshot());
+    return send(res, 200, getSafeCapabilitySnapshot());
   }
 
   if (req.method === 'POST' && url.pathname === '/api/qualification') {
     const input = await readJsonBody(req);
     const candidate = normalizeCandidate(input.candidate || input);
     const profile = input.profile || candidate.profile || 'programmable_money_flow_v1';
-    const capabilities = capabilitySnapshot(input.capabilities || {});
+    const capabilities = getRuntimeCapabilityMap();
     return send(res, 200, {
       candidate,
       qualification: qualifyCandidate(candidate, profile),
@@ -163,4 +164,3 @@ export async function handleRevenueRequest(req, res, url) {
   }
   return false;
 }
-

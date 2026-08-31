@@ -120,7 +120,17 @@ export async function finishRunRecord(run) {
     if (existing) Object.assign(existing, run);
     return run;
   }
-  const resultJson = run.result ? { text: run.result, nextBestAction: run.nextBestAction, provider: run.provider, model: run.model } : null;
+  const resultJson = {
+    ...(run.result ? {
+      text: run.result,
+      nextBestAction: run.nextBestAction,
+      provider: run.provider,
+      model: run.model
+    } : {}),
+    ...(run.errorDetail ? { errorDetail: run.errorDetail } : {}),
+    ...(run.fallbacks?.length ? { fallbacks: run.fallbacks } : {}),
+    ...(run.latencyMs ? { latencyMs: run.latencyMs } : {})
+  };
   await query(
     `UPDATE runs SET status=$2, result=$3::jsonb, error_code=$4, finished_at=$5 WHERE id=$1`,
     [run.id, run.status, JSON.stringify(resultJson), run.error || null, run.finishedAt]
@@ -145,6 +155,9 @@ export async function listRunRecords(limit = 50) {
     provider: r.result?.provider || null,
     model: r.result?.model || null,
     error: r.error_code,
+    errorDetail: r.result?.errorDetail || null,
+    fallbacks: r.result?.fallbacks || [],
+    latencyMs: r.result?.latencyMs || null,
     startedAt: r.started_at,
     finishedAt: r.finished_at
   }));
@@ -177,3 +190,4 @@ export async function usageSummary() {
     estimatedCost: Number(result.rows[0].estimated_cost)
   };
 }
+

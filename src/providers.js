@@ -1,14 +1,19 @@
+import { LIMITS, TaskmanError, abortable, createDeadline } from './limits.js';
+
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
 const providers = [
   {
     id: 'gemini',
     env: 'GEMINI_API_KEY',
     model: 'gemini-2.0-flash',
-    endpoint: key => `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
-    async call(prompt, key) {
-      const r = await fetch(this.endpoint(key), {
+    endpoint: () => GEMINI_ENDPOINT,
+    async call(prompt, key, { signal } = {}) {
+      const r = await fetch(this.endpoint(), {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        signal
       });
       if (!r.ok) throw new Error(`Gemini ${r.status}`);
       const j = await r.json();
@@ -19,23 +24,30 @@ const providers = [
   },
   {
     id: 'openai', env: 'OPENAI_API_KEY', model: 'gpt-4o-mini',
-    async call(prompt, key) { return openAICompatible('https://api.openai.com/v1/chat/completions', this.model, prompt, key); }
+    async call(prompt, key, { signal } = {}) {
+      return openAICompatible('https://api.openai.com/v1/chat/completions', this.model, prompt, key, signal);
+    }
   },
   {
     id: 'groq', env: 'GROQ_API_KEY', model: 'llama-3.1-8b-instant',
-    async call(prompt, key) { return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key); }
+    async call(prompt, key, { signal } = {}) {
+      return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key, signal);
+    }
   },
   {
     id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'openai/gpt-oss-20b:free',
-    async call(prompt, key) { return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key); }
+    async call(prompt, key, { signal } = {}) {
+      return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key, signal);
+    }
   }
 ];
 
-async function openAICompatible(url, model, prompt, key) {
+async function openAICompatible(url, model, prompt, key, signal) {
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }),
+    signal
   });
   if (!r.ok) throw new Error(`${model} ${r.status}`);
   const j = await r.json();
@@ -50,18 +62,92 @@ export function providerStatus() {
   return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(process.env[p.env]) }));
 }
 
-export async function runWithFallback(prompt) {
+export async function runWithFallback(prompt, {
+  signal,
+  runTimeoutMs = LIMITS.runTimeoutMs,
+  providerTimeoutMs = LIMITS.providerTimeoutMs,
+  providerList = providers,
+  env = process.env
+} = {}) {
   const errors = [];
-  for (const p of providers) {
-    const key = process.env[p.env];
-    if (!key) continue;
-    const started = Date.now();
-    try {
-      const result = await p.call(prompt, key);
-      return { ...result, provider: p.id, model: p.model, latencyMs: Date.now() - started, fallbacks: errors };
-    } catch (e) {
-      errors.push({ provider: p.id, error: String(e.message || e) });
+  const runStarted = Date.now();
+  const overall = createDeadline(runTimeoutMs, {
+    parentSignal: signal,
+    code: 'RUN_DEADLINE_EXCEEDED',
+    message: 'Task execution deadline exceeded'
+  });
+
+  try {
+    for (const provider of providerList) {
+      const key = provider.key ?? env[provider.env];
+      if (!key) continue;
+
+      const remainingMs = runTimeoutMs - (Date.now() - runStarted);
+      if (remainingMs <= 0 || overall.signal.aborted) break;
+
+      const attemptStarted = Date.now();
+      const attempt = createDeadline(Math.min(providerTimeoutMs, remainingMs), {
+        parentSignal: overall.signal,
+        code: 'PROVIDER_TIMEOUT',
+        message: `Provider ${provider.id} timed out`
+      });
+
+      try {
+        const result = await abortable(
+          provider.call(prompt, key, { signal: attempt.signal }),
+          attempt.signal
+        );
+        if (overall.signal.aborted) {
+          throw overall.signal.reason;
+        }
+        return {
+          ...result,
+          provider: provider.id,
+          model: provider.model,
+          latencyMs: Date.now() - attemptStarted,
+          fallbacks: errors
+        };
+      } catch (error) {
+        const code = overall.signal.aborted
+          ? 'RUN_DEADLINE_EXCEEDED'
+          : attempt.signal.aborted
+            ? 'PROVIDER_TIMEOUT'
+            : 'PROVIDER_ERROR';
+        errors.push({
+          provider: provider.id,
+          code,
+          durationMs: Date.now() - attemptStarted
+        });
+        if (code === 'RUN_DEADLINE_EXCEEDED') break;
+      } finally {
+        attempt.cleanup();
+      }
     }
+
+    if (overall.signal.aborted) {
+      const failure = new TaskmanError('Task execution deadline exceeded', {
+        code: 'RUN_DEADLINE_EXCEEDED',
+        statusCode: 504
+      });
+      failure.diagnostics = errors;
+      throw failure;
+    }
+
+    if (!errors.length) {
+      throw new TaskmanError('No provider API key is configured', {
+        code: 'NO_PROVIDER_CONFIGURED',
+        statusCode: 503
+      });
+    }
+
+    const failure = new TaskmanError(`All configured providers failed: ${JSON.stringify(errors)}`, {
+      code: 'ALL_PROVIDERS_FAILED',
+      statusCode: 502
+    });
+    failure.diagnostics = errors;
+    throw failure;
+  } finally {
+    overall.cleanup();
   }
-  throw new Error(errors.length ? `All configured providers failed: ${JSON.stringify(errors)}` : 'No provider API key is configured');
 }
+

@@ -4,11 +4,9 @@ import {
   CANONICAL_QUEUES,
   DISCOVERY_SOURCES
 } from '../orchestration-profiles.js';
-import { getRuntimeCapabilityMap } from '../capability-registry.js';
 import {
   normalizeCandidate,
-  qualifyCandidate,
-  missingCapabilities
+  qualifyCandidate
 } from '../qualification-engine.js';
 import {
   upsertRevenueRecord,
@@ -158,8 +156,6 @@ export async function runDiscoverWorker({
 
   const enqueued = [];
   const rejected = [];
-  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
-
   for (const candidate of candidatesToProcess) {
     // Deduplication by novelty key
     if (candidate.noveltyKey && existingNoveltyKeys.has(candidate.noveltyKey)) {
@@ -167,10 +163,14 @@ export async function runDiscoverWorker({
     }
 
     const profileName = candidate.profile || 'programmable_money_flow_v1';
-    const qual = qualifyCandidate(candidate, profileName);
-    const missing = missingCapabilities(candidate, capabilities);
+    const qual = qualifyCandidate(candidate, profileName, { capabilityOptions });
+    const missing = [
+      ...qual.capabilities.setupRequired,
+      ...qual.capabilities.unavailable,
+      ...qual.capabilities.unhealthy
+    ];
 
-    if (qual.passes) {
+    if (qual.eligibleForValidation) {
       const record = await upsertRevenueRecord({
         queue: CANONICAL_QUEUES.candidates,
         noveltyKey: candidate.noveltyKey,
@@ -190,7 +190,9 @@ export async function runDiscoverWorker({
       rejected.push({
         candidateId: candidate.candidateId,
         title: candidate.title,
-        reason: 'Failed deterministic qualification gates',
+        reason: qual.evidence.status === 'REJECTED'
+          ? qual.evidence.reason
+          : 'Failed deterministic qualification gates',
         failures: qual.hardGateFailures,
         score: qual.score,
         threshold: qual.threshold

@@ -88,7 +88,7 @@ test('Validate Worker: AI adversarial gate evaluation', async () => {
         title: 'Adversarial Test Candidate',
         noveltyKey,
         profile: 'programmable_money_flow_v1',
-        evidence: ['https://aws.amazon.com/support/plans/'],
+        evidence: Array.from({ length: 8 }, (_, index) => `https://aws.amazon.com/${index + 1}`),
         metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1 }
       }
     }

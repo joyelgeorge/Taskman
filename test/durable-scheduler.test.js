@@ -42,7 +42,6 @@ test('1. Discover/Validate/Execute schedules calculate expected staggered due ti
   assert.equal(computeNextRunAt('20 * * * *', base).toISOString(), '2026-08-29T10:20:00.000Z');
   assert.equal(computeNextRunAt('*/5 * * * *', base).toISOString(), '2026-08-29T10:05:00.000Z');
 });
-
 test('2. Two concurrent schedulers cannot claim the same firing', async () => {
   await resetScheduledJobsForTesting();
   const fixedNow = new Date('2026-08-29T10:00:00.000Z');
@@ -269,7 +268,7 @@ test('10. Validate: properly-cited 8-gate evidence promotes to THRESHOLD_CROSSED
           competitiveWhitespace: 0.8, setupBurden: 0.2, timeToMoney: 0.6
         },
         gateEvidence: buildGateEvidence(EIGHT_MONEY_FLOW_GATES, EVIDENCE_URLS),
-        requiredCapabilities: ['web.read'],
+        requiredCapabilities: ['taskman.queue.read'],
         evidence: EVIDENCE_URLS
       }
     }
@@ -476,4 +475,3 @@ test('20. 5-minute execute job initializes and claims on 5-minute boundary witho
   const updatedJob = jobsAfter.find(j => j.id === 'taskman-execute-5min');
   assert.equal(updatedJob.nextRunAt, '2026-08-29T10:10:00.000Z');
 });
-

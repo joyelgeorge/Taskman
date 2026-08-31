@@ -25,6 +25,13 @@ import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
 import { applySecurityHeaders } from './http-security.js';
+import {
+  CONCURRENCY_POLICY,
+  executeBrainWithConcurrencyPolicy,
+  executeWithConcurrencyPolicy,
+  getConcurrencyStatus,
+  normalizeConcurrencyPolicy
+} from './scheduler-concurrency.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -116,6 +123,26 @@ async function executeTask(task, reason = 'manual') {
   return run;
 }
 
+async function recordScheduledConcurrencyOutcome(task, outcome) {
+  if (!['SKIPPED', 'COALESCED'].includes(outcome.outcome)) return;
+  const now = new Date().toISOString();
+  const run = {
+    id: crypto.randomUUID(),
+    taskId: task.id,
+    scenarioId: task.scenarioId || null,
+    reason: `schedule:${outcome.outcome.toLowerCase()}`,
+    status: outcome.outcome.toLowerCase(),
+    startedAt: now,
+    finishedAt: now,
+    result: outcome.reason || outcome.outcome,
+    nextBestAction: outcome.outcome === 'COALESCED'
+      ? 'Run the single retained firing after the active run finishes.'
+      : 'Wait for the active run to finish before the next scheduled firing.'
+  };
+  await createRunRecord(run);
+  await finishRunRecord(run);
+}
+
 function schedule(task) {
   const old = timers.get(task.id);
   if (old) {
@@ -128,7 +155,21 @@ function schedule(task) {
     if (!interval.valid) console.warn(`[Taskman Schedule] ${interval.code}; task=${task.id}`);
     return;
   }
-  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), interval.value * 60_000);
+  const policy = normalizeConcurrencyPolicy(task.concurrencyPolicy, { allowConcurrent: true });
+  const timer = setInterval(() => executeWithConcurrencyPolicy(
+    `task:${task.id}`,
+    ({ queued }) => executeTask(task, queued ? 'schedule:queued' : 'schedule'),
+    {
+      policy,
+      allowConcurrent: policy === CONCURRENCY_POLICY.ALLOW,
+      onOutcome: async outcome => {
+        if (['SKIPPED', 'COALESCED'].includes(outcome.outcome)) {
+          console.log('[Taskman Schedule] concurrency outcome', outcome);
+          await recordScheduledConcurrencyOutcome(task, outcome);
+        }
+      }
+    }
+  ).catch(console.error), interval.value * 60_000);
   timer.unref();
   timers.set(task.id, timer);
 }
@@ -145,9 +186,16 @@ function startBrainScheduler() {
     return;
   }
   const minutes = interval.value;
-  brainTimer = setInterval(() => executeBrainCycle('schedule').catch(console.error), minutes * 60_000);
+  const requestedPolicy = String(process.env.TASKMAN_BRAIN_CONCURRENCY_POLICY || CONCURRENCY_POLICY.FORBID).toUpperCase();
+  const policy = normalizeConcurrencyPolicy(requestedPolicy, {
+    allowConcurrent: requestedPolicy === CONCURRENCY_POLICY.ALLOW
+  });
+  brainTimer = setInterval(() => executeBrainWithConcurrencyPolicy(
+    ({ queued }) => executeBrainCycle(queued ? 'schedule:queued' : 'schedule'),
+    { policy, allowConcurrent: policy === CONCURRENCY_POLICY.ALLOW }
+  ).catch(console.error), minutes * 60_000);
   brainTimer.unref();
-  console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
+  console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s), concurrency=${policy}`);
 }
 
 async function tickInternalScheduler() {
@@ -175,6 +223,7 @@ async function tickInternalScheduler() {
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'COMPLETED',
         result,
         now: new Date()
@@ -186,6 +235,7 @@ async function tickInternalScheduler() {
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'FAILED',
         error,
         now: new Date()
@@ -257,6 +307,12 @@ const server = http.createServer(async (req, res) => {
         brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null
       });
     }
+    if (req.method === 'GET' && url.pathname === '/api/scheduler/concurrency') {
+      return json(res, 200, {
+        defaultPolicy: CONCURRENCY_POLICY.FORBID,
+        executions: getConcurrencyStatus()
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
@@ -283,13 +339,23 @@ const server = http.createServer(async (req, res) => {
           detail: interval.error
         });
       }
+      const requestedPolicy = String(body.concurrencyPolicy || CONCURRENCY_POLICY.FORBID).trim().toUpperCase();
+      let concurrencyPolicy;
+      try {
+        concurrencyPolicy = normalizeConcurrencyPolicy(requestedPolicy, {
+          allowConcurrent: requestedPolicy === CONCURRENCY_POLICY.ALLOW
+        });
+      } catch (error) {
+        return json(res, 400, { error: error.message, code: error.code });
+      }
       const id = crypto.randomUUID();
       const task = await createTaskRecord({
         id,
         scenarioId: body.scenarioId || null,
         title: body.title?.trim() || body.prompt.trim().slice(0, 60),
         prompt: body.prompt.trim(),
-        intervalMinutes: interval.value
+        intervalMinutes: interval.value,
+        concurrencyPolicy
       });
       schedule(task);
       return json(res, 201, task);

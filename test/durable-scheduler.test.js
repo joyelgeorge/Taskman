@@ -20,6 +20,7 @@ import { runValidateWorker, evaluateEvidenceGates, EIGHT_MONEY_FLOW_GATES } from
 import { runExecuteWorker } from '../src/workers/execute.js';
 import { CANONICAL_QUEUES, resolveQueueName } from '../src/orchestration-profiles.js';
 import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
+import { databaseEnabled, query } from '../src/db.js';
 
 // Helper: build per-gate evidence with individual references
 function buildGateEvidence(gates, evidenceRefs) {
@@ -123,6 +124,15 @@ test('5. Stale worker A cannot clear active lease held by worker B (fencing toke
   });
   assert.equal(staleFinish.ok, false, 'Stale worker A must be fenced out');
   assert.equal(staleFinish.fenced, true);
+
+  if (databaseEnabled) {
+    const runAfterStaleFinish = await query(
+      'SELECT status, lease_token FROM scheduled_job_runs WHERE run_key = $1',
+      [claimB.runKey]
+    );
+    assert.equal(runAfterStaleFinish.rows[0].status, 'RUNNING', 'Stale completion must not mutate the active run');
+    assert.equal(runAfterStaleFinish.rows[0].lease_token, claimB.leaseToken, 'Active run must retain worker B\'s token');
+  }
 
   // Worker B can still cleanly finish
   const goodFinish = await finishScheduledJobRun({

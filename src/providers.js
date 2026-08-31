@@ -108,7 +108,8 @@ export async function runWithFallback(prompt, {
           fallbacks: errors
         };
       } catch (error) {
-        const code = overall.signal.aborted
+        const runBudgetExhausted = Date.now() - runStarted >= runTimeoutMs;
+        const code = overall.signal.aborted || runBudgetExhausted
           ? 'RUN_DEADLINE_EXCEEDED'
           : attempt.signal.aborted
             ? 'PROVIDER_TIMEOUT'
@@ -124,7 +125,7 @@ export async function runWithFallback(prompt, {
       }
     }
 
-    if (overall.signal.aborted) {
+    if (overall.signal.aborted || Date.now() - runStarted >= runTimeoutMs) {
       const failure = new TaskmanError('Task execution deadline exceeded', {
         code: 'RUN_DEADLINE_EXCEEDED',
         statusCode: 504
@@ -150,4 +151,3 @@ export async function runWithFallback(prompt, {
     overall.cleanup();
   }
 }
-

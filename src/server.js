@@ -297,6 +297,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
       return res.end(js);
     }
+    if (req.method === 'GET' && url.pathname === '/refresh-controller.js') {
+      const js = await readFile(join(publicDir, 'refresh-controller.js'));
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+      return res.end(js);
+    }
     if (req.method === 'GET' && url.pathname === '/styles.css') {
       const css = await readFile(join(publicDir, 'styles.css'));
       res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });

@@ -10,9 +10,13 @@
   <main class="wrap">
     <h1>Taskman</h1>
     <p class="muted">Describe it once. Taskman runs, routes, learns and moves to the next money-relevant gap.</p>
+    <div id="dashboardHealth" class="dashboard-health" role="status" aria-live="polite" hidden>
+      <span id="dashboardHealthText">Dashboard degraded</span>
+      <button id="retryDashboard" type="button">Retry now</button>
+    </div>
 
     <section class="card brain">
-      <div class="row"><h2 class="row-heading">Brain</h2><button class="primary" id="runBrain">Run brain once</button></div>
+      <div class="row"><h2 class="row-heading">Brain</h2><span id="brainStatus" class="panel-status" aria-live="polite">Loading…</span><button class="primary" id="runBrain">Run brain once</button></div>
       <div id="brainState"><p class="muted">Loading brain state…</p></div>
       <div id="brainResult"></div>
     </section>
@@ -26,28 +30,27 @@
     </section>
 
     <section class="card">
-      <div class="row"><h2 class="row-heading">System</h2><span id="usage" class="muted"></span></div>
+      <div class="row"><h2 class="row-heading">System</h2><span id="systemStatus" class="panel-status" aria-live="polite">Loading…</span><span id="usage" class="muted"></span></div>
       <div id="providers" class="row"></div>
     </section>
 
     <section class="card">
-      <h2>Executable tasks</h2>
+      <div class="row"><h2 class="row-heading">Executable tasks</h2><span id="tasksStatus" class="panel-status" aria-live="polite">Loading…</span></div>
       <p class="muted">Runnable schedules live here. Opportunity candidates and rejected paths are scenario records below.</p>
       <div id="tasks"></div>
     </section>
 
     <section class="card">
-      <div class="row"><h2 class="row-heading">Scenario database</h2><span id="scenarioCount" class="muted"></span></div>
+      <div class="row"><h2 class="row-heading">Scenario database</h2><span id="scenariosStatus" class="panel-status" aria-live="polite">Loading…</span><span id="scenarioCount" class="muted"></span></div>
       <p class="muted">The latest scored candidates, active strategy, historical attempts and rejection reasons synchronized from the repository.</p>
       <div id="scenarios"></div>
     </section>
 
     <section class="card">
-      <h2>Recent runs</h2>
+      <div class="row"><h2 class="row-heading">Recent runs</h2><span id="runsStatus" class="panel-status" aria-live="polite">Loading…</span></div>
       <div id="runs"></div>
     </section>
   </main>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
-

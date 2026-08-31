@@ -1,7 +1,10 @@
 import {
-  CANONICAL_QUEUES,
-  capabilitySnapshot
+  CANONICAL_QUEUES
 } from '../orchestration-profiles.js';
+import {
+  evaluateRequiredCapabilities,
+  getRuntimeCapabilityMap
+} from '../capability-registry.js';
 import {
   claimRevenueRecords,
   updateRevenueRecord,
@@ -33,18 +36,22 @@ export async function runExecuteWorker({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  capabilityOptions = {}
 } = {}) {
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
-  const capabilities = capabilitySnapshot();
+  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
 
   const executed = [];
   const outcomes = [];
 
   for (const item of claimed) {
     const candidate = item.payload.candidate || item.payload;
-    const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
+    const requiredCapabilities = Array.isArray(candidate.requiredCapabilities)
+      ? candidate.requiredCapabilities
+      : [];
+    const capabilityDecision = evaluateRequiredCapabilities(requiredCapabilities, capabilityOptions);
 
     let aiPlan = null;
     if (sharedReasoningEngine.isConfigured() || mockAiReasoning) {
@@ -66,9 +73,13 @@ export async function runExecuteWorker({
     let stepOutput = null;
 
     // Check capabilities first
-    if (missing.length > 0) {
+    if (capabilityDecision.unavailable.length > 0 || capabilityDecision.unhealthy.length > 0) {
+      const blocked = [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy];
+      outcomeStatus = 'BLOCKED';
+      outcomeReason = `Required capabilities unavailable: ${blocked.join(', ')}`;
+    } else if (capabilityDecision.setupRequired.length > 0) {
       outcomeStatus = 'SETUP_REQUIRED';
-      outcomeReason = `Missing required capabilities: ${missing.join(', ')}`;
+      outcomeReason = `Required capabilities need setup: ${capabilityDecision.setupRequired.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
         stepOutput = await executorFn(candidate, capabilities, aiPlan);

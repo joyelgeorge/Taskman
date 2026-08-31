@@ -2,9 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   CANONICAL_QUEUES,
-  DISCOVERY_SOURCES,
-  capabilitySnapshot
+  DISCOVERY_SOURCES
 } from '../orchestration-profiles.js';
+import { getRuntimeCapabilityMap } from '../capability-registry.js';
 import {
   normalizeCandidate,
   qualifyCandidate,
@@ -127,7 +127,8 @@ export async function runDiscoverWorker({
   sources = Object.keys(DISCOVERY_SOURCES),
   sampleCandidates = [],
   claimedBy = 'taskman-discover-worker',
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  capabilityOptions = {}
 } = {}) {
   const startedAt = new Date().toISOString();
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
@@ -157,7 +158,7 @@ export async function runDiscoverWorker({
 
   const enqueued = [];
   const rejected = [];
-  const capabilities = capabilitySnapshot();
+  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
 
   for (const candidate of candidatesToProcess) {
     // Deduplication by novelty key

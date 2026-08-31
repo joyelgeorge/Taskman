@@ -70,31 +70,8 @@ export const QUALIFICATION_PROFILES = Object.freeze({
   }
 });
 
-export const DEFAULT_CAPABILITIES = Object.freeze({
-  'web.read': true,
-  'github.read': true,
-  'github.write': true,
-  'gmail.send': true,
-  'taskman.queue.read': true,
-  'taskman.queue.write': true,
-  'moltjobs.read': true,
-  'moltjobs.authenticated': Boolean(process.env.MOLTJOBS_API_KEY),
-  'ugig.gigs.read': true,
-  'ugig.gig.read': true,
-  'ugig.poster.read': true,
-  'ugig.invoice.read': Boolean(process.env.UGIG_API_KEY),
-  'ugig.payment.read': Boolean(process.env.UGIG_API_KEY),
-  'ugig.apply': false,
-  'ugig.message': false,
-  'ugig.invoice.create': false,
-  'wallet.sign': false,
-  'funds.move': false
-});
-
 export function resolveQueueName(name) {
   return LEGACY_QUEUE_ALIASES[name] || name;
 }
 
-export function capabilitySnapshot(overrides = {}) {
-  return { ...DEFAULT_CAPABILITIES, ...overrides };
-}
+export { getRuntimeCapabilityMap as capabilitySnapshot } from './capability-registry.js';

@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
+import { LIMITS, configureServerTimeouts, readJsonBody } from './limits.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
 import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
+import { evaluateHealth, livenessSnapshot } from './health.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import { handleMoltJobsRequest } from './moltjobs-routes.js';
@@ -20,6 +22,7 @@ import {
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { applySecurityHeaders } from './http-security.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -32,12 +35,6 @@ let internalSchedulerTimer = null;
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
   res.end(JSON.stringify(body));
-}
-
-async function readBody(req) {
-  let raw = '';
-  for await (const chunk of req) raw += chunk;
-  return raw ? JSON.parse(raw) : {};
 }
 
 function compactKnowledge(knowledge) {
@@ -68,7 +65,7 @@ async function executeTask(task, reason = 'manual') {
   let envelope = null;
   try {
     const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
-    const result = await runWithFallback(prompt);
+    const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs });
     envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
 
     run.status = 'succeeded';
@@ -84,7 +81,9 @@ async function executeTask(task, reason = 'manual') {
     memoryUsage.outputTokens += result.outputTokens;
   } catch (e) {
     run.status = 'failed';
-    run.error = String(e.message || e);
+    run.error = e.code || 'PROVIDER_ERROR';
+    run.errorDetail = String(e.message || e);
+    run.fallbacks = Array.isArray(e.diagnostics) ? e.diagnostics : [];
   }
 
   run.finishedAt = new Date().toISOString();
@@ -193,22 +192,53 @@ function startInternalSchedulerLoop() {
 }
 
 const server = http.createServer(async (req, res) => {
+  applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+
+    if (req.method === 'GET' && url.pathname === '/health/live') {
+      return json(res, 200, livenessSnapshot());
+    }
+
+    if (req.method === 'GET' && url.pathname === '/health/ready') {
+      const database = await dbHealth();
+      const health = evaluateHealth({
+        database,
+        providers: providerStatus(),
+        schedulerDurable: isSchedulerDurable(),
+        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true'
+      });
+      return json(res, health.ready ? 200 : 503, health);
+    }
 
     if (await handleMoltJobsRequest(req, res, url)) return;
     if (await handleRevenueRequest(req, res, url)) return;
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
-      const db = await dbHealth();
+      const database = await dbHealth();
+      const providers = providerStatus();
+      const schedulerDurable = isSchedulerDurable();
+      const internalSchedulerEnabled = process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true';
+      const health = evaluateHealth({
+        database,
+        providers,
+        schedulerDurable,
+        internalSchedulerEnabled
+      });
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
-        providers: providerStatus(), usage, database: db,
+        ...health,
+        providers, usage, database,
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
-        schedulerDurable: isSchedulerDurable(),
-        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        schedulerDurable,
+        internalSchedulerEnabled,
+        runtime: {
+          nodeVersion: process.versions.node,
+          nodeMajor: Number(process.versions.node.split('.')[0]),
+          supportedNodeMajor: 24
+        },
         brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
       });
     }
@@ -228,7 +258,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
 
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
-      const body = await readBody(req);
+      const body = await readJsonBody(req);
       if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
       const id = crypto.randomUUID();
       const task = await createTaskRecord({
@@ -262,17 +292,31 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       return res.end(html);
     }
-    if (req.method === 'GET' && (url.pathname === '/app.js' || url.pathname === '/refresh-controller.js')) {
-      const filename = url.pathname.slice(1);
-      const js = await readFile(join(publicDir, filename));
+    if (req.method === 'GET' && url.pathname === '/app.js') {
+      const js = await readFile(join(publicDir, 'app.js'));
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
       return res.end(js);
     }
+    if (req.method === 'GET' && url.pathname === '/refresh-controller.js') {
+      const js = await readFile(join(publicDir, 'refresh-controller.js'));
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+      return res.end(js);
+    }
+    if (req.method === 'GET' && url.pathname === '/styles.css') {
+      const css = await readFile(join(publicDir, 'styles.css'));
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      return res.end(css);
+    }
     json(res, 404, { error: 'not found' });
   } catch (e) {
-    json(res, 500, { error: String(e.message || e) });
+    json(res, e.statusCode || 500, {
+      error: String(e.message || e),
+      code: e.code || 'INTERNAL_ERROR'
+    });
   }
 });
+
+configureServerTimeouts(server);
 
 if (databaseEnabled) {
   const migration = await migrate();

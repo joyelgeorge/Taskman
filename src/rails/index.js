@@ -1,5 +1,6 @@
 import { registerRail, getRail, listRails, setRailMode } from './registry.js';
 import { createTaskForceRail } from './taskforce.js';
+import { createUgigRail } from './ugig.js';
 import { evaluateExecutionGate, assertExecutionAllowed } from './execution-gate.js';
 
 let initialized = false;
@@ -7,6 +8,7 @@ let initialized = false;
 export function initializeRails() {
   if (!initialized) {
     registerRail(createTaskForceRail());
+    registerRail(createUgigRail());
     initialized = true;
   }
   return listRails();

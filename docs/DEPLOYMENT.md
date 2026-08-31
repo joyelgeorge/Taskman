@@ -3,7 +3,7 @@
 ## Overview
 
 Taskman is deployed as an always-on HTTPS service on [Render](https://render.com).  
-The live base URL is set as `TASKMAN_BASE_URL` and exposed at `/api/status`.
+The live base URL is set as `TASKMAN_BASE_URL`. Process liveness, traffic readiness, and diagnostics use separate endpoints.
 
 ---
 
@@ -47,6 +47,15 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 | `TASKMAN_BASE_URL` | Render (injected) | Yes | Public HTTPS URL e.g. `https://taskman.onrender.com` |
 | `TASKMAN_API_KEY` | Render dashboard | Yes (after #13) | Service-to-service auth token |
 | `TASKMAN_INTERNAL_SCHEDULER_ENABLED` | Render dashboard | Optional | Set `true` to enable durable cron scheduler |
+| `TASKMAN_TRUST_PROXY` | Render dashboard | Optional | Set `true` only behind a trusted proxy that overwrites `X-Forwarded-Proto`; enables HTTPS detection for HSTS |
+| `TASKMAN_CSP_REPORT_ONLY` | Render dashboard | Optional | Set `true` to stage CSP without enforcement; unset for strict enforcement |
+| `TASKMAN_HSTS_ENABLED` | Render dashboard | Optional | Defaults on for trusted production HTTPS; set `false` for an emergency rollback |
+| `TASKMAN_MAX_JSON_BODY_BYTES` | Config | Optional | Maximum JSON request body; default 1 MiB |
+| `TASKMAN_PROVIDER_TIMEOUT_MS` | Config | Optional | Per-provider attempt deadline; default 45s |
+| `TASKMAN_RUN_TIMEOUT_MS` | Config | Optional | Overall task execution deadline; default 5m |
+| `TASKMAN_HTTP_REQUEST_TIMEOUT_MS` | Config | Optional | Inbound request timeout; default 120s |
+| `TASKMAN_HTTP_HEADERS_TIMEOUT_MS` | Config | Optional | Header receive timeout; default 15s |
+| `TASKMAN_HTTP_KEEP_ALIVE_TIMEOUT_MS` | Config | Optional | Idle keep-alive timeout; default 5s |
 | `NODE_ENV` | `render.yaml` | Yes | Set to `production` |
 | `OPENAI_API_KEY` | Render dashboard | Optional | AI reasoning provider |
 | `MOLTJOBS_API_KEY` | Render dashboard | Optional | MoltJobs income rail |
@@ -55,9 +64,11 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 
 ## Build & start
 
+Taskman supports Node.js 24 only. `.node-version` is the single pinned runtime version used by local version managers and GitHub Actions; Render also discovers this file for its Node runtime. `package.json` rejects unsupported Node major versions.
+
 ```bash
 # Build (Render runs this before starting the service)
-npm install --omit=dev && node scripts/migrate.js
+npm ci --omit=dev && node scripts/migrate.js
 
 # Start
 npm start
@@ -72,15 +83,23 @@ The server applies `db/migrations/*.sql` in order and skips already-applied file
 
 ## Health checks
 
-Render pings `/api/status` every 30 seconds.  
-The endpoint returns HTTP 200 and a JSON body:
+Render pings `/health/ready`. The probes have separate contracts:
+
+- `GET /health/live` is a lightweight process probe. It does not query optional dependencies.
+- `GET /health/ready` returns HTTP 503 when production requirements are unavailable.
+- `GET /api/status` always returns diagnostics with a top-level `healthy`, `degraded`, or `unready` state and safe Node runtime metadata.
+
+Production requires PostgreSQL unless `TASKMAN_ALLOW_MEMORY_MODE=true` is explicitly set. Local development without PostgreSQL remains ready but is labeled `degraded`, `memory`, and non-durable. Set `TASKMAN_REQUIRE_PROVIDER=true` only when at least one configured AI provider is a traffic-readiness requirement. Enabling the internal scheduler also requires durable scheduler storage.
+
+Health responses expose component states and provider identifiers only; they do not expose credentials, connection strings, or credential metadata.
 
 ```bash
+curl https://<TASKMAN_BASE_URL>/health/live
+curl https://<TASKMAN_BASE_URL>/health/ready
 curl https://<TASKMAN_BASE_URL>/api/status
-# → { "status": "ok", "db": { "enabled": true, "ok": true }, ... }
 ```
 
-If the health check fails three times, Render restarts the service automatically.
+If the readiness check fails repeatedly, Render removes or restarts the service according to the platform health policy.
 
 ---
 
@@ -127,13 +146,19 @@ DATABASE_URL=postgresql://localhost:5432/taskman node --test  # PostgreSQL mode
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/status` | Health check — DB state, scheduler status |
+| `GET /health/live` | Lightweight process liveness |
+| `GET /health/ready` | Traffic readiness with environment-aware dependency policy |
+| `GET /api/status` | Detailed DB, provider, scheduler, durability, and usage diagnostics |
 | `GET /api/revenue/status` | Scheduler + revenue pipeline status |
 | `POST /api/revenue/scan` | Trigger discovery scan |
 | `GET /api/scheduler/jobs` | List scheduled jobs |
 | `POST /api/scheduler/jobs/:name/trigger` | Manually trigger a scheduled worker |
 
 ---
+
+## Request and execution limits
+
+All JSON routes use one byte-counted reader and return HTTP 413 before buffering beyond the configured body limit. Provider attempts receive an abort signal and a bounded share of the overall run deadline. Timeout records use stable codes such as `PROVIDER_TIMEOUT` and `RUN_DEADLINE_EXCEEDED`, plus provider ID and duration only. Increasing a limit requires a finite positive value within the hard safety bounds enforced by `src/limits.js`.
 
 ## Security notes
 
@@ -142,3 +167,6 @@ DATABASE_URL=postgresql://localhost:5432/taskman node --test  # PostgreSQL mode
 - `/api/status` is public (needed for health checks).
 - Mutation endpoints will be protected by `TASKMAN_API_KEY` once issue #13 is complete.
 - `DATABASE_URL` is injected only into the Render service runtime — not exposed in logs or status output.
+- Browser-facing responses, API responses, errors, and 404s receive the same centralized CSP, framing, MIME-sniffing, referrer, and permissions policy.
+- HSTS is emitted only in production when HTTPS is directly observed or `TASKMAN_TRUST_PROXY=true` explicitly trusts the proxy protocol header. Do not enable proxy trust unless the edge overwrites `X-Forwarded-Proto`.
+- To stage a policy change, temporarily set `TASKMAN_CSP_REPORT_ONLY=true`, validate browser reports and dashboard flows, then unset it to restore enforcement.

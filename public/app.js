@@ -67,25 +67,25 @@ function renderPanel(name, data) {
   }
   if (name === 'tasks') {
     $('#tasks').innerHTML = data.length ? data.map(t => `
-      <div class="task">
-        <div class="row"><strong>${esc(t.title)}</strong><span class="pill">${esc(t.status)}</span>${t.intervalMinutes ? `<span class="pill">every ${t.intervalMinutes}m</span>` : '<span class="pill">manual</span>'}</div>
-        <div class="muted">${esc(t.prompt)}</div>
-        <div class="row" style="margin-top:10px">
-          <button data-run="${t.id}">Run now</button>
-          <button data-pause="${t.id}">${t.status === 'active' ? 'Pause' : 'Resume'}</button>
-        </div>
-        ${t.lastResult ? `<div class="result">${esc(t.lastResult)}</div>` : ''}
-      </div>`).join('') : '<p class="muted">No tasks yet.</p>';
+    <div class="task">
+      <div class="row"><strong>${esc(t.title)}</strong><span class="pill">${esc(t.status)}</span>${t.intervalMinutes ? `<span class="pill">every ${t.intervalMinutes}m</span>` : '<span class="pill">manual</span>'}</div>
+      <div class="muted">${esc(t.prompt)}</div>
+      <div class="row task-actions">
+        <button data-run="${t.id}">Run now</button>
+        <button data-pause="${t.id}">${t.status === 'active' ? 'Pause' : 'Resume'}</button>
+      </div>
+      ${t.lastResult ? `<div class="result">${esc(t.lastResult)}</div>` : ''}
+    </div>`).join('') : '<p class="muted">No tasks yet.</p>';
     return;
   }
   if (name === 'runs') {
     $('#runs').innerHTML = data.length ? data.slice(0, 10).map(r => `
-      <div class="task">
-        <div class="row"><strong>${esc(r.status)}</strong>${r.provider ? `<span class="pill">${esc(r.provider)}</span>` : ''}<span class="muted">${new Date(r.startedAt || r.started_at).toLocaleString()}</span></div>
-        ${r.result ? `<div class="result">${esc(typeof r.result === 'string' ? r.result : JSON.stringify(r.result, null, 2))}</div>` : ''}
-        ${r.error ? `<div class="result">${esc(r.error)}</div>` : ''}
-        ${r.nextBestAction ? `<p class="muted"><strong>Next:</strong> ${esc(r.nextBestAction)}</p>` : ''}
-      </div>`).join('') : '<p class="muted">No runs yet.</p>';
+    <div class="task">
+      <div class="row"><strong>${esc(r.status)}</strong>${r.provider ? `<span class="pill">${esc(r.provider)}</span>` : ''}<span class="muted">${new Date(r.startedAt || r.started_at).toLocaleString()}</span></div>
+      ${r.result ? `<div class="result">${esc(typeof r.result === 'string' ? r.result : JSON.stringify(r.result, null, 2))}</div>` : ''}
+      ${r.error ? `<div class="result">${esc(r.error)}</div>` : ''}
+      ${r.nextBestAction ? `<p class="muted"><strong>Next:</strong> ${esc(r.nextBestAction)}</p>` : ''}
+    </div>`).join('') : '<p class="muted">No runs yet.</p>';
   }
 }
 
@@ -145,8 +145,6 @@ function scheduleRefresh() {
   }, pollDelay(document.hidden));
 }
 
-
-
 $('#create').onclick = async () => {
   try {
     await requestJson('/api/tasks', { method: 'POST', body: JSON.stringify({ title: $('#title').value, prompt: $('#prompt').value, intervalMinutes: $('#interval').value }) });
@@ -192,4 +190,3 @@ document.addEventListener('visibilitychange', () => {
 
 refreshDashboard();
 scheduleRefresh();
-

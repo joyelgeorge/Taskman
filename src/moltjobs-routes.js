@@ -1,10 +1,5 @@
 import { parseMoltJobsWebhook, sendMoltJobsHeartbeat } from './moltjobs-client.js';
-
-async function readJson(req) {
-  let raw = '';
-  for await (const chunk of req) raw += chunk;
-  return raw ? JSON.parse(raw) : {};
-}
+import { readJsonBody } from './limits.js';
 
 function sendJson(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
@@ -13,7 +8,7 @@ function sendJson(res, status, body) {
 
 export async function handleMoltJobsRequest(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/webhooks/moltjobs') {
-    const envelope = parseMoltJobsWebhook(await readJson(req));
+    const envelope = parseMoltJobsWebhook(await readJsonBody(req));
     // A webhook is inbound information only. It must never be treated as an
     // assigned job or as authority to emit a heartbeat/claim/submission.
     console.log('MoltJobs webhook', { event: envelope.event, data: envelope.data });
@@ -22,7 +17,7 @@ export async function handleMoltJobsRequest(req, res, url) {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/moltjobs/heartbeat') {
-    const body = await readJson(req);
+    const body = await readJsonBody(req);
     try {
       const result = await sendMoltJobsHeartbeat({
         agentId: body.agentId,
@@ -44,3 +39,4 @@ export async function handleMoltJobsRequest(req, res, url) {
 
   return false;
 }
+

@@ -79,6 +79,14 @@ export const DEFAULT_CAPABILITIES = Object.freeze({
   'taskman.queue.write': true,
   'moltjobs.read': true,
   'moltjobs.authenticated': Boolean(process.env.MOLTJOBS_API_KEY),
+  'ugig.gigs.read': true,
+  'ugig.gig.read': true,
+  'ugig.poster.read': true,
+  'ugig.invoice.read': Boolean(process.env.UGIG_API_KEY),
+  'ugig.payment.read': Boolean(process.env.UGIG_API_KEY),
+  'ugig.apply': false,
+  'ugig.message': false,
+  'ugig.invoice.create': false,
   'wallet.sign': false,
   'funds.move': false
 });

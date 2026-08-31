@@ -31,6 +31,11 @@ import {
  * - Realized attributableValue must be 0 / null until verified by an actual execution outcome.
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
+import {
+  evaluatePastGuidance,
+  GUIDANCE_EVALUATIONS,
+  recordLearningInference
+} from '../learning-inference.js';
 
 export async function runExecuteWorker({
   limit = 10,
@@ -129,25 +134,35 @@ export async function runExecuteWorker({
     });
     outcomes.push(outcomeRecord);
     executed.push(outcomePayload);
-  }
 
-  // Write lessons into learning_inference
-  if (outcomes.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-execute-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 8,
-      payload: {
-        stage: 'EXECUTE',
-        claimedCount: claimed.length,
-        outcomesCount: outcomes.length,
-        moneyEventsCount: outcomes.filter(o => o.status === 'MONEY_EVENT').length,
-        blockedCount: outcomes.filter(o => o.status === 'BLOCKED').length,
-        setupRequiredCount: outcomes.filter(o => o.status === 'SETUP_REQUIRED').length,
-        timestamp: startedAt
-      }
-    });
+    const priorLearningIds = item.payload.learning?.appliedLearningIds ||
+      item.payload.validation?.learning?.appliedLearningIds || [];
+    const guidanceEvaluation = ['COMPLETED', 'ADVANCED', 'VALUE_CREATED', 'MONEY_EVENT'].includes(outcomeStatus)
+      ? GUIDANCE_EVALUATIONS.USEFUL
+      : ['BLOCKED', 'REJECTED'].includes(outcomeStatus)
+        ? GUIDANCE_EVALUATIONS.MISLEADING
+        : GUIDANCE_EVALUATIONS.INCONCLUSIVE;
+    for (const learningId of priorLearningIds) {
+      await evaluatePastGuidance(learningId, guidanceEvaluation, {
+        evidenceRef: `outcome:${outcomeRecord.id}`,
+        now: new Date(startedAt)
+      });
+    }
+    await recordLearningInference({
+      statement: `${candidate.sourceType || 'unknown'} execution ended ${outcomeStatus}: ${outcomeReason}`,
+      classification: 'TEMPORARY_HINT',
+      confidence: 0.65,
+      supportingEvidence: [`outcome:${outcomeRecord.id}`],
+      sourceWorker: claimedBy,
+      scope: `candidate:${candidate.candidateId || candidate.noveltyKey || item.id}`,
+      mandatoryChecks: [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy, ...capabilityDecision.setupRequired],
+      weightAdjustment: {
+        targetType: 'source',
+        target: candidate.sourceType || 'unknown',
+        delta: guidanceEvaluation === GUIDANCE_EVALUATIONS.USEFUL ? 0.05 : -0.1
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
   }
 
   return {

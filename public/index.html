@@ -25,7 +25,7 @@
       <h2>Create task</h2>
       <input id="title" placeholder="Optional title" />
       <textarea id="prompt" rows="5" placeholder="Example: Every hour, research... and return only actionable results."></textarea>
-      <input id="interval" type="number" min="1" placeholder="Repeat every N minutes (leave blank for manual)" />
+      <input id="interval" type="number" min="1" max="44640" step="1" placeholder="Repeat every 1–44640 minutes (blank = manual)" />
       <button class="primary" id="create">Create task</button>
     </section>
 

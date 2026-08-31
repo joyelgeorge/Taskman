@@ -14,8 +14,10 @@ import { handleMoltJobsRequest } from './moltjobs-routes.js';
 import { handleRevenueRequest } from './revenue-routes.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
-  createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
+  createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary,
+  quarantineInvalidIntervalTriggers
 } from './task-store.js';
+import { normalizeBrainIntervalMinutes, normalizeIntervalMinutes } from './interval-validator.js';
 import {
   initializeScheduler, reconcileOverdueJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable, DEFAULT_SCHEDULES
 } from './durable-scheduler.js';
@@ -116,9 +118,17 @@ async function executeTask(task, reason = 'manual') {
 
 function schedule(task) {
   const old = timers.get(task.id);
-  if (old) clearInterval(old);
-  if (!task.intervalMinutes || task.status !== 'active') return;
-  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), task.intervalMinutes * 60_000);
+  if (old) {
+    clearInterval(old);
+    timers.delete(task.id);
+  }
+  if (task.status !== 'active') return;
+  const interval = normalizeIntervalMinutes(task.intervalMinutes);
+  if (!interval.valid || !interval.value) {
+    if (!interval.valid) console.warn(`[Taskman Schedule] ${interval.code}; task=${task.id}`);
+    return;
+  }
+  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), interval.value * 60_000);
   timer.unref();
   timers.set(task.id, timer);
 }
@@ -129,8 +139,12 @@ async function restoreSchedules() {
 }
 
 function startBrainScheduler() {
-  const minutes = Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0);
-  if (!Number.isFinite(minutes) || minutes <= 0) return;
+  const interval = normalizeBrainIntervalMinutes();
+  if (!interval.valid || !interval.value) {
+    if (!interval.valid) console.warn(`[Taskman Brain] ${interval.code}; scheduler disabled`);
+    return;
+  }
+  const minutes = interval.value;
   brainTimer = setInterval(() => executeBrainCycle('schedule').catch(console.error), minutes * 60_000);
   brainTimer.unref();
   console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
@@ -219,6 +233,7 @@ const server = http.createServer(async (req, res) => {
       const providers = providerStatus();
       const schedulerDurable = isSchedulerDurable();
       const internalSchedulerEnabled = process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true';
+      const brainInterval = normalizeBrainIntervalMinutes();
       const health = evaluateHealth({
         database,
         providers,
@@ -239,7 +254,7 @@ const server = http.createServer(async (req, res) => {
           nodeMajor: Number(process.versions.node.split('.')[0]),
           supportedNodeMajor: 24
         },
-        brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
+        brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null
       });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
@@ -260,13 +275,21 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
       const body = await readJsonBody(req);
       if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
+      const interval = normalizeIntervalMinutes(body.intervalMinutes);
+      if (!interval.valid) {
+        return json(res, 400, {
+          error: 'invalid intervalMinutes',
+          code: interval.code,
+          detail: interval.error
+        });
+      }
       const id = crypto.randomUUID();
       const task = await createTaskRecord({
         id,
         scenarioId: body.scenarioId || null,
         title: body.title?.trim() || body.prompt.trim().slice(0, 60),
         prompt: body.prompt.trim(),
-        intervalMinutes: Number(body.intervalMinutes || 0) || null
+        intervalMinutes: interval.value
       });
       schedule(task);
       return json(res, 201, task);
@@ -322,9 +345,10 @@ if (databaseEnabled) {
   const migration = await migrate();
   const scenarios = await seedScenarios();
   const tasks = await seedCoreTasks();
+  const intervalQuarantine = await quarantineInvalidIntervalTriggers();
   await initializeScheduler();
   const overdue = await reconcileOverdueJobs();
-  console.log('Taskman database ready', { migration, scenarios, tasks, overdueCount: overdue.length });
+  console.log('Taskman database ready', { migration, scenarios, tasks, intervalQuarantine, overdueCount: overdue.length });
 } else {
   await initializeScheduler();
 }

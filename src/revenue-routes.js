@@ -6,8 +6,8 @@ import {
   CANONICAL_QUEUES, LEGACY_QUEUE_ALIASES, DISCOVERY_SOURCES,
   QUALIFICATION_PROFILES, resolveQueueName
 } from './orchestration-profiles.js';
-import { getRuntimeCapabilityMap, getSafeCapabilitySnapshot } from './capability-registry.js';
-import { normalizeCandidate, qualifyCandidate, missingCapabilities } from './qualification-engine.js';
+import { getSafeCapabilitySnapshot } from './capability-registry.js';
+import { normalizeCandidate, qualifyCandidate } from './qualification-engine.js';
 import {
   listScheduledJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable
 } from './durable-scheduler.js';
@@ -115,11 +115,18 @@ export async function handleRevenueRequest(req, res, url) {
     const input = await readJsonBody(req);
     const candidate = normalizeCandidate(input.candidate || input);
     const profile = input.profile || candidate.profile || 'programmable_money_flow_v1';
-    const capabilities = getRuntimeCapabilityMap();
+    if (!QUALIFICATION_PROFILES[profile]) {
+      return send(res, 400, { error: 'unknown qualification profile', profile });
+    }
+    const qualification = qualifyCandidate(candidate, profile);
     return send(res, 200, {
       candidate,
-      qualification: qualifyCandidate(candidate, profile),
-      missingCapabilities: missingCapabilities(candidate, capabilities)
+      qualification,
+      missingCapabilities: [
+        ...qualification.capabilities.setupRequired,
+        ...qualification.capabilities.unavailable,
+        ...qualification.capabilities.unhealthy
+      ]
     });
   }
 

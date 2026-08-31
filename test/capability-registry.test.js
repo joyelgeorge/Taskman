@@ -10,7 +10,7 @@ import {
   registerCapability,
   unregisterCapability
 } from '../src/capability-registry.js';
-import { CANONICAL_QUEUES } from '../src/orchestration-profiles.js';
+import { CANONICAL_QUEUES, QUALIFICATION_PROFILES } from '../src/orchestration-profiles.js';
 import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
 import { runDiscoverWorker } from '../src/workers/discover.js';
 import { runValidateWorker } from '../src/workers/validate.js';
@@ -109,6 +109,12 @@ test('Discover records missing capability state without hiding setup opportuniti
 
 test('Validate classifies evidence-passing work as setup required when runtime capability is absent', async () => {
   const noveltyKey = `cap-validate-${crypto.randomUUID()}`;
+  const evidenceRef = 'https://example.com/bounty/escrow';
+  const gateEvidence = Object.fromEntries(
+    QUALIFICATION_PROFILES.bounty_execution_v1.evidenceGates.map(gate => [gate, {
+      verdict: 'pass', evidenceRef
+    }])
+  );
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.candidates,
     noveltyKey,
@@ -121,7 +127,8 @@ test('Validate classifies evidence-passing work as setup required when runtime c
       profile: 'bounty_execution_v1',
       estimatedValue: 10,
       acceptanceCriteria: 'Return JSON',
-      evidence: ['https://example.com/bounty/escrow'],
+      evidence: [evidenceRef],
+      gateEvidence,
       requiredCapabilities: ['moltjobs.authenticated'],
       metrics: {
         payoutCertainty: 1, acceptanceClarity: 1, executionAutonomy: 1,

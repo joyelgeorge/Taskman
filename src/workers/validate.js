@@ -9,6 +9,11 @@ import {
   updateRevenueRecord
 } from '../revenue-store.js';
 import { sharedReasoningEngine } from '../reasoning-engine.js';
+import {
+  evaluatePastGuidance,
+  GUIDANCE_EVALUATIONS,
+  recordLearningInference
+} from '../learning-inference.js';
 
 export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
   ...QUALIFICATION_PROFILES.programmable_money_flow_v1.evidenceGates
@@ -80,6 +85,7 @@ export async function runValidateWorker({
 
     const validationPayload = {
       candidate,
+      learning: item.payload.learning || null,
       qualification,
       classification,
       evidenceCheck,
@@ -103,6 +109,35 @@ export async function runValidateWorker({
     });
     validated.push(valRecord);
 
+    const priorLearningIds = item.payload.learning?.appliedLearningIds || [];
+    const guidanceEvaluation = ['REJECTED', 'BLOCKED'].includes(classification)
+      ? GUIDANCE_EVALUATIONS.MISLEADING
+      : classification === 'NEEDS_EVIDENCE'
+        ? GUIDANCE_EVALUATIONS.INCONCLUSIVE
+        : GUIDANCE_EVALUATIONS.USEFUL;
+    for (const learningId of priorLearningIds) {
+      await evaluatePastGuidance(learningId, guidanceEvaluation, {
+        evidenceRef: `validation:${valRecord.id}`,
+        now: new Date(startedAt)
+      });
+    }
+
+    await recordLearningInference({
+      statement: `${candidate.sourceType || 'unknown'} validation classified candidate as ${classification}`,
+      classification: 'TEMPORARY_HINT',
+      confidence: classification === 'NEEDS_EVIDENCE' ? 0.45 : 0.6,
+      supportingEvidence: [`validation:${valRecord.id}`],
+      sourceWorker: claimedBy,
+      scope: `source:${candidate.sourceType || 'unknown'}`,
+      mandatoryChecks: qualification.evidence?.missingGates || [],
+      weightAdjustment: {
+        targetType: 'source',
+        target: candidate.sourceType || 'unknown',
+        delta: ['REJECTED', 'BLOCKED'].includes(classification) ? -0.1 : 0.05
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
+
     if (['EXECUTABLE', 'SETUP_REQUIRED', 'THRESHOLD_CROSSED'].includes(classification)) {
       promoted.push(await upsertRevenueRecord({
         queue: CANONICAL_QUEUES.execution,
@@ -114,6 +149,7 @@ export async function runValidateWorker({
           validation: validationPayload,
           classification,
           missingCapabilities,
+          learning: item.payload.learning || null,
           enqueuedAt: startedAt
         }
       }));
@@ -122,23 +158,6 @@ export async function runValidateWorker({
     } else {
       needsEvidence.push(candidate);
     }
-  }
-
-  if (validated.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-validate-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 5,
-      payload: {
-        stage: 'VALIDATE',
-        claimedCount: claimed.length,
-        promotedCount: promoted.length,
-        rejectedCount: rejected.length,
-        needsEvidenceCount: needsEvidence.length,
-        timestamp: startedAt
-      }
-    });
   }
 
   return {

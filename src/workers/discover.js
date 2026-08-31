@@ -15,6 +15,12 @@ import {
   getRevenueState
 } from '../revenue-store.js';
 import { discoverRail } from '../rails/index.js';
+import {
+  applyLearningToCandidates,
+  compileLearningGuidance,
+  listActiveLearning,
+  recordLearningInference
+} from '../learning-inference.js';
 
 /**
  * Loads real candidates from configured discovery sources.
@@ -132,6 +138,8 @@ export async function runDiscoverWorker({
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
   const existingCandidates = await listRevenueRecords(CANONICAL_QUEUES.candidates, { limit: 500 });
   const existingNoveltyKeys = new Set(existingCandidates.map(c => c.noveltyKey).filter(Boolean));
+  const activeLearning = await listActiveLearning({ now: new Date(startedAt) });
+  const guidance = compileLearningGuidance(activeLearning);
 
   // Gather baseline candidates from configured real sources
   let candidatesToProcess = await discoverFromRealSources({ sources, sampleCandidates });
@@ -153,6 +161,11 @@ export async function runDiscoverWorker({
       // Fail safely without blocking baseline discovery
     }
   }
+
+  const learnedOrdering = applyLearningToCandidates(candidatesToProcess, guidance, {
+    minimumSourceDiversity: Math.min(2, new Set(candidatesToProcess.map(c => c.sourceType)).size)
+  });
+  candidatesToProcess = learnedOrdering.candidates;
 
   const enqueued = [];
   const rejected = [];
@@ -180,6 +193,11 @@ export async function runDiscoverWorker({
           candidate,
           qualification: qual,
           missingCapabilities: missing,
+          learning: {
+            appliedLearningIds: guidance.appliedLearningIds,
+            adjustment: candidate.learningAdjustment || 0,
+            mandatoryChecks: guidance.mandatoryChecks
+          },
           discoveredAt: startedAt,
           discoveredBy: claimedBy
         }
@@ -211,20 +229,24 @@ export async function runDiscoverWorker({
   };
   await setRevenueState('discovery_learning', updatedLearning);
 
-  if (rejected.length > 0 || enqueued.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-discover-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 5,
-      payload: {
-        stage: 'DISCOVER',
-        evaluatedCount: candidatesToProcess.length,
-        enqueuedCount: enqueued.length,
-        rejectedCount: rejected.length,
-        timestamp: startedAt
-      }
-    });
+  for (const source of new Set(candidatesToProcess.map(c => c.sourceType || 'unknown'))) {
+    const sourceCandidates = candidatesToProcess.filter(c => (c.sourceType || 'unknown') === source);
+    const sourceRejected = rejected.filter(item => sourceCandidates.some(c => c.candidateId === item.candidateId));
+    if (sourceCandidates.length === 0) continue;
+    await recordLearningInference({
+      statement: `${source} discovery produced ${sourceRejected.length} deterministic rejections from ${sourceCandidates.length} candidates`,
+      classification: 'TEMPORARY_HINT',
+      confidence: Math.min(0.75, 0.4 + (sourceCandidates.length * 0.05)),
+      supportingEvidence: sourceCandidates.map(candidate => candidate.noveltyKey || candidate.candidateId).filter(Boolean),
+      sourceWorker: claimedBy,
+      scope: `source:${source}`,
+      weightAdjustment: {
+        targetType: 'source',
+        target: source,
+        delta: sourceRejected.length === sourceCandidates.length ? -0.1 : 0.05
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
   }
 
   return {
@@ -233,6 +255,8 @@ export async function runDiscoverWorker({
     evaluated: candidatesToProcess.length,
     enqueued: enqueued.length,
     rejected: rejected.length,
+    hardFiltered: learnedOrdering.hardFiltered.length,
+    appliedLearningIds: guidance.appliedLearningIds,
     enqueuedRecords: enqueued,
     timestamp: startedAt
   };

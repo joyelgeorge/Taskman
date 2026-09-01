@@ -68,6 +68,14 @@ export async function discoverFromRealSources({
     } catch {
       // Rail not configured or unavailable; fail closed without fabricating
     }
+    try {
+      const deskcrewResult = await discoverRail('deskcrew');
+      if (deskcrewResult?.ok && Array.isArray(deskcrewResult.bounties)) {
+        for (const bounty of deskcrewResult.bounties) discovered.push(normalizeCandidate(bounty));
+      }
+    } catch {
+      // Provider failures are retryable at the rail boundary and never fabricate candidates.
+    }
   }
 
   // 3. Ingest active hypothesis from real persisted research anchor if requested

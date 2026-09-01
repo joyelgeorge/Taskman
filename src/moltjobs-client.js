@@ -1,3 +1,5 @@
+import { getRuntimeConfig } from './config.js';
+
 const DEFAULT_BASE_URL = 'https://api.moltjobs.io/v1';
 
 export function parseMoltJobsWebhook(body) {
@@ -13,8 +15,8 @@ export async function sendMoltJobsHeartbeat({
   progress,
   statusReport = progress,
   runtimeMetadata,
-  apiKey = process.env.MOLTJOBS_API_KEY,
-  baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
+  apiKey = getRuntimeConfig().rails.moltjobs.apiKey,
+  baseUrl = getRuntimeConfig().rails.moltjobs.baseUrl || DEFAULT_BASE_URL,
   fetchImpl = fetch
 }) {
   if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
@@ -51,8 +53,8 @@ export async function sendMoltJobsHeartbeat({
 }
 
 export async function getAgentIdentity({
-  apiKey = process.env.MOLTJOBS_API_KEY,
-  baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
+  apiKey = getRuntimeConfig().rails.moltjobs.apiKey,
+  baseUrl = getRuntimeConfig().rails.moltjobs.baseUrl || DEFAULT_BASE_URL,
   fetchImpl = fetch
 } = {}) {
   if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
@@ -74,8 +76,8 @@ export async function getAgentIdentity({
 }
 
 export async function listOpenJobs({
-  apiKey = process.env.MOLTJOBS_API_KEY,
-  baseUrl = process.env.MOLTJOBS_BASE_URL || DEFAULT_BASE_URL,
+  apiKey = getRuntimeConfig().rails.moltjobs.apiKey,
+  baseUrl = getRuntimeConfig().rails.moltjobs.baseUrl || DEFAULT_BASE_URL,
   fetchImpl = fetch
 } = {}) {
   if (!apiKey) throw new Error('MOLTJOBS_API_KEY is required');
@@ -137,4 +139,3 @@ export function evaluateJobExecutionGate(job = {}) {
     }
   };
 }
-

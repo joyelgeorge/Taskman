@@ -24,6 +24,17 @@ export const DISCOVERY_SOURCES = Object.freeze({
 
 export const QUALIFICATION_PROFILES = Object.freeze({
   programmable_money_flow_v1: {
+    passStatus: 'THRESHOLD_CROSSED',
+    evidenceGates: [
+      'money_flow_scale',
+      'recurring_leakage',
+      'independent_trigger',
+      'permission_non_invasive',
+      'measurable_delta',
+      'monetization',
+      'no_transaction_ownership',
+      'competitive_whitespace'
+    ],
     weights: {
       flowScale: 1.2,
       recurrence: 1.0,
@@ -43,6 +54,20 @@ export const QUALIFICATION_PROFILES = Object.freeze({
     ]
   },
   bounty_execution_v1: {
+    passStatus: 'EXECUTABLE',
+    evidenceGates: [
+      'payer_reward',
+      'funding_credibility',
+      'deliverable',
+      'acceptance_criteria',
+      'eligibility',
+      'claim_risk',
+      'submission_route',
+      'payout_path',
+      'fees',
+      'setup_requirements',
+      'post_setup_autonomy'
+    ],
     weights: {
       payoutCertainty: 1.3,
       acceptanceClarity: 1.15,
@@ -56,6 +81,16 @@ export const QUALIFICATION_PROFILES = Object.freeze({
     hardGates: ['payoutCertainty','acceptanceClarity','executionAutonomy']
   },
   immediate_income_v1: {
+    passStatus: 'EXECUTABLE',
+    evidenceGates: [
+      'payer_demand',
+      'deliverable',
+      'payment_certainty',
+      'delivery_route',
+      'time_to_first_money',
+      'post_setup_autonomy',
+      'no_recurring_manual_work'
+    ],
     weights: {
       payerExists: 1.35,
       payoutCertainty: 1.2,
@@ -70,23 +105,8 @@ export const QUALIFICATION_PROFILES = Object.freeze({
   }
 });
 
-export const DEFAULT_CAPABILITIES = Object.freeze({
-  'web.read': true,
-  'github.read': true,
-  'github.write': true,
-  'gmail.send': true,
-  'taskman.queue.read': true,
-  'taskman.queue.write': true,
-  'moltjobs.read': true,
-  'moltjobs.authenticated': Boolean(process.env.MOLTJOBS_API_KEY),
-  'wallet.sign': false,
-  'funds.move': false
-});
-
 export function resolveQueueName(name) {
   return LEGACY_QUEUE_ALIASES[name] || name;
 }
 
-export function capabilitySnapshot(overrides = {}) {
-  return { ...DEFAULT_CAPABILITIES, ...overrides };
-}
+export { getRuntimeCapabilityMap as capabilitySnapshot } from './capability-registry.js';

@@ -51,7 +51,8 @@ test('AI Reasoning Engine: handles malformed JSON output safely', async () => {
   const mock = async () => 'Not valid JSON at all';
   const res = await engine.reason({ prompt: 'test', mockProvider: mock });
   assert.equal(res.ok, false);
-  assert.ok(res.error.includes('not valid JSON'));
+  assert.equal(res.error, 'MODEL_OUTPUT_INVALID');
+  assert.equal('rawText' in res, false);
 });
 
 test('Discover Worker: AI synthesis enqueues valid opportunities into candidate_queue', async () => {
@@ -88,7 +89,7 @@ test('Validate Worker: AI adversarial gate evaluation', async () => {
         title: 'Adversarial Test Candidate',
         noveltyKey,
         profile: 'programmable_money_flow_v1',
-        evidence: ['https://aws.amazon.com/support/plans/'],
+        evidence: Array.from({ length: 8 }, (_, index) => `https://aws.amazon.com/${index + 1}`),
         metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1 }
       }
     }

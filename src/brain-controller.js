@@ -4,6 +4,7 @@ import { scoreScenario } from './scenario-engine.js';
 import { getKnowledgeSnapshot, ingestStructuredLearning } from './knowledge-store.js';
 import { runWithFallback } from './providers.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
+import { stableErrorCode } from './errors.js';
 
 function activeGaps(scenario, knowledge) {
   const resolved = new Set((knowledge.resolvedGaps || []).map(e => e.value?.gap || e.gap));
@@ -88,7 +89,7 @@ function compactScenarioContext(scenario, knowledge, gap) {
   };
 }
 
-export async function executeBrainCycle(reason = 'manual') {
+export async function executeBrainCycle(reason = 'manual', { signal } = {}) {
   const brain = await getBrainState();
   const action = brain.nextAction;
   const cycle = {
@@ -112,7 +113,7 @@ export async function executeBrainCycle(reason = 'manual') {
       const context = compactScenarioContext(selected.scenario, selected.knowledge, action.gap);
       const objective = `Scenario: ${selected.scenario.name}. Goal: ${selected.scenario.goal}. Resolve this gap only: ${action.gap}`;
       const prompt = buildLearningPrompt({ objective, context });
-      const response = await runWithFallback(prompt);
+      const response = await runWithFallback(prompt, { signal });
       const envelope = validateLearningEnvelope(parseLearningEnvelope(response.text));
 
       cycle.status = 'succeeded';
@@ -131,7 +132,7 @@ export async function executeBrainCycle(reason = 'manual') {
     }
   } catch (error) {
     cycle.status = 'failed';
-    cycle.error = String(error?.message || error);
+    cycle.error = stableErrorCode(error, 'PROVIDER_UNAVAILABLE');
   }
 
   cycle.finishedAt = new Date().toISOString();

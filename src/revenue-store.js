@@ -40,13 +40,18 @@ export async function upsertRevenueRecord(record) {
   }
 
   const result = await query(`
-    INSERT INTO revenue_records(id, queue, novelty_key, status, priority, payload, claimed_at, claimed_by)
-    VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8)
+    INSERT INTO revenue_records(
+      id, queue, novelty_key, status, priority, payload, claimed_at, claimed_by, created_at, updated_at
+    )
+    VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10)
     ON CONFLICT (queue, novelty_key) WHERE novelty_key IS NOT NULL
     DO UPDATE SET status=EXCLUDED.status, priority=EXCLUDED.priority, payload=EXCLUDED.payload,
       claimed_at=EXCLUDED.claimed_at, claimed_by=EXCLUDED.claimed_by, updated_at=now()
     RETURNING *
-  `, [item.id, item.queue, item.noveltyKey, item.status, item.priority, JSON.stringify(item.payload), item.claimedAt, item.claimedBy]);
+  `, [
+    item.id, item.queue, item.noveltyKey, item.status, item.priority, JSON.stringify(item.payload),
+    item.claimedAt, item.claimedBy, item.createdAt, item.updatedAt
+  ]);
   return normalizeRecord(result.rows[0]);
 }
 

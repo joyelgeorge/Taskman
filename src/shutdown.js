@@ -1,4 +1,5 @@
 import { TaskmanError } from './limits.js';
+import { getRuntimeConfig } from './config.js';
 
 function boundedGraceMs(value, fallback = 30_000) {
   const parsed = Number(value);
@@ -81,7 +82,7 @@ export function createShutdownCoordinator({
   tracker,
   stopScheduling = () => {},
   closeDatabase = async () => {},
-  graceMs = boundedGraceMs(process.env.TASKMAN_SHUTDOWN_GRACE_MS),
+  graceMs = getRuntimeConfig().limits.shutdownGraceMs,
   logger = console
 }) {
   const configuredGraceMs = boundedGraceMs(graceMs);

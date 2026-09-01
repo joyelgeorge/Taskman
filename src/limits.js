@@ -1,3 +1,5 @@
+import { getRuntimeConfig } from './config.js';
+
 function boundedInteger(value, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) return fallback;
@@ -15,7 +17,7 @@ export function loadLimits(env = process.env) {
   });
 }
 
-export const LIMITS = loadLimits();
+export const LIMITS = getRuntimeConfig().limits;
 
 export class TaskmanError extends Error {
   constructor(message, { code, statusCode = 500, cause } = {}) {
@@ -109,4 +111,3 @@ export function configureServerTimeouts(server, limits = LIMITS) {
   server.keepAliveTimeout = limits.keepAliveTimeoutMs;
   return server;
 }
-

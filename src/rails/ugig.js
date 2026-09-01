@@ -1,12 +1,13 @@
 import { RailAdapter, RAIL_MODE } from './base.js';
+import { getRuntimeConfig } from '../config.js';
 
 const DEFAULT_BASE_URL = 'https://ugig.net';
 const OPEN_GIG_STATUSES = new Set(['active', 'open', 'available']);
 
 export class UgigRail extends RailAdapter {
   constructor({
-    apiKey = process.env.UGIG_API_KEY,
-    baseUrl = process.env.UGIG_BASE_URL || DEFAULT_BASE_URL,
+    apiKey = getRuntimeConfig().rails.ugig.apiKey,
+    baseUrl = getRuntimeConfig().rails.ugig.baseUrl || DEFAULT_BASE_URL,
     mode = RAIL_MODE.READ_ONLY,
     fetchImpl = globalThis.fetch,
     walletCapabilities = {}

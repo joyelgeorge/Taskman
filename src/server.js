@@ -45,10 +45,13 @@ import {
   sendProblem,
   stableErrorCode
 } from './errors.js';
+import { getRuntimeConfig } from './config.js';
+
+const runtimeConfig = getRuntimeConfig();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
-const port = Number(process.env.PORT || 3000);
+const port = runtimeConfig.port;
 const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 let brainTimer = null;
@@ -183,7 +186,7 @@ async function restoreSchedules() {
 }
 
 function startBrainScheduler() {
-  const interval = normalizeBrainIntervalMinutes();
+  const interval = normalizeBrainIntervalMinutes(runtimeConfig.scheduler.brainIntervalMinutes || null);
   if (!interval.valid || !interval.value) {
     if (!interval.valid) console.warn(`[Taskman Brain] ${interval.code}; scheduler disabled`);
     return;
@@ -198,7 +201,7 @@ function startBrainScheduler() {
 }
 
 async function tickInternalScheduler(signal) {
-  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') return;
+  if (!runtimeConfig.scheduler.internalEnabled) return;
   const now = new Date();
 
   for (const scheduleDef of DEFAULT_SCHEDULES) {
@@ -279,7 +282,7 @@ async function tickInternalScheduler(signal) {
 }
 
 function startInternalSchedulerLoop() {
-  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') {
+  if (!runtimeConfig.scheduler.internalEnabled) {
     console.log('[Taskman Scheduler] Internal scheduler loop disabled (TASKMAN_INTERNAL_SCHEDULER_ENABLED != true)');
     return;
   }
@@ -315,7 +318,7 @@ const server = http.createServer(async (req, res) => {
         database,
         providers: providerStatus(),
         schedulerDurable: isSchedulerDurable(),
-        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        internalSchedulerEnabled: runtimeConfig.scheduler.internalEnabled,
         draining: shutdownCoordinator?.isDraining() === true
       });
       return json(res, health.ready ? 200 : 503, health);
@@ -340,8 +343,8 @@ const server = http.createServer(async (req, res) => {
       const database = await dbHealth();
       const providers = providerStatus();
       const schedulerDurable = isSchedulerDurable();
-      const internalSchedulerEnabled = process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true';
-      const brainInterval = normalizeBrainIntervalMinutes();
+      const internalSchedulerEnabled = runtimeConfig.scheduler.internalEnabled;
+      const brainInterval = normalizeBrainIntervalMinutes(runtimeConfig.scheduler.brainIntervalMinutes || null);
       const health = evaluateHealth({
         database,
         providers,
@@ -363,7 +366,8 @@ const server = http.createServer(async (req, res) => {
           nodeMajor: Number(process.versions.node.split('.')[0]),
           supportedNodeMajor: 24
         },
-        brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null
+        brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null,
+        configuration: runtimeConfig.safeSummary
       });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
@@ -486,4 +490,5 @@ if (databaseEnabled) {
 await restoreSchedules();
 startBrainScheduler();
 startInternalSchedulerLoop();
+console.log('[Taskman Configuration]', runtimeConfig.safeSummary);
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));

@@ -5,6 +5,11 @@
 Taskman is deployed as an always-on HTTPS service on [Render](https://render.com).  
 The live base URL is set as `TASKMAN_BASE_URL`. Process liveness, traffic readiness, and diagnostics use separate endpoints.
 
+Taskman validates its runtime configuration before migrations or the web server
+start. Run `npm run preflight` with the target environment. The command performs
+no database, provider, rail, payment, or network action and prints only a
+redacted configuration summary and fingerprint.
+
 ---
 
 ## Quick start (Render)
@@ -29,7 +34,9 @@ In the Render dashboard → **taskman → Environment**, add:
 
 > **Never commit secret values.** `render.yaml` marks these `sync: false` so Render will not overwrite them.
 
-`DATABASE_URL`, `PORT`, and `TASKMAN_BASE_URL` are injected automatically from the managed database and service properties.
+`DATABASE_URL` and `PORT` are injected automatically. Set `TASKMAN_BASE_URL`
+to the service's complete public HTTPS URL; production preflight rejects a
+missing, malformed, or non-HTTPS value.
 
 ### 3. Deploy
 
@@ -44,9 +51,18 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 |---|---|---|---|
 | `PORT` | Render (injected) | Yes | HTTP port — server binds to this |
 | `DATABASE_URL` | Render managed DB | Yes (prod) | PostgreSQL connection string |
-| `TASKMAN_BASE_URL` | Render (injected) | Yes | Public HTTPS URL e.g. `https://taskman.onrender.com` |
-| `TASKMAN_API_KEY` | Render dashboard | Yes (after #13) | Service-to-service auth token |
-| `TASKMAN_INTERNAL_SCHEDULER_ENABLED` | Render dashboard | Optional | Set `true` to enable durable cron scheduler |
+| `TASKMAN_BASE_URL` | Render dashboard | Yes (prod) | Complete public HTTPS URL, e.g. `https://taskman.onrender.com` |
+| `TASKMAN_ROLE` | Process command | No | `web`, `worker`, `migration`, or `preflight`; default `web` |
+| `TASKMAN_AUTH_MODE` | `render.yaml` | Yes (prod) | `api-key` or a controlled `external` boundary; `disabled` is rejected in production |
+| `TASKMAN_TENANT_MODE` | `render.yaml` | Yes (prod) | Explicitly `single-tenant` or `multi-tenant` |
+| `TASKMAN_API_KEY` | Render dashboard | With `api-key` mode | Service-to-service auth token |
+| `PGSSL` | Environment | No | `prefer` (default), `require`, or `disable` |
+| `PGPOOL_MAX` | Environment | No | Integer 1–100; default 5 |
+| `TASKMAN_INTERNAL_SCHEDULER_ENABLED` | Render dashboard | No | Strict boolean; default `false` |
+| `TASKMAN_BRAIN_INTERVAL_MINUTES` | Environment | No | Integer 0–10080; 0 disables the timer |
+| `TASKMAN_REASONING_ENABLED` | Environment | No | Strict boolean; default `true` |
+| `TASKMAN_ALLOW_WRITE_RAILS` | Environment | No | Strict boolean; defaults to fail-closed `false` |
+| `TASKMAN_WRITE_RAILS` | Environment | When writes enabled | Comma-separated explicit rail allowlist |
 | `TASKMAN_TRUST_PROXY` | Render dashboard | Optional | Set `true` only behind a trusted proxy that overwrites `X-Forwarded-Proto`; enables HTTPS detection for HSTS |
 | `TASKMAN_CSP_REPORT_ONLY` | Render dashboard | Optional | Set `true` to stage CSP without enforcement; unset for strict enforcement |
 | `TASKMAN_HSTS_ENABLED` | Render dashboard | Optional | Defaults on for trusted production HTTPS; set `false` for an emergency rollback |
@@ -67,13 +83,14 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 Taskman supports Node.js 24 only. `.node-version` is the single pinned runtime version used by local version managers and GitHub Actions; Render also discovers this file for its Node runtime. `package.json` rejects unsupported Node major versions.
 
 ```bash
-# Build (Render runs this before starting the service)
-npm ci --omit=dev && node scripts/migrate.js
+# Validate without external effects, then migrate
+TASKMAN_ROLE=migration npm run preflight
+TASKMAN_ROLE=migration node scripts/migrate.js
 
 # Start
 npm start
 # → node src/server.js
-# → binds to process.env.PORT (default 3000 locally)
+# → binds to the validated port (default 3000 locally)
 ```
 
 Migrations run automatically on every deploy via `scripts/migrate.js`.  
@@ -89,7 +106,11 @@ Render pings `/health/ready`. The probes have separate contracts:
 - `GET /health/ready` returns HTTP 503 when production requirements are unavailable.
 - `GET /api/status` always returns diagnostics with a top-level `healthy`, `degraded`, or `unready` state and safe Node runtime metadata.
 
-Production requires PostgreSQL unless `TASKMAN_ALLOW_MEMORY_MODE=true` is explicitly set. Local development without PostgreSQL remains ready but is labeled `degraded`, `memory`, and non-durable. Set `TASKMAN_REQUIRE_PROVIDER=true` only when at least one configured AI provider is a traffic-readiness requirement. Enabling the internal scheduler also requires durable scheduler storage.
+Production always requires PostgreSQL; memory persistence is rejected before the
+server binds. Local development without PostgreSQL remains ready but is labeled
+`degraded`, `memory`, and non-durable. Set `TASKMAN_REQUIRE_PROVIDER=true` only
+when at least one configured AI provider is a traffic-readiness requirement.
+Enabling the internal scheduler also requires durable scheduler storage.
 
 Health responses expose component states and provider identifiers only; they do not expose credentials, connection strings, or credential metadata.
 

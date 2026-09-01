@@ -1,5 +1,6 @@
 import { LIMITS, TaskmanError, abortable, createDeadline } from './limits.js';
 import { recordProviderAttempt, withTelemetrySpan } from './observability.js';
+import { getRuntimeConfig } from './config.js';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -59,8 +60,9 @@ async function openAICompatible(url, model, prompt, key, signal) {
   };
 }
 
-export function providerStatus() {
-  return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(process.env[p.env]) }));
+export function providerStatus({ env } = {}) {
+  const configured = env || getRuntimeConfig().providers;
+  return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(configured[p.env]) }));
 }
 
 export async function runWithFallback(prompt, {
@@ -68,7 +70,7 @@ export async function runWithFallback(prompt, {
   runTimeoutMs = LIMITS.runTimeoutMs,
   providerTimeoutMs = LIMITS.providerTimeoutMs,
   providerList = providers,
-  env = process.env
+  env = getRuntimeConfig().providers
 } = {}) {
   const errors = [];
   const runStarted = Date.now();

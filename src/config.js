@@ -152,6 +152,9 @@ export function loadConfig(env = process.env) {
       deskcrew: {
         enabled: boolean(env, 'DESKCREW_ENABLED', false, problems)
       },
+      taskmarket: {
+        enabled: boolean(env, 'TASKMARKET_ENABLED', false, problems)
+      },
       moltjobs: {
         apiKey: env.MOLTJOBS_API_KEY || null,
         baseUrl: url(env, 'MOLTJOBS_BASE_URL', 'https://api.moltjobs.io/v1', problems, { protocols: ['https:'] })

@@ -11,6 +11,7 @@ export function evaluateHealth({
   providers = [],
   schedulerDurable = false,
   internalSchedulerEnabled = false,
+  draining = false,
   env = process.env
 }) {
   const requiresDatabase = databaseRequired(env);
@@ -19,7 +20,7 @@ export function evaluateHealth({
   const databaseReady = database?.ok === true || !requiresDatabase;
   const schedulerReady = !internalSchedulerEnabled || schedulerDurable;
   const providerReady = usableProvider || !requiresProvider;
-  const ready = databaseReady && schedulerReady && providerReady;
+  const ready = !draining && databaseReady && schedulerReady && providerReady;
   const durable = database?.ok === true;
 
   return {
@@ -32,6 +33,7 @@ export function evaluateHealth({
       provider: requiresProvider,
       durableScheduler: internalSchedulerEnabled
     },
+    draining,
     components: {
       database: {
         status: database?.ok === true ? 'ready' : (requiresDatabase ? 'unready' : 'optional'),

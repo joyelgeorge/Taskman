@@ -6,7 +6,7 @@ import { providerStatus, runWithFallback } from './providers.js';
 import { LIMITS, configureServerTimeouts, readJsonBody } from './limits.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
-import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
+import { databaseEnabled, migrate, healthCheck as dbHealth, pool } from './db.js';
 import { evaluateHealth, livenessSnapshot } from './health.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
@@ -32,6 +32,11 @@ import {
   recordScheduleRun,
   withTelemetrySpan
 } from './observability.js';
+import {
+  createExecutionTracker,
+  createShutdownCoordinator,
+  installShutdownSignals
+} from './shutdown.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -40,6 +45,8 @@ const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 let brainTimer = null;
 let internalSchedulerTimer = null;
+const executionTracker = createExecutionTracker();
+let shutdownCoordinator = null;
 
 function boundedRoute(pathname) {
   return pathname
@@ -84,7 +91,7 @@ function deriveNextAction(envelope, run) {
   return event?.value?.nextBestAction || 'Use the updated knowledge state to select the next unresolved money-relevant gap.';
 }
 
-async function executeTask(task, reason = 'manual') {
+async function executeTask(task, reason = 'manual', signal) {
   const run = {
     id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null,
     reason, status: 'running', startedAt: new Date().toISOString()
@@ -95,7 +102,7 @@ async function executeTask(task, reason = 'manual') {
   let envelope = null;
   try {
     const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
-    const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs });
+    const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs, signal });
     envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
 
     run.status = 'succeeded';
@@ -156,7 +163,9 @@ function schedule(task) {
     if (!interval.valid) console.warn(`[Taskman Schedule] ${interval.code}; task=${task.id}`);
     return;
   }
-  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), interval.value * 60_000);
+  const timer = setInterval(() => {
+    executionTracker.run('task-schedule', signal => executeTask(task, 'schedule', signal)).catch(console.error);
+  }, interval.value * 60_000);
   timer.unref();
   timers.set(task.id, timer);
 }
@@ -173,12 +182,14 @@ function startBrainScheduler() {
     return;
   }
   const minutes = interval.value;
-  brainTimer = setInterval(() => executeBrainCycle('schedule').catch(console.error), minutes * 60_000);
+  brainTimer = setInterval(() => {
+    executionTracker.run('brain-schedule', signal => executeBrainCycle('schedule', { signal })).catch(console.error);
+  }, minutes * 60_000);
   brainTimer.unref();
   console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
 }
 
-async function tickInternalScheduler() {
+async function tickInternalScheduler(signal) {
   if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') return;
   const now = new Date();
 
@@ -208,7 +219,8 @@ async function tickInternalScheduler() {
           claimedBy: claim.claimedBy,
           correlationId: claim.runKey,
           runKey: claim.runKey,
-          scheduleId: claim.job.id
+          scheduleId: claim.job.id,
+          signal
         };
         if (workerName === 'discover') return runDiscoverWorker(options);
         if (workerName === 'validate') return runValidateWorker(options);
@@ -219,6 +231,7 @@ async function tickInternalScheduler() {
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'COMPLETED',
         result,
         now: new Date()
@@ -231,18 +244,25 @@ async function tickInternalScheduler() {
       });
       console.log(`[Taskman Scheduler] Completed scheduled firing for worker: ${workerName}`);
     } catch (err) {
-      error = err.message;
-      console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
+      const interrupted = signal?.aborted === true;
+      const outcome = interrupted ? 'INTERRUPTED' : 'FAILED';
+      error = interrupted ? 'SHUTDOWN_INTERRUPTED' : err.message;
+      if (interrupted) {
+        console.warn(`[Taskman Scheduler] Worker interrupted during shutdown: ${workerName}`);
+      } else {
+        console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
+      }
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
-        status: 'FAILED',
+        leaseToken: claim.leaseToken,
+        status: outcome,
         error,
         now: new Date()
       });
       recordScheduleRun({
         runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
-        scheduledFor: claim.scheduledFor, outcome: 'FAILED',
+        scheduledFor: claim.scheduledFor, outcome,
         durationMs: Date.now() - runStarted,
         reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
       });
@@ -256,8 +276,10 @@ function startInternalSchedulerLoop() {
     return;
   }
   console.log('[Taskman Scheduler] Internal durable scheduler loop enabled. Polling schedule queue every 15s.');
-  tickInternalScheduler().catch(console.error);
-  internalSchedulerTimer = setInterval(() => tickInternalScheduler().catch(console.error), 15_000);
+  executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal)).catch(console.error);
+  internalSchedulerTimer = setInterval(() => {
+    executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal)).catch(console.error);
+  }, 15_000);
   internalSchedulerTimer.unref();
 }
 
@@ -266,6 +288,11 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     observeApiRequest(req, res, url.pathname);
+
+    if (shutdownCoordinator?.isDraining() && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      res.setHeader('retry-after', String(Math.max(1, Math.ceil(shutdownCoordinator.graceMs / 1000))));
+      return json(res, 503, { error: 'service is draining', code: 'SHUTDOWN_IN_PROGRESS' });
+    }
 
     if (req.method === 'GET' && url.pathname === '/health/live') {
       return json(res, 200, livenessSnapshot());
@@ -277,7 +304,8 @@ const server = http.createServer(async (req, res) => {
         database,
         providers: providerStatus(),
         schedulerDurable: isSchedulerDurable(),
-        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true'
+        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        draining: shutdownCoordinator?.isDraining() === true
       });
       return json(res, health.ready ? 200 : 503, health);
     }
@@ -307,7 +335,8 @@ const server = http.createServer(async (req, res) => {
         database,
         providers,
         schedulerDurable,
-        internalSchedulerEnabled
+        internalSchedulerEnabled,
+        draining: shutdownCoordinator?.isDraining() === true
       });
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
@@ -331,7 +360,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
     if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
-    if (req.method === 'POST' && url.pathname === '/api/brain/run') return json(res, 200, await executeBrainCycle('manual'));
+    if (req.method === 'POST' && url.pathname === '/api/brain/run') {
+      return json(res, 200, await executionTracker.run(
+        'brain-manual',
+        signal => executeBrainCycle('manual', { signal })
+      ));
+    }
 
     const scenarioKnowledgeMatch = url.pathname.match(/^\/api\/scenarios\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && scenarioKnowledgeMatch) {
@@ -368,7 +402,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && runMatch) {
       const task = await getTaskRecord(runMatch[1]);
       if (!task) return json(res, 404, { error: 'task not found' });
-      return json(res, 200, await executeTask(task));
+      return json(res, 200, await executionTracker.run(
+        'task-manual',
+        signal => executeTask(task, 'manual', signal)
+      ));
     }
 
     const pauseMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/pause$/);
@@ -409,6 +446,25 @@ const server = http.createServer(async (req, res) => {
 });
 
 configureServerTimeouts(server);
+
+function stopScheduling() {
+  for (const timer of timers.values()) clearInterval(timer);
+  timers.clear();
+  if (brainTimer) clearInterval(brainTimer);
+  if (internalSchedulerTimer) clearInterval(internalSchedulerTimer);
+  brainTimer = null;
+  internalSchedulerTimer = null;
+}
+
+shutdownCoordinator = createShutdownCoordinator({
+  server,
+  tracker: executionTracker,
+  stopScheduling,
+  closeDatabase: async () => {
+    if (pool && !pool.ended) await pool.end();
+  }
+});
+installShutdownSignals(shutdownCoordinator);
 
 if (databaseEnabled) {
   const migration = await migrate();

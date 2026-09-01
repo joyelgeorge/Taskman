@@ -81,3 +81,18 @@ test('provider requirement is opt-in and fails closed', () => {
   assert.equal(health.ready, false);
   assert.equal(health.components.providers.status, 'unready');
 });
+
+test('draining instance is immediately removed from readiness', () => {
+  const health = evaluateHealth({
+    database: { enabled: true, ok: true },
+    providers: readyProvider,
+    schedulerDurable: true,
+    internalSchedulerEnabled: true,
+    draining: true,
+    env: { NODE_ENV: 'production' }
+  });
+
+  assert.equal(health.ready, false);
+  assert.equal(health.status, 'unready');
+  assert.equal(health.draining, true);
+});

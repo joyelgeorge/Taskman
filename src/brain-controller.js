@@ -88,7 +88,7 @@ function compactScenarioContext(scenario, knowledge, gap) {
   };
 }
 
-export async function executeBrainCycle(reason = 'manual') {
+export async function executeBrainCycle(reason = 'manual', { signal } = {}) {
   const brain = await getBrainState();
   const action = brain.nextAction;
   const cycle = {
@@ -112,7 +112,7 @@ export async function executeBrainCycle(reason = 'manual') {
       const context = compactScenarioContext(selected.scenario, selected.knowledge, action.gap);
       const objective = `Scenario: ${selected.scenario.name}. Goal: ${selected.scenario.goal}. Resolve this gap only: ${action.gap}`;
       const prompt = buildLearningPrompt({ objective, context });
-      const response = await runWithFallback(prompt);
+      const response = await runWithFallback(prompt, { signal });
       const envelope = validateLearningEnvelope(parseLearningEnvelope(response.text));
 
       cycle.status = 'succeeded';

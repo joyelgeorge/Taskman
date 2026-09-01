@@ -133,8 +133,10 @@ async function runDiscoverWorkerImpl({
   sampleCandidates = [],
   claimedBy = 'taskman-discover-worker',
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
   const existingCandidates = await listRevenueRecords(CANONICAL_QUEUES.candidates, { limit: 500 });
@@ -171,6 +173,7 @@ async function runDiscoverWorkerImpl({
   const enqueued = [];
   const rejected = [];
   for (const candidate of candidatesToProcess) {
+    signal?.throwIfAborted();
     // Deduplication by novelty key
     if (candidate.noveltyKey && existingNoveltyKeys.has(candidate.noveltyKey)) {
       continue;
@@ -235,6 +238,7 @@ async function runDiscoverWorkerImpl({
   await setRevenueState('discovery_learning', updatedLearning);
 
   for (const source of new Set(candidatesToProcess.map(c => c.sourceType || 'unknown'))) {
+    signal?.throwIfAborted();
     const sourceCandidates = candidatesToProcess.filter(c => (c.sourceType || 'unknown') === source);
     const sourceRejected = rejected.filter(item => sourceCandidates.some(c => c.candidateId === item.candidateId));
     if (sourceCandidates.length === 0) continue;

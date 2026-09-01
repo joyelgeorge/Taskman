@@ -113,6 +113,7 @@ test('worker trace links a real queue transition to its correlation ID', async (
 });
 
 test('queue summary detects active aging but never treats terminal outcomes as stalled', async () => {
+  const baseline = await getPipelineObservabilitySummary({ maxStallMinutes: 60 });
   const oldDate = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.candidates,
@@ -133,10 +134,11 @@ test('queue summary detects active aging but never treats terminal outcomes as s
   assert.ok(summary.activeStalls.some(stall => stall.queue === 'candidates'));
   assert.ok(!summary.activeStalls.some(stall => stall.queue === 'outcomes'));
   assert.equal(summary.terminalOutcomes.BLOCKED >= 1, true);
-  assert.equal(summary.verifiedRevenueEvents, 0);
+  assert.equal(summary.verifiedRevenueEvents, baseline.verifiedRevenueEvents);
 });
 
 test('only verified positive MONEY_EVENT outcomes count as verified revenue events', async () => {
+  const baseline = await getPipelineObservabilitySummary();
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.outcomes,
     noveltyKey: `estimate-${crypto.randomUUID()}`,
@@ -150,7 +152,7 @@ test('only verified positive MONEY_EVENT outcomes count as verified revenue even
     payload: { attributableValue: 10, verificationRef: 'receipt:test' }
   });
   const summary = await getPipelineObservabilitySummary();
-  assert.equal(summary.verifiedRevenueEvents, 1);
+  assert.equal(summary.verifiedRevenueEvents, baseline.verifiedRevenueEvents + 1);
 });
 
 test('schedule metrics expose lag, duration, outcome, and reclaimed lease state', () => {

@@ -21,6 +21,8 @@ import {
   listActiveLearning,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError } from '../errors.js';
 
 /**
  * Loads real candidates from configured discovery sources.
@@ -65,6 +67,22 @@ export async function discoverFromRealSources({
       }
     } catch {
       // Rail not configured or unavailable; fail closed without fabricating
+    }
+    try {
+      const deskcrewResult = await discoverRail('deskcrew');
+      if (deskcrewResult?.ok && Array.isArray(deskcrewResult.bounties)) {
+        for (const bounty of deskcrewResult.bounties) discovered.push(normalizeCandidate(bounty));
+      }
+    } catch {
+      // Provider failures are retryable at the rail boundary and never fabricate candidates.
+    }
+    try {
+      const result = await discoverRail('taskmarket');
+      if (result?.ok && Array.isArray(result.tasks)) {
+        for (const task of result.tasks) discovered.push(normalizeCandidate(task));
+      }
+    } catch {
+      // Provider failures are retryable at the rail boundary and never fabricate candidates.
     }
   }
 
@@ -127,13 +145,15 @@ export async function discoverFromRealSources({
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
 
-export async function runDiscoverWorker({
+async function runDiscoverWorkerImpl({
   sources = Object.keys(DISCOVERY_SOURCES),
   sampleCandidates = [],
   claimedBy = 'taskman-discover-worker',
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
   const existingCandidates = await listRevenueRecords(CANONICAL_QUEUES.candidates, { limit: 500 });
@@ -170,6 +190,7 @@ export async function runDiscoverWorker({
   const enqueued = [];
   const rejected = [];
   for (const candidate of candidatesToProcess) {
+    signal?.throwIfAborted();
     // Deduplication by novelty key
     if (candidate.noveltyKey && existingNoveltyKeys.has(candidate.noveltyKey)) {
       continue;
@@ -203,6 +224,10 @@ export async function runDiscoverWorker({
         }
       });
       enqueued.push(record);
+      addTraceEvent('queue.enqueue', {
+        stage: 'DISCOVER', queue: 'candidates', candidate_id: candidate.candidateId,
+        queue_item_id: record.id, outcome: 'enqueued'
+      });
       if (candidate.noveltyKey) existingNoveltyKeys.add(candidate.noveltyKey);
     } else {
       rejected.push({
@@ -230,6 +255,7 @@ export async function runDiscoverWorker({
   await setRevenueState('discovery_learning', updatedLearning);
 
   for (const source of new Set(candidatesToProcess.map(c => c.sourceType || 'unknown'))) {
+    signal?.throwIfAborted();
     const sourceCandidates = candidatesToProcess.filter(c => (c.sourceType || 'unknown') === source);
     const sourceRejected = rejected.filter(item => sourceCandidates.some(c => c.candidateId === item.candidateId));
     if (sourceCandidates.length === 0) continue;
@@ -262,9 +288,24 @@ export async function runDiscoverWorker({
   };
 }
 
+export async function runDiscoverWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.discover', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'DISCOVER'
+  }, async () => {
+    const result = await runDiscoverWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('DISCOVER', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('discover.js')) {
   runDiscoverWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:discover:cli' });
     process.exit(1);
   });
 }

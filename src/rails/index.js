@@ -1,14 +1,17 @@
 import { registerRail, getRail, listRails, setRailMode } from './registry.js';
 import { createTaskForceRail } from './taskforce.js';
-import { createUgigRail } from './ugig.js';
+import { createDeskCrewRail } from './deskcrew.js';
+import { createTaskmarketRail } from './taskmarket.js';
 import { evaluateExecutionGate, assertExecutionAllowed } from './execution-gate.js';
+import { getRuntimeConfig } from '../config.js';
 
 let initialized = false;
 
 export function initializeRails() {
   if (!initialized) {
     registerRail(createTaskForceRail());
-    registerRail(createUgigRail());
+    registerRail(createDeskCrewRail());
+    registerRail(createTaskmarketRail());
     initialized = true;
   }
   return listRails();
@@ -34,6 +37,10 @@ export async function verifyRailCandidate(name, candidate) {
 }
 
 export async function enableRailExecution(name, candidate) {
+  const config = getRuntimeConfig();
+  if (!config.rails.allowWrite || !config.rails.writeEnabled.includes(name)) {
+    throw new Error(`Rail execution is disabled by configuration: ${name}`);
+  }
   initializeRails();
   const gate = assertExecutionAllowed(candidate);
   setRailMode(name, 'execute');

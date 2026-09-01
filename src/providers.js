@@ -1,4 +1,6 @@
 import { LIMITS, TaskmanError, abortable, createDeadline } from './limits.js';
+import { recordProviderAttempt, withTelemetrySpan } from './observability.js';
+import { getRuntimeConfig } from './config.js';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -58,8 +60,9 @@ async function openAICompatible(url, model, prompt, key, signal) {
   };
 }
 
-export function providerStatus() {
-  return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(process.env[p.env]) }));
+export function providerStatus({ env } = {}) {
+  const configured = env || getRuntimeConfig().providers;
+  return providers.map(p => ({ id: p.id, model: p.model, ready: Boolean(configured[p.env]) }));
 }
 
 export async function runWithFallback(prompt, {
@@ -67,7 +70,7 @@ export async function runWithFallback(prompt, {
   runTimeoutMs = LIMITS.runTimeoutMs,
   providerTimeoutMs = LIMITS.providerTimeoutMs,
   providerList = providers,
-  env = process.env
+  env = getRuntimeConfig().providers
 } = {}) {
   const errors = [];
   const runStarted = Date.now();
@@ -93,13 +96,25 @@ export async function runWithFallback(prompt, {
       });
 
       try {
-        const result = await abortable(
+        const result = await withTelemetrySpan('provider.request', {
+          provider: provider.id,
+          model: provider.model,
+          attempt: errors.length + 1,
+          fallback: errors.length > 0
+        }, () => abortable(
           provider.call(prompt, key, { signal: attempt.signal }),
           attempt.signal
-        );
+        ));
         if (overall.signal.aborted) {
           throw overall.signal.reason;
         }
+        recordProviderAttempt({
+          provider: provider.id,
+          model: provider.model,
+          durationMs: Date.now() - attemptStarted,
+          outcome: 'success',
+          fallback: errors.length > 0
+        });
         return {
           ...result,
           provider: provider.id,
@@ -118,6 +133,14 @@ export async function runWithFallback(prompt, {
           provider: provider.id,
           code,
           durationMs: Date.now() - attemptStarted
+        });
+        recordProviderAttempt({
+          provider: provider.id,
+          model: provider.model,
+          durationMs: Date.now() - attemptStarted,
+          outcome: 'error',
+          errorCode: code,
+          fallback: errors.length > 1
         });
         if (code === 'RUN_DEADLINE_EXCEEDED') break;
       } finally {
@@ -141,7 +164,7 @@ export async function runWithFallback(prompt, {
       });
     }
 
-    const failure = new TaskmanError(`All configured providers failed: ${JSON.stringify(errors)}`, {
+    const failure = new TaskmanError('All configured providers failed', {
       code: 'ALL_PROVIDERS_FAILED',
       statusCode: 502
     });

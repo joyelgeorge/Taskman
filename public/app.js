@@ -7,6 +7,13 @@ import {
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+function mutationOptions(options = {}) {
+  return {
+    ...options,
+    headers: { ...options.headers, 'Idempotency-Key': crypto.randomUUID() }
+  };
+}
+
 function renderBrain(brain) {
   const action = brain?.nextAction;
   if (!action) return '<p class="muted">No brain state available.</p>';
@@ -147,7 +154,7 @@ function scheduleRefresh() {
 
 $('#create').onclick = async () => {
   try {
-    await requestJson('/api/tasks', { method: 'POST', body: JSON.stringify({ title: $('#title').value, prompt: $('#prompt').value, intervalMinutes: $('#interval').value }) });
+    await requestJson('/api/tasks', mutationOptions({ method: 'POST', body: JSON.stringify({ title: $('#title').value, prompt: $('#prompt').value, intervalMinutes: $('#interval').value }) }));
     $('#title').value = ''; $('#prompt').value = ''; $('#interval').value = '';
     await refreshDashboard({ supersede: true });
   } catch (e) { alert(e.message); }
@@ -159,7 +166,7 @@ $('#runBrain').onclick = async () => {
   button.textContent = 'Running…';
   $('#brainResult').innerHTML = '<p class="muted">Resolving the selected gap…</p>';
   try {
-    const result = await requestJson('/api/brain/run', { method: 'POST' });
+    const result = await requestJson('/api/brain/run', mutationOptions({ method: 'POST' }));
     const cycle = result.cycle;
     $('#brainResult').innerHTML = `<div class="result"><strong>${esc(cycle.status)}</strong> · ${esc(cycle.scenarioId || '')}\n${esc(cycle.result?.answer || cycle.error || JSON.stringify(cycle.result || {}, null, 2))}</div>`;
     $('#brainState').innerHTML = renderBrain(result.brainAfter);
@@ -175,8 +182,8 @@ document.addEventListener('click', async e => {
   const run = e.target.closest('[data-run]');
   const pause = e.target.closest('[data-pause]');
   try {
-    if (run) await requestJson(`/api/tasks/${run.dataset.run}/run`, { method: 'POST' });
-    if (pause) await requestJson(`/api/tasks/${pause.dataset.pause}/pause`, { method: 'POST' });
+    if (run) await requestJson(`/api/tasks/${run.dataset.run}/run`, mutationOptions({ method: 'POST' }));
+    if (pause) await requestJson(`/api/tasks/${pause.dataset.pause}/pause`, mutationOptions({ method: 'POST' }));
     if (run || pause) await refreshDashboard({ supersede: true });
   } catch (err) { alert(err.message); }
 });

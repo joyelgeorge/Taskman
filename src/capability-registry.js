@@ -1,5 +1,6 @@
 import { providerStatus } from './providers.js';
 import { railStatus } from './rails/index.js';
+import { getRuntimeConfig } from './config.js';
 
 export const CAPABILITY_STATUS = Object.freeze({
   AVAILABLE: 'available',
@@ -60,7 +61,7 @@ export function unregisterCapability(id) {
 }
 
 export function buildCapabilityRegistry({
-  env = process.env,
+  env = { MOLTJOBS_API_KEY: getRuntimeConfig().rails.moltjobs.apiKey },
   providers = providerStatus(),
   rails = railStatus(),
   health = {}
@@ -116,7 +117,9 @@ export function buildCapabilityRegistry({
 
   for (const rail of rails) {
     const railName = String(rail.name);
-    const configured = !Object.prototype.hasOwnProperty.call(rail, 'apiKey') || Boolean(rail.apiKey);
+    const configured = ['deskcrew', 'taskmarket'].includes(railName)
+      ? rail.enabled === true
+      : (!Object.prototype.hasOwnProperty.call(rail, 'apiKey') || Boolean(rail.apiKey));
     put(capabilities, `rail.${railName}.read`, configured
       ? CAPABILITY_STATUS.AVAILABLE
       : CAPABILITY_STATUS.SETUP_REQUIRED, CAPABILITY_ACCESS.READ, {
@@ -124,15 +127,44 @@ export function buildCapabilityRegistry({
     });
     for (const action of ['claim', 'submit']) {
       put(capabilities, `rail.${railName}.${action}`,
-        rail.mode === 'execute' ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED,
+        ['deskcrew', 'taskmarket'].includes(railName)
+          ? CAPABILITY_STATUS.UNAVAILABLE
+          : (rail.mode === 'execute' ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED),
         CAPABILITY_ACCESS.WRITE, {
           adapter: railName,
-          reason: rail.mode === 'execute' ? 'execution_mode_authorized' : 'rail_is_read_only'
+          reason: ['deskcrew', 'taskmarket'].includes(railName)
+            ? 'write_adapter_not_installed'
+            : (rail.mode === 'execute' ? 'execution_mode_authorized' : 'rail_is_read_only')
         });
     }
     put(capabilities, `rail.${railName}.payout.read`, CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.READ, {
       adapter: railName, reason: 'payout_adapter_not_installed'
     });
+    if (railName === 'deskcrew') {
+      for (const id of ['deskcrew.bounties.read']) {
+        put(capabilities, id, configured ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED,
+          CAPABILITY_ACCESS.READ, { adapter: railName, reason: configured ? 'public_read_adapter_enabled' : 'rail_disabled' });
+      }
+      put(capabilities, 'deskcrew.ticket_context.read', CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.READ, {
+        adapter: railName, reason: 'paid_context_adapter_not_installed'
+      });
+      for (const id of ['deskcrew.draft.submit', 'x402.payment', 'wallet.receive_usdc']) {
+        put(capabilities, id, CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.WRITE, {
+          adapter: railName, reason: 'authorization_gated_adapter_not_installed'
+        });
+      }
+    }
+    if (railName === 'taskmarket') {
+      for (const id of ['taskmarket.read', 'taskmarket.task.read']) {
+        put(capabilities, id, configured ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED,
+          CAPABILITY_ACCESS.READ, { adapter: railName, reason: configured ? 'public_read_adapter_enabled' : 'rail_disabled' });
+      }
+      for (const id of ['taskmarket.submit', 'wallet.receive_usdc.base', 'wallet.sign.eip191']) {
+        put(capabilities, id, CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.WRITE, {
+          adapter: railName, reason: 'authorization_gated_adapter_not_installed'
+        });
+      }
+    }
   }
 
   for (const [id, descriptor] of customRegistry) capabilities[id] = descriptor;

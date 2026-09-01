@@ -51,7 +51,8 @@ test('AI Reasoning Engine: handles malformed JSON output safely', async () => {
   const mock = async () => 'Not valid JSON at all';
   const res = await engine.reason({ prompt: 'test', mockProvider: mock });
   assert.equal(res.ok, false);
-  assert.ok(res.error.includes('not valid JSON'));
+  assert.equal(res.error, 'MODEL_OUTPUT_INVALID');
+  assert.equal('rawText' in res, false);
 });
 
 test('Discover Worker: AI synthesis enqueues valid opportunities into candidate_queue', async () => {

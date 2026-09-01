@@ -1,3 +1,5 @@
+import { getRuntimeConfig } from './config.js';
+
 /**
  * Canonical validation for minute-based generic task schedules.
  * Durable cron schedules use their own parser and are intentionally separate.
@@ -35,7 +37,7 @@ export function normalizeIntervalMinutes(input) {
   return { valid: true, value };
 }
 
-export function normalizeBrainIntervalMinutes(input = process.env.TASKMAN_BRAIN_INTERVAL_MINUTES) {
+export function normalizeBrainIntervalMinutes(input = getRuntimeConfig().scheduler.brainIntervalMinutes || null) {
   return normalizeIntervalMinutes(input);
 }
 
@@ -46,4 +48,3 @@ export function normalizeStoredIntervalSeconds(input) {
   }
   return normalizeIntervalMinutes(Number(input) / 60);
 }
-

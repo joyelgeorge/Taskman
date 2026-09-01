@@ -5,6 +5,7 @@ import {
   normalizeIntervalMinutes,
   normalizeStoredIntervalSeconds
 } from './interval-validator.js';
+import { stableErrorCode } from './errors.js';
 import { CONCURRENCY_POLICY, normalizeConcurrencyPolicy } from './scheduler-concurrency.js';
 
 const memory = { tasks: [], runs: [] };
@@ -170,10 +171,11 @@ export async function createRunRecord({ id, taskId, scenarioId, reason, status, 
 }
 
 export async function finishRunRecord(run) {
+  const storedErrorCode = run.status === 'failed' ? stableErrorCode(run.error) : null;
   if (!databaseEnabled) {
     const existing = memory.runs.find(r => r.id === run.id);
-    if (existing) Object.assign(existing, run);
-    return run;
+    if (existing) Object.assign(existing, run, { error: storedErrorCode, errorDetail: null });
+    return { ...run, error: storedErrorCode, errorDetail: null };
   }
   const resultJson = {
     ...(run.result ? {
@@ -182,15 +184,14 @@ export async function finishRunRecord(run) {
       provider: run.provider,
       model: run.model
     } : {}),
-    ...(run.errorDetail ? { errorDetail: run.errorDetail } : {}),
     ...(run.fallbacks?.length ? { fallbacks: run.fallbacks } : {}),
     ...(run.latencyMs ? { latencyMs: run.latencyMs } : {})
   };
   await query(
     `UPDATE runs SET status=$2, result=$3::jsonb, error_code=$4, finished_at=$5 WHERE id=$1`,
-    [run.id, run.status, JSON.stringify(resultJson), run.error || null, run.finishedAt]
+    [run.id, run.status, JSON.stringify(resultJson), storedErrorCode, run.finishedAt]
   );
-  return run;
+  return { ...run, error: storedErrorCode, errorDetail: null };
 }
 
 export async function listRunRecords(limit = 50) {
@@ -210,7 +211,7 @@ export async function listRunRecords(limit = 50) {
     provider: r.result?.provider || null,
     model: r.result?.model || null,
     error: r.error_code,
-    errorDetail: r.result?.errorDetail || null,
+    errorDetail: null,
     fallbacks: r.result?.fallbacks || [],
     latencyMs: r.result?.latencyMs || null,
     startedAt: r.started_at,

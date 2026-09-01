@@ -36,14 +36,18 @@ import {
   GUIDANCE_EVALUATIONS,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError, stableErrorCode } from '../errors.js';
 
-export async function runExecuteWorker({
+async function runExecuteWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
   const capabilities = getRuntimeCapabilityMap(capabilityOptions);
@@ -52,6 +56,7 @@ export async function runExecuteWorker({
   const outcomes = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     const candidate = item.payload.candidate || item.payload;
     const requiredCapabilities = Array.isArray(candidate.requiredCapabilities)
       ? candidate.requiredCapabilities
@@ -87,14 +92,14 @@ export async function runExecuteWorker({
       outcomeReason = `Required capabilities need setup: ${capabilityDecision.setupRequired.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
-        stepOutput = await executorFn(candidate, capabilities, aiPlan);
+        stepOutput = await executorFn(candidate, capabilities, aiPlan, { signal });
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
         // Only set attributable value if verified and provided by real executor output
         attributableValue = Number(stepOutput.verifiedAttributableValue || stepOutput.attributableValue || 0);
       } catch (err) {
         outcomeStatus = 'BLOCKED';
-        outcomeReason = `Execution error: ${err.message}`;
+        outcomeReason = `Execution error: ${stableErrorCode(err)}`;
       }
     } else {
       // Invariant: In the absence of a concrete authorized executor adapter,
@@ -134,6 +139,10 @@ export async function runExecuteWorker({
     });
     outcomes.push(outcomeRecord);
     executed.push(outcomePayload);
+    addTraceEvent('pipeline.terminal', {
+      stage: 'EXECUTE', queue: 'outcomes', candidate_id: candidate.candidateId,
+      queue_item_id: outcomeRecord.id, outcome: outcomeStatus
+    });
 
     const priorLearningIds = item.payload.learning?.appliedLearningIds ||
       item.payload.validation?.learning?.appliedLearningIds || [];
@@ -143,6 +152,7 @@ export async function runExecuteWorker({
         ? GUIDANCE_EVALUATIONS.MISLEADING
         : GUIDANCE_EVALUATIONS.INCONCLUSIVE;
     for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
       await evaluatePastGuidance(learningId, guidanceEvaluation, {
         evidenceRef: `outcome:${outcomeRecord.id}`,
         now: new Date(startedAt)
@@ -175,9 +185,24 @@ export async function runExecuteWorker({
   };
 }
 
+export async function runExecuteWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.execute', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'EXECUTE'
+  }, async () => {
+    const result = await runExecuteWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('EXECUTE', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('execute.js')) {
   runExecuteWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:execute:cli' });
     process.exit(1);
   });
 }

@@ -165,3 +165,4 @@ test('PostgreSQL advisory lock prevents overlap across independent connections',
   assert.equal(recovered.acquired, true);
   await recovered.release();
 });
+

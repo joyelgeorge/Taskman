@@ -14,6 +14,8 @@ import {
   GUIDANCE_EVALUATIONS,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError } from '../errors.js';
 
 export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
   ...QUALIFICATION_PROFILES.programmable_money_flow_v1.evidenceGates
@@ -36,13 +38,15 @@ function classificationAfterCustomEvidence(qualification, evidenceCheck, profile
  * execution_queue. Numeric/model confidence never overrides profile evidence,
  * capability health, or setup state.
  */
-export async function runValidateWorker({
+async function runValidateWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-validate-worker',
   validatorFn = null,
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
   const validated = [];
@@ -51,6 +55,7 @@ export async function runValidateWorker({
   const needsEvidence = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     let candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
 
@@ -108,6 +113,10 @@ export async function runValidateWorker({
       payload: validationPayload
     });
     validated.push(valRecord);
+    addTraceEvent('queue.transition', {
+      stage: 'VALIDATE', queue: 'validation', candidate_id: candidate.candidateId,
+      queue_item_id: valRecord.id, outcome: classification
+    });
 
     const priorLearningIds = item.payload.learning?.appliedLearningIds || [];
     const guidanceEvaluation = ['REJECTED', 'BLOCKED'].includes(classification)
@@ -116,6 +125,7 @@ export async function runValidateWorker({
         ? GUIDANCE_EVALUATIONS.INCONCLUSIVE
         : GUIDANCE_EVALUATIONS.USEFUL;
     for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
       await evaluatePastGuidance(learningId, guidanceEvaluation, {
         evidenceRef: `validation:${valRecord.id}`,
         now: new Date(startedAt)
@@ -173,9 +183,24 @@ export async function runValidateWorker({
   };
 }
 
+export async function runValidateWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.validate', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'VALIDATE'
+  }, async () => {
+    const result = await runValidateWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('VALIDATE', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('validate.js')) {
   runValidateWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:validate:cli' });
     process.exit(1);
   });
 }

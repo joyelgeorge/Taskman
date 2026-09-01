@@ -22,6 +22,9 @@ import {
   withTelemetrySpan
 } from './observability.js';
 import { AppError, sendJson, sendProblem, stableErrorCode } from './errors.js';
+import { getRuntimeConfig } from './config.js';
+
+const runtimeConfig = getRuntimeConfig();
 
 function send(res, status, body) {
   return sendJson(res, status, body);
@@ -41,7 +44,7 @@ export async function handleRevenueRequest(req, res, url) {
     return send(res, 200, {
       storage: revenueStorageMode(),
       schedulerDurable: isSchedulerDurable(),
-      internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+      internalSchedulerEnabled: runtimeConfig.scheduler.internalEnabled,
       pipeline: ['DISCOVER', 'VALIDATE', 'EXECUTE', 'LEARN'],
       canonicalQueues: CANONICAL_QUEUES,
       legacyAliases: LEGACY_QUEUE_ALIASES,
@@ -62,7 +65,7 @@ export async function handleRevenueRequest(req, res, url) {
       qualificationProfiles: QUALIFICATION_PROFILES,
       scheduler: {
         durable: isSchedulerDurable(),
-        internalEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+        internalEnabled: runtimeConfig.scheduler.internalEnabled,
         staggeredCadence: {
           discover: '0 * * * *',
           validate: '10 * * * *',
@@ -75,7 +78,7 @@ export async function handleRevenueRequest(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/scheduler/jobs') {
     return send(res, 200, {
       durable: isSchedulerDurable(),
-      internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
+      internalSchedulerEnabled: runtimeConfig.scheduler.internalEnabled,
       jobs: await listScheduledJobs()
     });
   }

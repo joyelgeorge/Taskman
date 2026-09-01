@@ -33,7 +33,7 @@ test('Gemini sends credentials in x-goog-api-key and never in the URL', async ()
       }
     };
   }, async () => {
-    const result = await runWithFallback('test prompt');
+    const result = await runWithFallback('test prompt', { env: process.env });
     assert.equal(result.provider, 'gemini');
   });
 
@@ -48,7 +48,7 @@ test('provider failure metadata excludes raw and URL-encoded credentials', async
   await withGeminiOnly(secret, async () => {
     throw new Error(`transport failed for ${secret} and ${encodeURIComponent(secret)}`);
   }, async () => {
-    await assert.rejects(runWithFallback('test prompt'), error => {
+    await assert.rejects(runWithFallback('test prompt', { env: process.env }), error => {
       assert.equal(error.message.includes(secret), false);
       assert.equal(error.message.includes(encodeURIComponent(secret)), false);
       assert.equal(error.code, 'ALL_PROVIDERS_FAILED');

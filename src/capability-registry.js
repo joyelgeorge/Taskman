@@ -1,5 +1,6 @@
 import { providerStatus } from './providers.js';
 import { railStatus } from './rails/index.js';
+import { getRuntimeConfig } from './config.js';
 
 export const CAPABILITY_STATUS = Object.freeze({
   AVAILABLE: 'available',
@@ -60,7 +61,7 @@ export function unregisterCapability(id) {
 }
 
 export function buildCapabilityRegistry({
-  env = process.env,
+  env = { MOLTJOBS_API_KEY: getRuntimeConfig().rails.moltjobs.apiKey },
   providers = providerStatus(),
   rails = railStatus(),
   health = {}

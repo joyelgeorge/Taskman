@@ -3,18 +3,21 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { getRuntimeConfig } from './config.js';
+
+const runtimeConfig = getRuntimeConfig();
 
 const { Pool } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, '..', 'db', 'migrations');
 
-export const databaseEnabled = Boolean(process.env.DATABASE_URL);
+export const databaseEnabled = runtimeConfig.database.enabled;
 
 export const pool = databaseEnabled
   ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.PGSSL === 'disable' ? false : undefined,
-      max: Number(process.env.PGPOOL_MAX || 5)
+      connectionString: runtimeConfig.database.url,
+      ssl: runtimeConfig.database.ssl === 'disable' ? false : undefined,
+      max: runtimeConfig.database.poolMax
     })
   : null;
 

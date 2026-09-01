@@ -1,3 +1,14 @@
+import { getRuntimeConfig } from './config.js';
+
+function runtimeHealthEnv() {
+  const config = getRuntimeConfig();
+  return {
+    NODE_ENV: config.profile,
+    TASKMAN_ALLOW_MEMORY_MODE: 'false',
+    TASKMAN_REQUIRE_PROVIDER: String(config.requireProvider)
+  };
+}
+
 function databaseRequired(env) {
   return env.NODE_ENV === 'production' && env.TASKMAN_ALLOW_MEMORY_MODE !== 'true';
 }
@@ -12,7 +23,7 @@ export function evaluateHealth({
   schedulerDurable = false,
   internalSchedulerEnabled = false,
   draining = false,
-  env = process.env
+  env = runtimeHealthEnv()
 }) {
   const requiresDatabase = databaseRequired(env);
   const requiresProvider = providerRequired(env);

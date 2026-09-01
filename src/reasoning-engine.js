@@ -1,9 +1,10 @@
 import { providerStatus, runWithFallback } from './providers.js';
 import { validateSchema } from './reasoning-schemas.js';
 import { stableErrorCode } from './errors.js';
+import { getRuntimeConfig } from './config.js';
 
 export class ReasoningEngine {
-  constructor({ enabled = process.env.TASKMAN_REASONING_ENABLED !== 'false' } = {}) {
+  constructor({ enabled = getRuntimeConfig().reasoningEnabled } = {}) {
     this.enabled = enabled;
   }
 

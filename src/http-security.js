@@ -1,3 +1,5 @@
+import { getRuntimeConfig } from './config.js';
+
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "base-uri 'none'",
@@ -17,13 +19,23 @@ function firstForwardedProtocol(value) {
   return String(value || '').split(',', 1)[0].trim().toLowerCase();
 }
 
-export function requestIsTrustedHttps(req, env = process.env) {
+function runtimeSecurityEnv() {
+  const config = getRuntimeConfig();
+  return {
+    NODE_ENV: config.profile,
+    TASKMAN_TRUST_PROXY: String(config.security.trustProxy),
+    TASKMAN_CSP_REPORT_ONLY: String(config.security.cspReportOnly),
+    TASKMAN_HSTS_ENABLED: String(config.security.hstsEnabled)
+  };
+}
+
+export function requestIsTrustedHttps(req, env = runtimeSecurityEnv()) {
   if (req.socket?.encrypted === true) return true;
   return env.TASKMAN_TRUST_PROXY === 'true'
     && firstForwardedProtocol(req.headers?.['x-forwarded-proto']) === 'https';
 }
 
-export function securityHeaders(req, env = process.env) {
+export function securityHeaders(req, env = runtimeSecurityEnv()) {
   const headers = {
     'content-security-policy': CONTENT_SECURITY_POLICY,
     'x-content-type-options': 'nosniff',
@@ -49,7 +61,7 @@ export function securityHeaders(req, env = process.env) {
   return headers;
 }
 
-export function applySecurityHeaders(req, res, env = process.env) {
+export function applySecurityHeaders(req, res, env = runtimeSecurityEnv()) {
   for (const [name, value] of Object.entries(securityHeaders(req, env))) {
     res.setHeader(name, value);
   }

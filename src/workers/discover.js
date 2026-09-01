@@ -22,6 +22,7 @@ import {
   recordLearningInference
 } from '../learning-inference.js';
 import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError } from '../errors.js';
 
 /**
  * Loads real candidates from configured discovery sources.
@@ -288,7 +289,7 @@ export async function runDiscoverWorker(options = {}) {
 
 if (process.argv[1]?.endsWith('discover.js')) {
   runDiscoverWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:discover:cli' });
     process.exit(1);
   });
 }

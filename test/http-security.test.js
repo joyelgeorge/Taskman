@@ -94,8 +94,8 @@ test('all HTTP response classes receive the centralized policy', async (t) => {
     ['/refresh-controller.js', { method: 'GET' }, 200, 'text/javascript'],
     ['/styles.css', { method: 'GET' }, 200, 'text/css'],
     ['/api/status', { method: 'GET' }, 200, 'application/json'],
-    ['/missing', { method: 'GET' }, 404, 'application/json'],
-    ['/api/tasks', { method: 'POST', body: '{' }, 400, 'application/json']
+    ['/missing', { method: 'GET' }, 404, 'application/problem\\+json'],
+    ['/api/tasks', { method: 'POST', body: '{' }, 400, 'application/problem\\+json']
   ];
 
   for (const [path, options, status, contentType] of cases) {

@@ -4,6 +4,7 @@ import { scoreScenario } from './scenario-engine.js';
 import { getKnowledgeSnapshot, ingestStructuredLearning } from './knowledge-store.js';
 import { runWithFallback } from './providers.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
+import { stableErrorCode } from './errors.js';
 
 function activeGaps(scenario, knowledge) {
   const resolved = new Set((knowledge.resolvedGaps || []).map(e => e.value?.gap || e.gap));
@@ -131,7 +132,7 @@ export async function executeBrainCycle(reason = 'manual', { signal } = {}) {
     }
   } catch (error) {
     cycle.status = 'failed';
-    cycle.error = String(error?.message || error);
+    cycle.error = stableErrorCode(error, 'PROVIDER_UNAVAILABLE');
   }
 
   cycle.finishedAt = new Date().toISOString();

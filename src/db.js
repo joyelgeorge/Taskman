@@ -68,11 +68,11 @@ export async function migrate() {
 }
 
 export async function healthCheck() {
-  if (!pool) return { enabled: false, ok: false, reason: 'DATABASE_URL not configured' };
+  if (!pool) return { enabled: false, ok: false, reasonCode: 'DATABASE_NOT_CONFIGURED', retryable: false };
   try {
     const result = await pool.query('SELECT now() AS now');
     return { enabled: true, ok: true, now: result.rows[0].now };
-  } catch (error) {
-    return { enabled: true, ok: false, reason: String(error.message || error) };
+  } catch {
+    return { enabled: true, ok: false, reasonCode: 'DATABASE_UNAVAILABLE', retryable: true };
   }
 }

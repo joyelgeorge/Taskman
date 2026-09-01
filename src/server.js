@@ -37,6 +37,14 @@ import {
   createShutdownCoordinator,
   installShutdownSignals
 } from './shutdown.js';
+import {
+  AppError,
+  logRestrictedError,
+  requestCorrelationId,
+  sendJson,
+  sendProblem,
+  stableErrorCode
+} from './errors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -70,8 +78,7 @@ function observeApiRequest(req, res, pathname) {
 }
 
 function json(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
-  res.end(JSON.stringify(body));
+  return sendJson(res, status, body);
 }
 
 function compactKnowledge(knowledge) {
@@ -118,8 +125,7 @@ async function executeTask(task, reason = 'manual', signal) {
     memoryUsage.outputTokens += result.outputTokens;
   } catch (e) {
     run.status = 'failed';
-    run.error = e.code || 'PROVIDER_ERROR';
-    run.errorDetail = String(e.message || e);
+    run.error = stableErrorCode(e, 'PROVIDER_UNAVAILABLE');
     run.fallbacks = Array.isArray(e.diagnostics) ? e.diagnostics : [];
   }
 
@@ -164,7 +170,8 @@ function schedule(task) {
     return;
   }
   const timer = setInterval(() => {
-    executionTracker.run('task-schedule', signal => executeTask(task, 'schedule', signal)).catch(console.error);
+    executionTracker.run('task-schedule', signal => executeTask(task, 'schedule', signal))
+      .catch(error => logRestrictedError(error, { context: 'task_schedule' }));
   }, interval.value * 60_000);
   timer.unref();
   timers.set(task.id, timer);
@@ -183,7 +190,8 @@ function startBrainScheduler() {
   }
   const minutes = interval.value;
   brainTimer = setInterval(() => {
-    executionTracker.run('brain-schedule', signal => executeBrainCycle('schedule', { signal })).catch(console.error);
+    executionTracker.run('brain-schedule', signal => executeBrainCycle('schedule', { signal }))
+      .catch(error => logRestrictedError(error, { context: 'brain_schedule' }));
   }, minutes * 60_000);
   brainTimer.unref();
   console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
@@ -246,11 +254,11 @@ async function tickInternalScheduler(signal) {
     } catch (err) {
       const interrupted = signal?.aborted === true;
       const outcome = interrupted ? 'INTERRUPTED' : 'FAILED';
-      error = interrupted ? 'SHUTDOWN_INTERRUPTED' : err.message;
+      error = interrupted ? 'SHUTDOWN_INTERRUPTED' : stableErrorCode(err);
       if (interrupted) {
         console.warn(`[Taskman Scheduler] Worker interrupted during shutdown: ${workerName}`);
       } else {
-        console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
+        logRestrictedError(err, { context: `scheduled_worker:${workerName}` });
       }
       await finishScheduledJobRun({
         jobId: claim.job.id,
@@ -276,9 +284,11 @@ function startInternalSchedulerLoop() {
     return;
   }
   console.log('[Taskman Scheduler] Internal durable scheduler loop enabled. Polling schedule queue every 15s.');
-  executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal)).catch(console.error);
+  executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal))
+    .catch(error => logRestrictedError(error, { context: 'scheduler_loop' }));
   internalSchedulerTimer = setInterval(() => {
-    executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal)).catch(console.error);
+    executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal))
+      .catch(error => logRestrictedError(error, { context: 'scheduler_loop' }));
   }, 15_000);
   internalSchedulerTimer.unref();
 }
@@ -287,11 +297,12 @@ const server = http.createServer(async (req, res) => {
   applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    req.taskmanCorrelationId = requestCorrelationId(req);
     observeApiRequest(req, res, url.pathname);
 
     if (shutdownCoordinator?.isDraining() && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       res.setHeader('retry-after', String(Math.max(1, Math.ceil(shutdownCoordinator.graceMs / 1000))));
-      return json(res, 503, { error: 'service is draining', code: 'SHUTDOWN_IN_PROGRESS' });
+      return sendProblem(res, new AppError('SHUTDOWN_IN_PROGRESS'), { req, context: 'shutdown_drain' });
     }
 
     if (req.method === 'GET' && url.pathname === '/health/live') {
@@ -377,14 +388,12 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
       const body = await readJsonBody(req);
-      if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
+      if (!body.prompt?.trim()) {
+        return sendProblem(res, new AppError('INVALID_REQUEST'), { req, context: 'create_task' });
+      }
       const interval = normalizeIntervalMinutes(body.intervalMinutes);
       if (!interval.valid) {
-        return json(res, 400, {
-          error: 'invalid intervalMinutes',
-          code: interval.code,
-          detail: interval.error
-        });
+        return sendProblem(res, new AppError(interval.code), { req, context: 'create_task_interval' });
       }
       const id = crypto.randomUUID();
       const task = await createTaskRecord({
@@ -401,7 +410,7 @@ const server = http.createServer(async (req, res) => {
     const runMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/run$/);
     if (req.method === 'POST' && runMatch) {
       const task = await getTaskRecord(runMatch[1]);
-      if (!task) return json(res, 404, { error: 'task not found' });
+      if (!task) return sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'run_task' });
       return json(res, 200, await executionTracker.run(
         'task-manual',
         signal => executeTask(task, 'manual', signal)
@@ -411,7 +420,7 @@ const server = http.createServer(async (req, res) => {
     const pauseMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/pause$/);
     if (req.method === 'POST' && pauseMatch) {
       const task = await toggleTaskStatus(pauseMatch[1]);
-      if (!task) return json(res, 404, { error: 'task not found' });
+      if (!task) return sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'pause_task' });
       schedule(task);
       return json(res, 200, task);
     }
@@ -436,12 +445,9 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
       return res.end(css);
     }
-    json(res, 404, { error: 'not found' });
+    sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'route' });
   } catch (e) {
-    json(res, e.statusCode || 500, {
-      error: String(e.message || e),
-      code: e.code || 'INTERNAL_ERROR'
-    });
+    sendProblem(res, e, { req, context: 'request' });
   }
 });
 

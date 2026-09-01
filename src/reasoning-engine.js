@@ -1,5 +1,6 @@
 import { providerStatus, runWithFallback } from './providers.js';
 import { validateSchema } from './reasoning-schemas.js';
+import { stableErrorCode } from './errors.js';
 
 export class ReasoningEngine {
   constructor({ enabled = process.env.TASKMAN_REASONING_ENABLED !== 'false' } = {}) {
@@ -38,7 +39,7 @@ export class ReasoningEngine {
       try {
         result = await runWithFallback(fullPrompt);
       } catch (err) {
-        return { ok: false, error: err.message || String(err), fallbacks: err.fallbacks || [] };
+        return { ok: false, error: stableErrorCode(err, 'PROVIDER_UNAVAILABLE'), fallbacks: err.diagnostics || [] };
       }
     }
 
@@ -48,15 +49,15 @@ export class ReasoningEngine {
       // Clean potential code block wrapping
       const cleaned = result.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
       parsed = JSON.parse(cleaned);
-    } catch (e) {
-      return { ok: false, error: `Model output is not valid JSON: ${e.message}`, rawText: result.text };
+    } catch {
+      return { ok: false, error: 'MODEL_OUTPUT_INVALID' };
     }
 
     // Validate schema if requested
     if (schemaName) {
       const schemaCheck = validateSchema(parsed, schemaName);
       if (!schemaCheck.valid) {
-        return { ok: false, error: `Schema validation failed: ${schemaCheck.error}`, parsed };
+        return { ok: false, error: 'MODEL_OUTPUT_INVALID' };
       }
     }
 

@@ -15,6 +15,7 @@ import {
   recordLearningInference
 } from '../learning-inference.js';
 import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError } from '../errors.js';
 
 export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
   ...QUALIFICATION_PROFILES.programmable_money_flow_v1.evidenceGates
@@ -199,7 +200,7 @@ export async function runValidateWorker(options = {}) {
 
 if (process.argv[1]?.endsWith('validate.js')) {
   runValidateWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:validate:cli' });
     process.exit(1);
   });
 }

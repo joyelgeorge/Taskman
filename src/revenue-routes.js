@@ -21,11 +21,10 @@ import {
   recordScheduleRun,
   withTelemetrySpan
 } from './observability.js';
+import { AppError, sendJson, sendProblem, stableErrorCode } from './errors.js';
 
 function send(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
-  res.end(JSON.stringify(body));
-  return true;
+  return sendJson(res, status, body);
 }
 
 export async function handleRevenueRequest(req, res, url) {
@@ -89,10 +88,7 @@ export async function handleRevenueRequest(req, res, url) {
 
     const claim = await claimScheduledJob(workerName, { claimedBy });
     if (!claim) {
-      return send(res, 409, {
-        error: 'Job cannot be claimed (not due or active lease owned by another worker)',
-        workerName
-      });
+      return sendProblem(res, new AppError('CONFLICT'), { req, context: 'scheduler_claim' });
     }
 
     let result = null;
@@ -116,12 +112,13 @@ export async function handleRevenueRequest(req, res, url) {
         if (workerName === 'discover') return runDiscoverWorker(options);
         if (workerName === 'validate') return runValidateWorker(options);
         if (workerName === 'execute') return runExecuteWorker(options);
-        throw new Error(`Unknown worker: ${workerName}`);
+        throw new AppError('INVALID_REQUEST');
       });
 
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'COMPLETED',
         result
       });
@@ -131,10 +128,11 @@ export async function handleRevenueRequest(req, res, url) {
       });
       return send(res, 200, { ok: true, claim, result });
     } catch (err) {
-      error = err.message;
+      error = stableErrorCode(err);
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'FAILED',
         error
       });
@@ -142,7 +140,7 @@ export async function handleRevenueRequest(req, res, url) {
         runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
         scheduledFor: claim.scheduledFor, outcome: 'FAILED', durationMs: Date.now() - runStarted
       });
-      return send(res, 500, { ok: false, claim, error });
+      return sendProblem(res, err, { req, context: 'scheduler_trigger' });
     }
   }
 
@@ -155,7 +153,7 @@ export async function handleRevenueRequest(req, res, url) {
     const candidate = normalizeCandidate(input.candidate || input);
     const profile = input.profile || candidate.profile || 'programmable_money_flow_v1';
     if (!QUALIFICATION_PROFILES[profile]) {
-      return send(res, 400, { error: 'unknown qualification profile', profile });
+      return sendProblem(res, new AppError('INVALID_REQUEST'), { req, context: 'qualification_profile' });
     }
     const qualification = qualifyCandidate(candidate, profile);
     return send(res, 200, {
@@ -199,7 +197,9 @@ export async function handleRevenueRequest(req, res, url) {
   const record = url.pathname.match(/^\/api\/revenue\/records\/([^/]+)$/);
   if (req.method === 'PATCH' && record) {
     const updated = await updateRevenueRecord(record[1], await readJsonBody(req));
-    return updated ? send(res, 200, updated) : send(res, 404, { error: 'record not found' });
+    return updated
+      ? send(res, 200, updated)
+      : sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'revenue_record' });
   }
 
   const state = url.pathname.match(/^\/api\/revenue\/state\/([^/]+)$/);

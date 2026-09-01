@@ -162,7 +162,7 @@ export async function runWithFallback(prompt, {
       });
     }
 
-    const failure = new TaskmanError(`All configured providers failed: ${JSON.stringify(errors)}`, {
+    const failure = new TaskmanError('All configured providers failed', {
       code: 'ALL_PROVIDERS_FAILED',
       statusCode: 502
     });

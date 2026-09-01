@@ -37,6 +37,7 @@ import {
   recordLearningInference
 } from '../learning-inference.js';
 import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError, stableErrorCode } from '../errors.js';
 
 async function runExecuteWorkerImpl({
   limit = 10,
@@ -98,7 +99,7 @@ async function runExecuteWorkerImpl({
         attributableValue = Number(stepOutput.verifiedAttributableValue || stepOutput.attributableValue || 0);
       } catch (err) {
         outcomeStatus = 'BLOCKED';
-        outcomeReason = `Execution error: ${err.message}`;
+        outcomeReason = `Execution error: ${stableErrorCode(err)}`;
       }
     } else {
       // Invariant: In the absence of a concrete authorized executor adapter,
@@ -201,7 +202,7 @@ export async function runExecuteWorker(options = {}) {
 
 if (process.argv[1]?.endsWith('execute.js')) {
   runExecuteWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:execute:cli' });
     process.exit(1);
   });
 }

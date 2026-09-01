@@ -1,10 +1,6 @@
 import { parseMoltJobsWebhook, sendMoltJobsHeartbeat } from './moltjobs-client.js';
 import { readJsonBody } from './limits.js';
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(body));
-}
+import { AppError, sendJson, sendProblem } from './errors.js';
 
 export async function handleMoltJobsRequest(req, res, url) {
   if (req.method === 'POST' && url.pathname === '/webhooks/moltjobs') {
@@ -28,15 +24,13 @@ export async function handleMoltJobsRequest(req, res, url) {
       sendJson(res, 200, { ok: true, result });
     } catch (error) {
       const blocked = /MOLTJOBS_API_KEY|agentId|jobId/.test(String(error?.message || error));
-      sendJson(res, blocked ? 409 : (error.status || 502), {
-        ok: false,
-        blocked,
-        error: String(error?.message || error)
-      });
+      const publicError = blocked
+        ? new AppError('SETUP_REQUIRED', { cause: error })
+        : new AppError('PROVIDER_UNAVAILABLE', { cause: error });
+      sendProblem(res, publicError, { req, context: 'moltjobs_heartbeat' });
     }
     return true;
   }
 
   return false;
 }
-

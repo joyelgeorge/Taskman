@@ -5,6 +5,8 @@ import { join } from 'node:path';
 
 import { calculateChecksum, databaseEnabled, migrate, pool } from '../src/db.js';
 
+// PostgreSQL-only cases run under the mandatory integration job introduced by #12.
+
 test('migration checksums are deterministic SHA-256 values', () => {
   const first = calculateChecksum('CREATE TABLE fixture (id TEXT);');
   const same = calculateChecksum('CREATE TABLE fixture (id TEXT);');

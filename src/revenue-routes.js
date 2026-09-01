@@ -23,11 +23,16 @@ import {
 } from './observability.js';
 import { AppError, sendJson, sendProblem, stableErrorCode } from './errors.js';
 import { getRuntimeConfig } from './config.js';
+import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
 
 const runtimeConfig = getRuntimeConfig();
 
 function send(res, status, body) {
   return sendJson(res, status, body);
+}
+
+async function idempotentSend(req, res, options) {
+  return sendIdempotentResult(res, await runIdempotentMutation(req, options), send);
 }
 
 export async function handleRevenueRequest(req, res, url) {
@@ -180,36 +185,57 @@ export async function handleRevenueRequest(req, res, url) {
   }
   if (req.method === 'POST' && list) {
     const input = await readJsonBody(req);
-    const records = Array.isArray(input) ? input : [input];
-    const output = [];
     const queueName = resolveQueueName(decodeURIComponent(list[1]));
-    for (const record of records) output.push(await upsertRevenueRecord({ ...record, queue: queueName }));
-    return send(res, 201, Array.isArray(input) ? output : output[0]);
+    return idempotentSend(req, res, {
+      route: url.pathname,
+      body: input,
+      successStatus: 201,
+      execute: async () => {
+        const records = Array.isArray(input) ? input : [input];
+        const output = [];
+        for (const record of records) output.push(await upsertRevenueRecord({ ...record, queue: queueName }));
+        return Array.isArray(input) ? output : output[0];
+      }
+    });
   }
 
   const claim = url.pathname.match(/^\/api\/revenue\/queues\/([^/]+)\/claim$/);
   if (req.method === 'POST' && claim) {
     const input = await readJsonBody(req);
     const queueName = resolveQueueName(decodeURIComponent(claim[1]));
-    return send(res, 200, await claimRevenueRecords(queueName, {
-      limit: input.limit || 10,
-      claimedBy: input.claimedBy || 'taskman-worker'
-    }));
+    return idempotentSend(req, res, {
+      route: url.pathname,
+      body: input,
+      execute: () => claimRevenueRecords(queueName, {
+        limit: input.limit || 10,
+        claimedBy: input.claimedBy || 'taskman-worker'
+      })
+    });
   }
 
   const record = url.pathname.match(/^\/api\/revenue\/records\/([^/]+)$/);
   if (req.method === 'PATCH' && record) {
-    const updated = await updateRevenueRecord(record[1], await readJsonBody(req));
-    return updated
-      ? send(res, 200, updated)
-      : sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'revenue_record' });
+    const input = await readJsonBody(req);
+    return idempotentSend(req, res, {
+      route: url.pathname,
+      body: input,
+      execute: async () => {
+        const updated = await updateRevenueRecord(record[1], input);
+        if (!updated) throw new AppError('NOT_FOUND');
+        return updated;
+      }
+    });
   }
 
   const state = url.pathname.match(/^\/api\/revenue\/state\/([^/]+)$/);
   if (req.method === 'GET' && state) return send(res, 200, { key: state[1], value: await getRevenueState(state[1]) });
   if (req.method === 'PUT' && state) {
     const input = await readJsonBody(req);
-    return send(res, 200, await setRevenueState(state[1], input.value ?? input));
+    return idempotentSend(req, res, {
+      route: url.pathname,
+      body: input,
+      execute: () => setRevenueState(state[1], input.value ?? input)
+    });
   }
   return false;
 }

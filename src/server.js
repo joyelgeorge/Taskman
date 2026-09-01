@@ -47,6 +47,7 @@ import {
 } from './errors.js';
 import { getRuntimeConfig } from './config.js';
 import { handleEconomicSelectorRequest } from './economic-selector.js';
+import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
 
 const runtimeConfig = getRuntimeConfig();
 
@@ -83,6 +84,10 @@ function observeApiRequest(req, res, pathname) {
 
 function json(res, status, body) {
   return sendJson(res, status, body);
+}
+
+async function idempotentJson(req, res, options) {
+  return sendIdempotentResult(res, await runIdempotentMutation(req, options), json);
 }
 
 function compactKnowledge(knowledge) {
@@ -378,10 +383,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
     if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
     if (req.method === 'POST' && url.pathname === '/api/brain/run') {
-      return json(res, 200, await executionTracker.run(
-        'brain-manual',
-        signal => executeBrainCycle('manual', { signal })
-      ));
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: () => executionTracker.run(
+          'brain-manual',
+          signal => executeBrainCycle('manual', { signal })
+        )
+      });
     }
 
     const scenarioKnowledgeMatch = url.pathname.match(/^\/api\/scenarios\/([^/]+)\/knowledge$/);
@@ -401,34 +409,48 @@ const server = http.createServer(async (req, res) => {
       if (!interval.valid) {
         return sendProblem(res, new AppError(interval.code), { req, context: 'create_task_interval' });
       }
-      const id = crypto.randomUUID();
-      const task = await createTaskRecord({
-        id,
-        scenarioId: body.scenarioId || null,
-        title: body.title?.trim() || body.prompt.trim().slice(0, 60),
-        prompt: body.prompt.trim(),
-        intervalMinutes: interval.value
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        body,
+        successStatus: 201,
+        execute: async () => {
+          const task = await createTaskRecord({
+            id: crypto.randomUUID(),
+            scenarioId: body.scenarioId || null,
+            title: body.title?.trim() || body.prompt.trim().slice(0, 60),
+            prompt: body.prompt.trim(),
+            intervalMinutes: interval.value
+          });
+          schedule(task);
+          return task;
+        }
       });
-      schedule(task);
-      return json(res, 201, task);
     }
 
     const runMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/run$/);
     if (req.method === 'POST' && runMatch) {
       const task = await getTaskRecord(runMatch[1]);
       if (!task) return sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'run_task' });
-      return json(res, 200, await executionTracker.run(
-        'task-manual',
-        signal => executeTask(task, 'manual', signal)
-      ));
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: () => executionTracker.run(
+          'task-manual',
+          signal => executeTask(task, 'manual', signal)
+        )
+      });
     }
 
     const pauseMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/pause$/);
     if (req.method === 'POST' && pauseMatch) {
-      const task = await toggleTaskStatus(pauseMatch[1]);
-      if (!task) return sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'pause_task' });
-      schedule(task);
-      return json(res, 200, task);
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: async () => {
+          const task = await toggleTaskStatus(pauseMatch[1]);
+          if (!task) throw new AppError('NOT_FOUND');
+          schedule(task);
+          return task;
+        }
+      });
     }
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {

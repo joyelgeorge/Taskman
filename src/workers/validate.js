@@ -14,6 +14,7 @@ import {
   GUIDANCE_EVALUATIONS,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
 
 export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
   ...QUALIFICATION_PROFILES.programmable_money_flow_v1.evidenceGates
@@ -36,7 +37,7 @@ function classificationAfterCustomEvidence(qualification, evidenceCheck, profile
  * execution_queue. Numeric/model confidence never overrides profile evidence,
  * capability health, or setup state.
  */
-export async function runValidateWorker({
+async function runValidateWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-validate-worker',
   validatorFn = null,
@@ -108,6 +109,10 @@ export async function runValidateWorker({
       payload: validationPayload
     });
     validated.push(valRecord);
+    addTraceEvent('queue.transition', {
+      stage: 'VALIDATE', queue: 'validation', candidate_id: candidate.candidateId,
+      queue_item_id: valRecord.id, outcome: classification
+    });
 
     const priorLearningIds = item.payload.learning?.appliedLearningIds || [];
     const guidanceEvaluation = ['REJECTED', 'BLOCKED'].includes(classification)
@@ -171,6 +176,21 @@ export async function runValidateWorker({
     promotedRecords: promoted,
     timestamp: startedAt
   };
+}
+
+export async function runValidateWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.validate', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'VALIDATE'
+  }, async () => {
+    const result = await runValidateWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('VALIDATE', result);
+    return result;
+  });
 }
 
 if (process.argv[1]?.endsWith('validate.js')) {

@@ -21,6 +21,7 @@ import {
   listActiveLearning,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
 
 /**
  * Loads real candidates from configured discovery sources.
@@ -127,7 +128,7 @@ export async function discoverFromRealSources({
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
 
-export async function runDiscoverWorker({
+async function runDiscoverWorkerImpl({
   sources = Object.keys(DISCOVERY_SOURCES),
   sampleCandidates = [],
   claimedBy = 'taskman-discover-worker',
@@ -203,6 +204,10 @@ export async function runDiscoverWorker({
         }
       });
       enqueued.push(record);
+      addTraceEvent('queue.enqueue', {
+        stage: 'DISCOVER', queue: 'candidates', candidate_id: candidate.candidateId,
+        queue_item_id: record.id, outcome: 'enqueued'
+      });
       if (candidate.noveltyKey) existingNoveltyKeys.add(candidate.noveltyKey);
     } else {
       rejected.push({
@@ -260,6 +265,21 @@ export async function runDiscoverWorker({
     enqueuedRecords: enqueued,
     timestamp: startedAt
   };
+}
+
+export async function runDiscoverWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.discover', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'DISCOVER'
+  }, async () => {
+    const result = await runDiscoverWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('DISCOVER', result);
+    return result;
+  });
 }
 
 if (process.argv[1]?.endsWith('discover.js')) {

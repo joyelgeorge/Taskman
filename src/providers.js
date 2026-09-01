@@ -1,4 +1,5 @@
 import { LIMITS, TaskmanError, abortable, createDeadline } from './limits.js';
+import { recordProviderAttempt, withTelemetrySpan } from './observability.js';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -93,13 +94,25 @@ export async function runWithFallback(prompt, {
       });
 
       try {
-        const result = await abortable(
+        const result = await withTelemetrySpan('provider.request', {
+          provider: provider.id,
+          model: provider.model,
+          attempt: errors.length + 1,
+          fallback: errors.length > 0
+        }, () => abortable(
           provider.call(prompt, key, { signal: attempt.signal }),
           attempt.signal
-        );
+        ));
         if (overall.signal.aborted) {
           throw overall.signal.reason;
         }
+        recordProviderAttempt({
+          provider: provider.id,
+          model: provider.model,
+          durationMs: Date.now() - attemptStarted,
+          outcome: 'success',
+          fallback: errors.length > 0
+        });
         return {
           ...result,
           provider: provider.id,
@@ -118,6 +131,14 @@ export async function runWithFallback(prompt, {
           provider: provider.id,
           code,
           durationMs: Date.now() - attemptStarted
+        });
+        recordProviderAttempt({
+          provider: provider.id,
+          model: provider.model,
+          durationMs: Date.now() - attemptStarted,
+          outcome: 'error',
+          errorCode: code,
+          fallback: errors.length > 1
         });
         if (code === 'RUN_DEADLINE_EXCEEDED') break;
       } finally {

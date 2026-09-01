@@ -76,6 +76,14 @@ export async function discoverFromRealSources({
     } catch {
       // Provider failures are retryable at the rail boundary and never fabricate candidates.
     }
+    try {
+      const result = await discoverRail('taskmarket');
+      if (result?.ok && Array.isArray(result.tasks)) {
+        for (const task of result.tasks) discovered.push(normalizeCandidate(task));
+      }
+    } catch {
+      // Provider failures are retryable at the rail boundary and never fabricate candidates.
+    }
   }
 
   // 3. Ingest active hypothesis from real persisted research anchor if requested

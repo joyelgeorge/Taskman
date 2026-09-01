@@ -8,7 +8,7 @@ import {
   sendProblem,
   stableErrorCode
 } from '../src/errors.js';
-import { createRunRecord, finishRunRecord, listRunRecords } from '../src/task-store.js';
+import { createRunRecord, createTaskRecord, finishRunRecord, listRunRecords } from '../src/task-store.js';
 import { runWithFallback } from '../src/providers.js';
 
 function responseRecorder() {
@@ -78,9 +78,17 @@ test('known failures have stable status and retryability', () => {
 
 test('run records persist stable codes instead of exception messages', async () => {
   const id = crypto.randomUUID();
+  const taskId = crypto.randomUUID();
+  await createTaskRecord({
+    id: taskId,
+    scenarioId: null,
+    title: 'Error contract fixture',
+    prompt: 'Exercise safe persisted error handling',
+    intervalMinutes: null
+  });
   await createRunRecord({
     id,
-    taskId: 'error-contract-task',
+    taskId,
     scenarioId: null,
     reason: 'test',
     status: 'running',

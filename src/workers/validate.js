@@ -42,8 +42,10 @@ async function runValidateWorkerImpl({
   claimedBy = 'taskman-validate-worker',
   validatorFn = null,
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
   const validated = [];
@@ -52,6 +54,7 @@ async function runValidateWorkerImpl({
   const needsEvidence = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     let candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
 
@@ -121,6 +124,7 @@ async function runValidateWorkerImpl({
         ? GUIDANCE_EVALUATIONS.INCONCLUSIVE
         : GUIDANCE_EVALUATIONS.USEFUL;
     for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
       await evaluatePastGuidance(learningId, guidanceEvaluation, {
         evidenceRef: `validation:${valRecord.id}`,
         now: new Date(startedAt)

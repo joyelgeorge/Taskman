@@ -43,8 +43,10 @@ async function runExecuteWorkerImpl({
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
   mockAiReasoning = null,
-  capabilityOptions = {}
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
   const capabilities = getRuntimeCapabilityMap(capabilityOptions);
@@ -53,6 +55,7 @@ async function runExecuteWorkerImpl({
   const outcomes = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     const candidate = item.payload.candidate || item.payload;
     const requiredCapabilities = Array.isArray(candidate.requiredCapabilities)
       ? candidate.requiredCapabilities
@@ -88,7 +91,7 @@ async function runExecuteWorkerImpl({
       outcomeReason = `Required capabilities need setup: ${capabilityDecision.setupRequired.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
-        stepOutput = await executorFn(candidate, capabilities, aiPlan);
+        stepOutput = await executorFn(candidate, capabilities, aiPlan, { signal });
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
         // Only set attributable value if verified and provided by real executor output
@@ -148,6 +151,7 @@ async function runExecuteWorkerImpl({
         ? GUIDANCE_EVALUATIONS.MISLEADING
         : GUIDANCE_EVALUATIONS.INCONCLUSIVE;
     for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
       await evaluatePastGuidance(learningId, guidanceEvaluation, {
         evidenceRef: `outcome:${outcomeRecord.id}`,
         now: new Date(startedAt)

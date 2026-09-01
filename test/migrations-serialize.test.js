@@ -1,41 +1,54 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateChecksum, migrate, databaseEnabled, pool } from '../src/db.js';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
-test('Database Migrations: calculateChecksum generates deterministic sha256', () => {
-  const content1 = 'CREATE TABLE test_table (id TEXT);';
-  const content2 = 'CREATE TABLE test_table (id TEXT);';
-  const content3 = 'CREATE TABLE test_table (id INT);';
+import { calculateChecksum, databaseEnabled, migrate, pool } from '../src/db.js';
 
-  const hash1 = calculateChecksum(content1);
-  const hash2 = calculateChecksum(content2);
-  const hash3 = calculateChecksum(content3);
+// PostgreSQL-only cases run under the mandatory integration job introduced by #12.
 
-  assert.equal(hash1, hash2);
-  assert.notEqual(hash1, hash3);
-  assert.equal(hash1.length, 64);
+test('migration checksums are deterministic SHA-256 values', () => {
+  const first = calculateChecksum('CREATE TABLE fixture (id TEXT);');
+  const same = calculateChecksum('CREATE TABLE fixture (id TEXT);');
+  const changed = calculateChecksum('CREATE TABLE fixture (id UUID);');
+  assert.equal(first, same);
+  assert.notEqual(first, changed);
+  assert.match(first, /^[a-f0-9]{64}$/);
 });
 
-test('Database Migrations: migrate() runs safely in PostgreSQL mode with advisory locking', { skip: !databaseEnabled }, async () => {
-  const res = await migrate();
-  assert.equal(res.enabled, true);
-  assert.ok(Array.isArray(res.applied));
-
-  // Verify schema_migrations has checksums populated
-  const rows = await pool.query('SELECT filename, checksum, applied_at FROM schema_migrations');
-  assert.ok(rows.rows.length >= 1);
-  for (const row of rows.rows) {
-    assert.ok(row.checksum, `Migration ${row.filename} must have a non-empty checksum`);
-    assert.equal(row.checksum.length, 64);
+test('migration lock timeout is strictly bounded', async () => {
+  if (!databaseEnabled) {
+    assert.deepEqual(await migrate({ lockTimeoutMs: 0 }), { enabled: false, applied: [] });
+    return;
   }
+  await assert.rejects(() => migrate({ lockTimeoutMs: 0 }), /between 1 and 120000/);
 });
 
-test('Database Migrations: concurrent migrate() calls serialize cleanly', { skip: !databaseEnabled }, async () => {
-  const [res1, res2] = await Promise.all([
-    migrate(),
-    migrate()
-  ]);
+test('migrations persist checksums and remain idempotent', { skip: !databaseEnabled }, async () => {
+  const result = await migrate();
+  assert.equal(result.enabled, true);
+  const rows = await pool.query('SELECT filename, checksum FROM schema_migrations ORDER BY filename');
+  assert.ok(rows.rowCount > 0);
+  for (const row of rows.rows) assert.match(row.checksum, /^[a-f0-9]{64}$/);
+  assert.deepEqual((await migrate()).applied, []);
+});
 
-  assert.equal(res1.enabled, true);
-  assert.equal(res2.enabled, true);
+test('concurrent migration runners serialize cleanly', { skip: !databaseEnabled }, async () => {
+  const results = await Promise.all([migrate(), migrate(), migrate()]);
+  assert.ok(results.every(result => result.enabled));
+  assert.ok(results.every(result => result.applied.length === 0));
+});
+
+test('checksum drift fails closed without applying work', { skip: !databaseEnabled }, async () => {
+  const row = (await pool.query(
+    'SELECT filename, checksum FROM schema_migrations ORDER BY filename LIMIT 1'
+  )).rows[0];
+  assert.ok(row);
+  await pool.query('UPDATE schema_migrations SET checksum=$1 WHERE filename=$2', ['0'.repeat(64), row.filename]);
+  try {
+    await assert.rejects(() => migrate(), new RegExp(`Checksum drift detected for migration ${row.filename}`));
+  } finally {
+    const sql = await readFile(join('db', 'migrations', row.filename), 'utf8');
+    await pool.query('UPDATE schema_migrations SET checksum=$1 WHERE filename=$2', [calculateChecksum(sql), row.filename]);
+  }
 });

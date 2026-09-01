@@ -3,41 +3,91 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { providerStatus, runWithFallback } from './providers.js';
+import { LIMITS, configureServerTimeouts, readJsonBody } from './limits.js';
 import { getKnowledgeSnapshot, recordRunLearning, ingestStructuredLearning } from './knowledge-store.js';
 import { buildLearningPrompt, parseLearningEnvelope, validateLearningEnvelope } from './structured-learning.js';
-import { databaseEnabled, migrate, healthCheck as dbHealth } from './db.js';
+import { databaseEnabled, migrate, healthCheck as dbHealth, pool } from './db.js';
+import { evaluateHealth, livenessSnapshot } from './health.js';
 import { seedScenarios, seedCoreTasks, listScenarios } from './scenario-store.js';
 import { getBrainState, executeBrainCycle, listBrainCycles } from './brain-controller.js';
 import { handleMoltJobsRequest } from './moltjobs-routes.js';
 import { handleRevenueRequest } from './revenue-routes.js';
 import {
   createTaskRecord, listTaskRecords, getTaskRecord, toggleTaskStatus,
-  createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary
+  createRunRecord, finishRunRecord, listRunRecords, recordUsage, usageSummary,
+  quarantineInvalidIntervalTriggers
 } from './task-store.js';
+import { normalizeBrainIntervalMinutes, normalizeIntervalMinutes } from './interval-validator.js';
 import {
   initializeScheduler, reconcileOverdueJobs, claimScheduledJob, finishScheduledJobRun, isSchedulerDurable, DEFAULT_SCHEDULES
 } from './durable-scheduler.js';
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { applySecurityHeaders } from './http-security.js';
+import {
+  getObservabilitySnapshot,
+  getPipelineObservabilitySummary,
+  recordMetric,
+  recordScheduleRun,
+  withTelemetrySpan
+} from './observability.js';
+import {
+  createExecutionTracker,
+  createShutdownCoordinator,
+  installShutdownSignals
+} from './shutdown.js';
+import {
+  AppError,
+  logRestrictedError,
+  requestCorrelationId,
+  sendJson,
+  sendProblem,
+  stableErrorCode
+} from './errors.js';
+import { getRuntimeConfig } from './config.js';
+import { handleEconomicSelectorRequest } from './economic-selector.js';
+import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
+
+const runtimeConfig = getRuntimeConfig();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
-const port = Number(process.env.PORT || 3000);
+const port = runtimeConfig.port;
 const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 let brainTimer = null;
 let internalSchedulerTimer = null;
+const executionTracker = createExecutionTracker();
+let shutdownCoordinator = null;
 
-function json(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
-  res.end(JSON.stringify(body));
+function boundedRoute(pathname) {
+  return pathname
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ':id')
+    .replace(/\/\d+(?=\/|$)/g, '/:id')
+    .slice(0, 120);
 }
 
-async function readBody(req) {
-  let raw = '';
-  for await (const chunk of req) raw += chunk;
-  return raw ? JSON.parse(raw) : {};
+function observeApiRequest(req, res, pathname) {
+  const started = Date.now();
+  const route = boundedRoute(pathname);
+  res.once('finish', () => {
+    const labels = {
+      method: req.method,
+      route,
+      status_class: `${Math.floor(res.statusCode / 100)}xx`
+    };
+    recordMetric('api_requests_total', 1, labels);
+    recordMetric('api_request_duration_ms', Date.now() - started, labels, { kind: 'histogram' });
+  });
+}
+
+function json(res, status, body) {
+  return sendJson(res, status, body);
+}
+
+async function idempotentJson(req, res, options) {
+  return sendIdempotentResult(res, await runIdempotentMutation(req, options), json);
 }
 
 function compactKnowledge(knowledge) {
@@ -57,7 +107,7 @@ function deriveNextAction(envelope, run) {
   return event?.value?.nextBestAction || 'Use the updated knowledge state to select the next unresolved money-relevant gap.';
 }
 
-async function executeTask(task, reason = 'manual') {
+async function executeTask(task, reason = 'manual', signal) {
   const run = {
     id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null,
     reason, status: 'running', startedAt: new Date().toISOString()
@@ -68,7 +118,7 @@ async function executeTask(task, reason = 'manual') {
   let envelope = null;
   try {
     const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
-    const result = await runWithFallback(prompt);
+    const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs, signal });
     envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
 
     run.status = 'succeeded';
@@ -84,7 +134,8 @@ async function executeTask(task, reason = 'manual') {
     memoryUsage.outputTokens += result.outputTokens;
   } catch (e) {
     run.status = 'failed';
-    run.error = String(e.message || e);
+    run.error = stableErrorCode(e, 'PROVIDER_UNAVAILABLE');
+    run.fallbacks = Array.isArray(e.diagnostics) ? e.diagnostics : [];
   }
 
   run.finishedAt = new Date().toISOString();
@@ -115,20 +166,22 @@ async function executeTask(task, reason = 'manual') {
   return run;
 }
 
-import { normalizeIntervalMinutes, normalizeBrainIntervalMinutes } from './interval-validator.js';
-
 function schedule(task) {
   const old = timers.get(task.id);
-  if (old) clearInterval(old);
-  if (!task.intervalMinutes || task.status !== 'active') return;
-
-  const check = normalizeIntervalMinutes(task.intervalMinutes);
-  if (!check.valid || !check.value) {
-    console.warn(`[Taskman Schedule] Disabled invalid interval for task ${task.id}: ${check.error || 'invalid'}`);
+  if (old) {
+    clearInterval(old);
+    timers.delete(task.id);
+  }
+  if (task.status !== 'active') return;
+  const interval = normalizeIntervalMinutes(task.intervalMinutes);
+  if (!interval.valid || !interval.value) {
+    if (!interval.valid) console.warn(`[Taskman Schedule] ${interval.code}; task=${task.id}`);
     return;
   }
-
-  const timer = setInterval(() => executeTask(task, 'schedule').catch(console.error), check.value * 60_000);
+  const timer = setInterval(() => {
+    executionTracker.run('task-schedule', signal => executeTask(task, 'schedule', signal))
+      .catch(error => logRestrictedError(error, { context: 'task_schedule' }));
+  }, interval.value * 60_000);
   timer.unref();
   timers.set(task.id, timer);
 }
@@ -139,16 +192,22 @@ async function restoreSchedules() {
 }
 
 function startBrainScheduler() {
-  const check = normalizeBrainIntervalMinutes();
-  if (!check.valid || !check.value) return;
-  const minutes = check.value;
-  brainTimer = setInterval(() => executeBrainCycle('schedule').catch(console.error), minutes * 60_000);
+  const interval = normalizeBrainIntervalMinutes(runtimeConfig.scheduler.brainIntervalMinutes || null);
+  if (!interval.valid || !interval.value) {
+    if (!interval.valid) console.warn(`[Taskman Brain] ${interval.code}; scheduler disabled`);
+    return;
+  }
+  const minutes = interval.value;
+  brainTimer = setInterval(() => {
+    executionTracker.run('brain-schedule', signal => executeBrainCycle('schedule', { signal }))
+      .catch(error => logRestrictedError(error, { context: 'brain_schedule' }));
+  }, minutes * 60_000);
   brainTimer.unref();
   console.log(`Taskman brain scheduler enabled: every ${minutes} minute(s)`);
 }
 
-async function tickInternalScheduler() {
-  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') return;
+async function tickInternalScheduler(signal) {
+  if (!runtimeConfig.scheduler.internalEnabled) return;
   const now = new Date();
 
   for (const scheduleDef of DEFAULT_SCHEDULES) {
@@ -164,95 +223,174 @@ async function tickInternalScheduler() {
 
     let result = null;
     let error = null;
+    const runStarted = Date.now();
     try {
-      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy: claim.claimedBy });
+      result = await withTelemetrySpan('scheduler.run', {
+        correlation_id: claim.runKey,
+        run_key: claim.runKey,
+        schedule_id: claim.job.id,
+        stage: workerName.toUpperCase(),
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
+      }, async () => {
+        const options = {
+          claimedBy: claim.claimedBy,
+          correlationId: claim.runKey,
+          runKey: claim.runKey,
+          scheduleId: claim.job.id,
+          signal
+        };
+        if (workerName === 'discover') return runDiscoverWorker(options);
+        if (workerName === 'validate') return runValidateWorker(options);
+        if (workerName === 'execute') return runExecuteWorker(options);
+        throw new Error(`Unknown scheduled worker: ${workerName}`);
+      });
 
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
+        leaseToken: claim.leaseToken,
         status: 'COMPLETED',
         result,
         now: new Date()
       });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome: 'COMPLETED',
+        durationMs: Date.now() - runStarted,
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
+      });
       console.log(`[Taskman Scheduler] Completed scheduled firing for worker: ${workerName}`);
     } catch (err) {
-      error = err.message;
-      console.error(`[Taskman Scheduler] Error in worker ${workerName}:`, err);
+      const interrupted = signal?.aborted === true;
+      const outcome = interrupted ? 'INTERRUPTED' : 'FAILED';
+      error = interrupted ? 'SHUTDOWN_INTERRUPTED' : stableErrorCode(err);
+      if (interrupted) {
+        console.warn(`[Taskman Scheduler] Worker interrupted during shutdown: ${workerName}`);
+      } else {
+        logRestrictedError(err, { context: `scheduled_worker:${workerName}` });
+      }
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
-        status: 'FAILED',
+        leaseToken: claim.leaseToken,
+        status: outcome,
         error,
         now: new Date()
+      });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome,
+        durationMs: Date.now() - runStarted,
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
       });
     }
   }
 }
 
 function startInternalSchedulerLoop() {
-  if (process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED !== 'true') {
+  if (!runtimeConfig.scheduler.internalEnabled) {
     console.log('[Taskman Scheduler] Internal scheduler loop disabled (TASKMAN_INTERNAL_SCHEDULER_ENABLED != true)');
     return;
   }
   console.log('[Taskman Scheduler] Internal durable scheduler loop enabled. Polling schedule queue every 15s.');
-  tickInternalScheduler().catch(console.error);
-  internalSchedulerTimer = setInterval(() => tickInternalScheduler().catch(console.error), 15_000);
+  executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal))
+    .catch(error => logRestrictedError(error, { context: 'scheduler_loop' }));
+  internalSchedulerTimer = setInterval(() => {
+    executionTracker.run('internal-scheduler', signal => tickInternalScheduler(signal))
+      .catch(error => logRestrictedError(error, { context: 'scheduler_loop' }));
+  }, 15_000);
   internalSchedulerTimer.unref();
 }
 
 const server = http.createServer(async (req, res) => {
+  applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    req.taskmanCorrelationId = requestCorrelationId(req);
+    observeApiRequest(req, res, url.pathname);
+
+    if (shutdownCoordinator?.isDraining() && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      res.setHeader('retry-after', String(Math.max(1, Math.ceil(shutdownCoordinator.graceMs / 1000))));
+      return sendProblem(res, new AppError('SHUTDOWN_IN_PROGRESS'), { req, context: 'shutdown_drain' });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/health/live') {
+      return json(res, 200, livenessSnapshot());
+    }
+
+    if (req.method === 'GET' && url.pathname === '/health/ready') {
+      const database = await dbHealth();
+      const health = evaluateHealth({
+        database,
+        providers: providerStatus(),
+        schedulerDurable: isSchedulerDurable(),
+        internalSchedulerEnabled: runtimeConfig.scheduler.internalEnabled,
+        draining: shutdownCoordinator?.isDraining() === true
+      });
+      return json(res, health.ready ? 200 : 503, health);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/observability') {
+      return json(res, 200, getObservabilitySnapshot({
+        includeTraces: url.searchParams.get('traces') !== 'false'
+      }));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/observability/pipeline') {
+      return json(res, 200, await getPipelineObservabilitySummary({
+        maxStallMinutes: Number(url.searchParams.get('maxStallMinutes') || 60)
+      }));
+    }
 
     if (await handleMoltJobsRequest(req, res, url)) return;
     if (await handleRevenueRequest(req, res, url)) return;
+    if (await handleEconomicSelectorRequest(req, res, url)) return;
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
-      const db = await dbHealth();
+      const database = await dbHealth();
+      const providers = providerStatus();
+      const schedulerDurable = isSchedulerDurable();
+      const internalSchedulerEnabled = runtimeConfig.scheduler.internalEnabled;
+      const brainInterval = normalizeBrainIntervalMinutes(runtimeConfig.scheduler.brainIntervalMinutes || null);
+      const health = evaluateHealth({
+        database,
+        providers,
+        schedulerDurable,
+        internalSchedulerEnabled,
+        draining: shutdownCoordinator?.isDraining() === true
+      });
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
-        providers: providerStatus(), usage, database: db,
+        ...health,
+        providers, usage, database,
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
-        schedulerDurable: isSchedulerDurable(),
-        internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true',
-        brainIntervalMinutes: Number(process.env.TASKMAN_BRAIN_INTERVAL_MINUTES || 0) || null
+        schedulerDurable,
+        internalSchedulerEnabled,
+        runtime: {
+          nodeVersion: process.versions.node,
+          nodeMajor: Number(process.versions.node.split('.')[0]),
+          supportedNodeMajor: 24
+        },
+        brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null,
+        configuration: runtimeConfig.safeSummary
       });
     }
-import { getSafeCapabilitySnapshot } from './capability-registry.js';
-import { qualifyCandidate, normalizeCandidate } from './qualification-engine.js';
-
-import { listActiveInferences } from './learning-inference.js';
-
-    if (req.method === 'GET' && url.pathname === '/api/inferences') {
-      return json(res, 200, await listActiveInferences());
-    }
-
-    if (req.method === 'GET' && url.pathname === '/api/capabilities') {
-      return json(res, 200, getSafeCapabilitySnapshot());
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/qualification') {
-      const body = await readBody(req);
-      const profile = body.profile || 'programmable_money_flow_v1';
-      const candidate = normalizeCandidate(body.candidate || body);
-      try {
-        const result = qualifyCandidate(candidate, profile);
-        return json(res, 200, { candidateId: candidate.candidateId, profile, qualification: result });
-      } catch (err) {
-        return json(res, 400, { error: err.message });
-      }
-    }
-
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
     if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
-    if (req.method === 'POST' && url.pathname === '/api/brain/run') return json(res, 200, await executeBrainCycle('manual'));
+    if (req.method === 'POST' && url.pathname === '/api/brain/run') {
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: () => executionTracker.run(
+          'brain-manual',
+          signal => executeBrainCycle('manual', { signal })
+        )
+      });
+    }
 
     const scenarioKnowledgeMatch = url.pathname.match(/^\/api\/scenarios\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && scenarioKnowledgeMatch) {
@@ -262,59 +400,57 @@ import { listActiveInferences } from './learning-inference.js';
     const knowledgeMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/knowledge$/);
     if (req.method === 'GET' && knowledgeMatch) return json(res, 200, await getKnowledgeSnapshot({ taskId: knowledgeMatch[1] }));
 
-import { claimIdempotencyKey, finishIdempotentMutation } from './idempotency-ledger.js';
-
     if (req.method === 'POST' && url.pathname === '/api/tasks') {
-      const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'];
-      const body = await readBody(req);
-
-      const claim = await claimIdempotencyKey(idempotencyKey, { route: '/api/tasks', body });
-      if (!claim.shouldExecute) {
-        if (claim.conflict) return json(res, 409, { error: claim.error });
-        if (claim.inProgress) return json(res, 409, { error: claim.error });
-        if (claim.replayed) {
-          res.setHeader('x-idempotent-replay', 'true');
-          return json(res, claim.responseStatus, claim.responseBody);
+      const body = await readJsonBody(req);
+      if (!body.prompt?.trim()) {
+        return sendProblem(res, new AppError('INVALID_REQUEST'), { req, context: 'create_task' });
+      }
+      const interval = normalizeIntervalMinutes(body.intervalMinutes);
+      if (!interval.valid) {
+        return sendProblem(res, new AppError(interval.code), { req, context: 'create_task_interval' });
+      }
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        body,
+        successStatus: 201,
+        execute: async () => {
+          const task = await createTaskRecord({
+            id: crypto.randomUUID(),
+            scenarioId: body.scenarioId || null,
+            title: body.title?.trim() || body.prompt.trim().slice(0, 60),
+            prompt: body.prompt.trim(),
+            intervalMinutes: interval.value
+          });
+          schedule(task);
+          return task;
         }
-      }
-
-      if (!body.prompt?.trim()) return json(res, 400, { error: 'prompt is required' });
-
-      const intervalCheck = normalizeIntervalMinutes(body.intervalMinutes);
-      if (!intervalCheck.valid) {
-        return json(res, 400, { error: intervalCheck.error });
-      }
-
-      const id = crypto.randomUUID();
-      const task = await createTaskRecord({
-        id,
-        scenarioId: body.scenarioId || null,
-        title: body.title?.trim() || body.prompt.trim().slice(0, 60),
-        prompt: body.prompt.trim(),
-        intervalMinutes: intervalCheck.value
       });
-      schedule(task);
-
-      if (claim.required) {
-        await finishIdempotentMutation(idempotencyKey, { responseStatus: 201, responseBody: task });
-      }
-
-      return json(res, 201, task);
     }
 
     const runMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/run$/);
     if (req.method === 'POST' && runMatch) {
       const task = await getTaskRecord(runMatch[1]);
-      if (!task) return json(res, 404, { error: 'task not found' });
-      return json(res, 200, await executeTask(task));
+      if (!task) return sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'run_task' });
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: () => executionTracker.run(
+          'task-manual',
+          signal => executeTask(task, 'manual', signal)
+        )
+      });
     }
 
     const pauseMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/pause$/);
     if (req.method === 'POST' && pauseMatch) {
-      const task = await toggleTaskStatus(pauseMatch[1]);
-      if (!task) return json(res, 404, { error: 'task not found' });
-      schedule(task);
-      return json(res, 200, task);
+      return idempotentJson(req, res, {
+        route: url.pathname,
+        execute: async () => {
+          const task = await toggleTaskStatus(pauseMatch[1]);
+          if (!task) throw new AppError('NOT_FOUND');
+          schedule(task);
+          return task;
+        }
+      });
     }
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
@@ -327,23 +463,56 @@ import { claimIdempotencyKey, finishIdempotentMutation } from './idempotency-led
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
       return res.end(js);
     }
-    json(res, 404, { error: 'not found' });
+    if (req.method === 'GET' && url.pathname === '/refresh-controller.js') {
+      const js = await readFile(join(publicDir, 'refresh-controller.js'));
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+      return res.end(js);
+    }
+    if (req.method === 'GET' && url.pathname === '/styles.css') {
+      const css = await readFile(join(publicDir, 'styles.css'));
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+      return res.end(css);
+    }
+    sendProblem(res, new AppError('NOT_FOUND'), { req, context: 'route' });
   } catch (e) {
-    json(res, 500, { error: String(e.message || e) });
+    sendProblem(res, e, { req, context: 'request' });
   }
 });
+
+configureServerTimeouts(server);
+
+function stopScheduling() {
+  for (const timer of timers.values()) clearInterval(timer);
+  timers.clear();
+  if (brainTimer) clearInterval(brainTimer);
+  if (internalSchedulerTimer) clearInterval(internalSchedulerTimer);
+  brainTimer = null;
+  internalSchedulerTimer = null;
+}
+
+shutdownCoordinator = createShutdownCoordinator({
+  server,
+  tracker: executionTracker,
+  stopScheduling,
+  closeDatabase: async () => {
+    if (pool && !pool.ended) await pool.end();
+  }
+});
+installShutdownSignals(shutdownCoordinator);
 
 if (databaseEnabled) {
   const migration = await migrate();
   const scenarios = await seedScenarios();
   const tasks = await seedCoreTasks();
+  const intervalQuarantine = await quarantineInvalidIntervalTriggers();
   await initializeScheduler();
   const overdue = await reconcileOverdueJobs();
-  console.log('Taskman database ready', { migration, scenarios, tasks, overdueCount: overdue.length });
+  console.log('Taskman database ready', { migration, scenarios, tasks, intervalQuarantine, overdueCount: overdue.length });
 } else {
   await initializeScheduler();
 }
 await restoreSchedules();
 startBrainScheduler();
 startInternalSchedulerLoop();
+console.log('[Taskman Configuration]', runtimeConfig.safeSummary);
 server.listen(port, () => console.log(`Taskman running at http://localhost:${port}`));

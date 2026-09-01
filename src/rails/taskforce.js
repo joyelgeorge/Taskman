@@ -1,8 +1,13 @@
 import { RailAdapter, RAIL_MODE } from './base.js';
 import { evaluateExecutionGate } from './execution-gate.js';
+import { getRuntimeConfig } from '../config.js';
 
 export class TaskForceRail extends RailAdapter {
-  constructor({ apiKey = process.env.TASKFORCE_API_KEY, baseUrl = process.env.TASKFORCE_BASE_URL || 'https://www.task-force.app', mode = RAIL_MODE.READ_ONLY } = {}) {
+  constructor({
+    apiKey = getRuntimeConfig().rails.taskforce.apiKey,
+    baseUrl = getRuntimeConfig().rails.taskforce.baseUrl,
+    mode = RAIL_MODE.READ_ONLY
+  } = {}) {
     super({ name: 'taskforce', mode });
     this.apiKey = apiKey || null;
     this.baseUrl = baseUrl.replace(/\/$/, '');

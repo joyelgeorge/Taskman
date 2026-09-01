@@ -1,7 +1,10 @@
 import {
-  CANONICAL_QUEUES,
-  capabilitySnapshot
+  CANONICAL_QUEUES
 } from '../orchestration-profiles.js';
+import {
+  evaluateRequiredCapabilities,
+  getRuntimeCapabilityMap
+} from '../capability-registry.js';
 import {
   claimRevenueRecords,
   updateRevenueRecord,
@@ -28,23 +31,37 @@ import {
  * - Realized attributableValue must be 0 / null until verified by an actual execution outcome.
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
+import {
+  evaluatePastGuidance,
+  GUIDANCE_EVALUATIONS,
+  recordLearningInference
+} from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError, stableErrorCode } from '../errors.js';
 
-export async function runExecuteWorker({
+async function runExecuteWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
-  const capabilities = capabilitySnapshot();
+  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
 
   const executed = [];
   const outcomes = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     const candidate = item.payload.candidate || item.payload;
-    const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
+    const requiredCapabilities = Array.isArray(candidate.requiredCapabilities)
+      ? candidate.requiredCapabilities
+      : [];
+    const capabilityDecision = evaluateRequiredCapabilities(requiredCapabilities, capabilityOptions);
 
     let aiPlan = null;
     if (sharedReasoningEngine.isConfigured() || mockAiReasoning) {
@@ -66,19 +83,23 @@ export async function runExecuteWorker({
     let stepOutput = null;
 
     // Check capabilities first
-    if (missing.length > 0) {
+    if (capabilityDecision.unavailable.length > 0 || capabilityDecision.unhealthy.length > 0) {
+      const blocked = [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy];
+      outcomeStatus = 'BLOCKED';
+      outcomeReason = `Required capabilities unavailable: ${blocked.join(', ')}`;
+    } else if (capabilityDecision.setupRequired.length > 0) {
       outcomeStatus = 'SETUP_REQUIRED';
-      outcomeReason = `Missing required capabilities: ${missing.join(', ')}`;
+      outcomeReason = `Required capabilities need setup: ${capabilityDecision.setupRequired.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
-        stepOutput = await executorFn(candidate, capabilities, aiPlan);
+        stepOutput = await executorFn(candidate, capabilities, aiPlan, { signal });
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
         // Only set attributable value if verified and provided by real executor output
         attributableValue = Number(stepOutput.verifiedAttributableValue || stepOutput.attributableValue || 0);
       } catch (err) {
         outcomeStatus = 'BLOCKED';
-        outcomeReason = `Execution error: ${err.message}`;
+        outcomeReason = `Execution error: ${stableErrorCode(err)}`;
       }
     } else {
       // Invariant: In the absence of a concrete authorized executor adapter,
@@ -118,25 +139,40 @@ export async function runExecuteWorker({
     });
     outcomes.push(outcomeRecord);
     executed.push(outcomePayload);
-  }
-
-  // Write lessons into learning_inference
-  if (outcomes.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-execute-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 8,
-      payload: {
-        stage: 'EXECUTE',
-        claimedCount: claimed.length,
-        outcomesCount: outcomes.length,
-        moneyEventsCount: outcomes.filter(o => o.status === 'MONEY_EVENT').length,
-        blockedCount: outcomes.filter(o => o.status === 'BLOCKED').length,
-        setupRequiredCount: outcomes.filter(o => o.status === 'SETUP_REQUIRED').length,
-        timestamp: startedAt
-      }
+    addTraceEvent('pipeline.terminal', {
+      stage: 'EXECUTE', queue: 'outcomes', candidate_id: candidate.candidateId,
+      queue_item_id: outcomeRecord.id, outcome: outcomeStatus
     });
+
+    const priorLearningIds = item.payload.learning?.appliedLearningIds ||
+      item.payload.validation?.learning?.appliedLearningIds || [];
+    const guidanceEvaluation = ['COMPLETED', 'ADVANCED', 'VALUE_CREATED', 'MONEY_EVENT'].includes(outcomeStatus)
+      ? GUIDANCE_EVALUATIONS.USEFUL
+      : ['BLOCKED', 'REJECTED'].includes(outcomeStatus)
+        ? GUIDANCE_EVALUATIONS.MISLEADING
+        : GUIDANCE_EVALUATIONS.INCONCLUSIVE;
+    for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
+      await evaluatePastGuidance(learningId, guidanceEvaluation, {
+        evidenceRef: `outcome:${outcomeRecord.id}`,
+        now: new Date(startedAt)
+      });
+    }
+    await recordLearningInference({
+      statement: `${candidate.sourceType || 'unknown'} execution ended ${outcomeStatus}: ${outcomeReason}`,
+      classification: 'TEMPORARY_HINT',
+      confidence: 0.65,
+      supportingEvidence: [`outcome:${outcomeRecord.id}`],
+      sourceWorker: claimedBy,
+      scope: `candidate:${candidate.candidateId || candidate.noveltyKey || item.id}`,
+      mandatoryChecks: [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy, ...capabilityDecision.setupRequired],
+      weightAdjustment: {
+        targetType: 'source',
+        target: candidate.sourceType || 'unknown',
+        delta: guidanceEvaluation === GUIDANCE_EVALUATIONS.USEFUL ? 0.05 : -0.1
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
   }
 
   return {
@@ -149,9 +185,24 @@ export async function runExecuteWorker({
   };
 }
 
+export async function runExecuteWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.execute', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'EXECUTE'
+  }, async () => {
+    const result = await runExecuteWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('EXECUTE', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('execute.js')) {
   runExecuteWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:execute:cli' });
     process.exit(1);
   });
 }

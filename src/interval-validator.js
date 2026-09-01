@@ -1,47 +1,50 @@
+import { getRuntimeConfig } from './config.js';
+
 /**
- * Shared Schedule & Interval Normalization Module
- * Enforces strict validation of recurring task intervals and brain cadence.
+ * Canonical validation for minute-based generic task schedules.
+ * Durable cron schedules use their own parser and are intentionally separate.
  */
 
 export const MIN_INTERVAL_MINUTES = 1;
-export const MAX_INTERVAL_MINUTES = 44640; // 31 days in minutes
+export const MAX_INTERVAL_MINUTES = 44_640; // 31 days
+export const MAX_INTERVAL_SECONDS = MAX_INTERVAL_MINUTES * 60;
+export const INVALID_INTERVAL_CODE = 'INVALID_INTERVAL_MINUTES';
 
-/**
- * Normalizes and validates intervalMinutes input.
- * Returns { valid: true, value: number | null } or { valid: false, error: string }
- */
+function invalid(detail) {
+  return { valid: false, code: INVALID_INTERVAL_CODE, error: detail };
+}
+
 export function normalizeIntervalMinutes(input) {
   if (input === undefined || input === null || input === '') {
     return { valid: true, value: null };
   }
 
-  const num = Number(input);
-
-  if (!Number.isFinite(num) || isNaN(num)) {
-    return { valid: false, error: 'intervalMinutes must be a finite number or omitted/null for manual execution' };
+  let value;
+  if (typeof input === 'number') {
+    value = input;
+  } else if (typeof input === 'string' && /^(0|[1-9]\d*)$/.test(input)) {
+    value = Number(input);
+  } else {
+    return invalid('intervalMinutes must be a canonical whole number or omitted for manual execution');
   }
 
-  if (!Number.isInteger(num)) {
-    return { valid: false, error: 'intervalMinutes must be a whole integer' };
+  if (!Number.isSafeInteger(value)) {
+    return invalid('intervalMinutes must be a finite safe integer');
   }
-
-  if (num < MIN_INTERVAL_MINUTES) {
-    return { valid: false, error: `intervalMinutes must be at least ${MIN_INTERVAL_MINUTES} minute(s)` };
+  if (value < MIN_INTERVAL_MINUTES || value > MAX_INTERVAL_MINUTES) {
+    return invalid(`intervalMinutes must be between ${MIN_INTERVAL_MINUTES} and ${MAX_INTERVAL_MINUTES}`);
   }
-
-  if (num > MAX_INTERVAL_MINUTES) {
-    return { valid: false, error: `intervalMinutes must not exceed ${MAX_INTERVAL_MINUTES} minutes` };
-  }
-
-  return { valid: true, value: num };
+  return { valid: true, value };
 }
 
-/**
- * Validates brain scheduler interval from environment variable or config.
- */
-export function normalizeBrainIntervalMinutes(input = process.env.TASKMAN_BRAIN_INTERVAL_MINUTES) {
-  if (input === undefined || input === null || input === '') {
-    return { valid: true, value: null };
-  }
+export function normalizeBrainIntervalMinutes(input = getRuntimeConfig().scheduler.brainIntervalMinutes || null) {
   return normalizeIntervalMinutes(input);
+}
+
+export function normalizeStoredIntervalSeconds(input) {
+  if (input === undefined || input === null) return { valid: true, value: null };
+  if (!Number.isSafeInteger(Number(input)) || Number(input) % 60 !== 0) {
+    return invalid('stored interval must be an exact whole number of minutes');
+  }
+  return normalizeIntervalMinutes(Number(input) / 60);
 }

@@ -1,51 +1,174 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  listRegisteredCapabilities,
-  getSafeCapabilitySnapshot,
+  CAPABILITY_ACCESS,
+  CAPABILITY_STATUS,
+  buildCapabilityRegistry,
+  evaluateRequiredCapabilities,
   getRuntimeCapabilityMap,
+  getSafeCapabilitySnapshot,
   registerCapability,
-  CAPABILITY_STATUS
+  unregisterCapability
 } from '../src/capability-registry.js';
+import { CANONICAL_QUEUES, QUALIFICATION_PROFILES } from '../src/orchestration-profiles.js';
+import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
+import { runDiscoverWorker } from '../src/workers/discover.js';
+import { runValidateWorker } from '../src/workers/validate.js';
+import { runExecuteWorker } from '../src/workers/execute.js';
 
-test('Capability Registry: listRegisteredCapabilities surfaces core runtime capabilities', () => {
-  const caps = listRegisteredCapabilities();
-  assert.ok(caps['web.search']);
-  assert.ok(caps['web.fetch']);
-  assert.ok(caps['taskman.queue.read']);
-  assert.ok(caps['taskman.queue.write']);
-  assert.ok(caps['wallet.sign']);
-  assert.equal(caps['wallet.sign'].status, CAPABILITY_STATUS.UNAVAILABLE);
+const noProviders = [];
+const noRails = [];
+
+test('registry reports runtime truth and fails closed for missing adapters', () => {
+  const capabilities = buildCapabilityRegistry({ env: {}, providers: noProviders, rails: noRails });
+  assert.equal(capabilities['taskman.queue.read'].status, CAPABILITY_STATUS.AVAILABLE);
+  assert.equal(capabilities['github.read'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(capabilities['github.write'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(capabilities['gmail.send'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(capabilities['moltjobs.authenticated'].status, CAPABILITY_STATUS.SETUP_REQUIRED);
+  assert.equal(capabilities['wallet.sign'].status, CAPABILITY_STATUS.UNAVAILABLE);
 });
 
-test('Capability Registry: getSafeCapabilitySnapshot does not expose secrets', () => {
-  const snapshot = getSafeCapabilitySnapshot();
-  assert.ok(snapshot.summary);
-  assert.ok(snapshot.summary.total >= 10);
-  assert.ok(snapshot.capabilities);
-
-  const jsonStr = JSON.stringify(snapshot);
-  assert.equal(jsonStr.includes('password'), false);
-  assert.equal(jsonStr.includes('secret'), false);
-  assert.equal(jsonStr.includes('Bearer'), false);
-});
-
-test('Capability Registry: getRuntimeCapabilityMap returns boolean flags', () => {
-  const map = getRuntimeCapabilityMap();
-  assert.equal(typeof map['web.read'], 'boolean');
-  assert.equal(typeof map['taskman.queue.read'], 'boolean');
-  assert.equal(map['wallet.sign'], false);
-});
-
-test('Capability Registry: registerCapability adds custom capabilities', () => {
-  registerCapability('custom.adapter.read', {
-    id: 'custom.adapter.read',
-    status: CAPABILITY_STATUS.AVAILABLE,
-    access: 'read',
-    description: 'Custom capability test'
+test('credentials configure only installed adapters and are never exposed', () => {
+  const secret = 'not-for-output';
+  const snapshot = getSafeCapabilitySnapshot({
+    env: { GITHUB_TOKEN: secret, MOLTJOBS_API_KEY: secret },
+    providers: [{ id: 'mock', ready: true }],
+    rails: noRails
   });
+  assert.equal(snapshot.capabilities['github.write'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(snapshot.capabilities['moltjobs.authenticated'].status, CAPABILITY_STATUS.AVAILABLE);
+  assert.equal(snapshot.capabilities['ai.provider.mock.available'].status, CAPABILITY_STATUS.AVAILABLE);
+  assert.equal(JSON.stringify(snapshot).includes(secret), false);
+});
 
-  const caps = listRegisteredCapabilities();
-  assert.ok(caps['custom.adapter.read']);
-  assert.equal(caps['custom.adapter.read'].status, CAPABILITY_STATUS.AVAILABLE);
+test('provider health can mark configured capability unhealthy', () => {
+  const capabilities = buildCapabilityRegistry({
+    env: {},
+    providers: [{ id: 'mock', ready: true }],
+    rails: noRails,
+    health: {
+      'ai.provider.mock.available': {
+        status: CAPABILITY_STATUS.UNHEALTHY,
+        reason: 'health_check_failed',
+        lastHealthCheck: '2026-08-31T00:00:00.000Z'
+      }
+    }
+  });
+  assert.equal(capabilities['ai.provider.mock.available'].status, CAPABILITY_STATUS.UNHEALTHY);
+});
+
+test('custom capability metadata is allowlisted', () => {
+  assert.throws(() => registerCapability('unsafe.read', {
+    status: CAPABILITY_STATUS.AVAILABLE,
+    access: CAPABILITY_ACCESS.READ,
+    token: 'secret'
+  }), /unsafe capability metadata/);
+
+  registerCapability('custom.read', {
+    status: CAPABILITY_STATUS.AVAILABLE,
+    access: CAPABILITY_ACCESS.READ,
+    adapter: 'test-adapter',
+    reason: 'test'
+  });
+  const capabilities = buildCapabilityRegistry({ env: {}, providers: noProviders, rails: noRails });
+  assert.equal(capabilities['custom.read'].status, CAPABILITY_STATUS.AVAILABLE);
+  unregisterCapability('custom.read');
+});
+
+test('required capability evaluation distinguishes setup from hard blocking', () => {
+  const result = evaluateRequiredCapabilities([
+    'taskman.queue.read', 'moltjobs.authenticated', 'github.write', 'missing.unknown'
+  ], { env: {}, providers: noProviders, rails: noRails });
+  assert.deepEqual(result.available, ['taskman.queue.read']);
+  assert.deepEqual(result.setupRequired, ['moltjobs.authenticated']);
+  assert.deepEqual(result.unavailable, ['github.write', 'missing.unknown']);
+});
+
+test('Discover records missing capability state without hiding setup opportunities', async () => {
+  const noveltyKey = `cap-discover-${crypto.randomUUID()}`;
+  const result = await runDiscoverWorker({
+    sources: [],
+    sampleCandidates: [{
+      candidateId: noveltyKey,
+      noveltyKey,
+      title: 'Capability setup opportunity',
+      profile: 'programmable_money_flow_v1',
+      requiredCapabilities: ['github.write'],
+      metrics: {
+        flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1,
+        deltaMeasurability: 1, monetization: 1, executionAutonomy: 1,
+        competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1
+      }
+    }],
+    capabilityOptions: { env: {}, providers: noProviders, rails: noRails }
+  });
+  assert.equal(result.enqueued, 1);
+  assert.deepEqual(result.enqueuedRecords[0].payload.missingCapabilities, ['github.write']);
+});
+
+test('Validate classifies evidence-passing work as setup required when runtime capability is absent', async () => {
+  const noveltyKey = `cap-validate-${crypto.randomUUID()}`;
+  const evidenceRef = 'https://example.com/bounty/escrow';
+  const gateEvidence = Object.fromEntries(
+    QUALIFICATION_PROFILES.bounty_execution_v1.evidenceGates.map(gate => [gate, {
+      verdict: 'pass', evidenceRef
+    }])
+  );
+  await upsertRevenueRecord({
+    queue: CANONICAL_QUEUES.candidates,
+    noveltyKey,
+    status: 'NEW',
+    priority: 90,
+    payload: { candidate: {
+      candidateId: noveltyKey,
+      noveltyKey,
+      title: 'Configured payout job',
+      profile: 'bounty_execution_v1',
+      estimatedValue: 10,
+      acceptanceCriteria: 'Return JSON',
+      evidence: [evidenceRef],
+      gateEvidence,
+      requiredCapabilities: ['moltjobs.authenticated'],
+      metrics: {
+        payoutCertainty: 1, acceptanceClarity: 1, executionAutonomy: 1,
+        reusableRail: 1, setupBurden: 0, timeToMoney: 1, competitionRisk: 0
+      }
+    } }
+  });
+  const result = await runValidateWorker({
+    capabilityOptions: { env: {}, providers: noProviders, rails: noRails }
+  });
+  assert.equal(result.promotedCount, 1);
+  assert.equal(result.promotedRecords[0].payload.classification, 'SETUP_REQUIRED');
+});
+
+test('Execute recomputes current capability state and blocks an unavailable write adapter', async () => {
+  const noveltyKey = `cap-execute-${crypto.randomUUID()}`;
+  await upsertRevenueRecord({
+    queue: CANONICAL_QUEUES.execution,
+    noveltyKey,
+    status: 'NEW',
+    priority: 99,
+    payload: { candidate: {
+      candidateId: noveltyKey,
+      noveltyKey,
+      title: 'GitHub mutation',
+      requiredCapabilities: ['github.write']
+    }, missingCapabilities: [] }
+  });
+  let called = false;
+  const result = await runExecuteWorker({
+    executorFn: async () => { called = true; return { status: 'COMPLETED' }; },
+    capabilityOptions: { env: { GITHUB_TOKEN: 'present' }, providers: noProviders, rails: noRails }
+  });
+  assert.equal(called, false);
+  assert.equal(result.outcomes[0].status, 'BLOCKED');
+  assert.equal(result.outcomes[0].payload.attributableValue, 0);
+});
+
+test('runtime map exposes booleans for compatibility without accepting caller assertions', () => {
+  const map = getRuntimeCapabilityMap({ env: {}, providers: noProviders, rails: noRails });
+  assert.equal(map['taskman.queue.read'], true);
+  assert.equal(map['github.write'], false);
 });

@@ -46,6 +46,7 @@ import {
   stableErrorCode
 } from './errors.js';
 import { getRuntimeConfig } from './config.js';
+import { handleEconomicSelectorRequest } from './economic-selector.js';
 
 const runtimeConfig = getRuntimeConfig();
 
@@ -338,6 +339,7 @@ const server = http.createServer(async (req, res) => {
 
     if (await handleMoltJobsRequest(req, res, url)) return;
     if (await handleRevenueRequest(req, res, url)) return;
+    if (await handleEconomicSelectorRequest(req, res, url)) return;
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       const database = await dbHealth();

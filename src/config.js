@@ -149,6 +149,9 @@ export function loadConfig(env = process.env) {
     rails: {
       allowWrite: allowWriteRails,
       writeEnabled: writeRails,
+      deskcrew: {
+        enabled: boolean(env, 'DESKCREW_ENABLED', false, problems)
+      },
       moltjobs: {
         apiKey: env.MOLTJOBS_API_KEY || null,
         baseUrl: url(env, 'MOLTJOBS_BASE_URL', 'https://api.moltjobs.io/v1', problems, { protocols: ['https:'] })
@@ -184,7 +187,7 @@ export function loadConfig(env = process.env) {
       .filter(([, value]) => Boolean(value))
       .map(([name]) => name.replace('_API_KEY', '').toLowerCase()),
     configuredRails: Object.entries(config.rails)
-      .filter(([, value]) => value?.apiKey)
+      .filter(([, value]) => value?.apiKey || value?.enabled === true)
       .map(([name]) => name)
   };
   config.safeSummary = Object.freeze({ ...safe, fingerprint: fingerprint(safe) });

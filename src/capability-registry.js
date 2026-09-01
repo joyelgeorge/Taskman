@@ -117,7 +117,9 @@ export function buildCapabilityRegistry({
 
   for (const rail of rails) {
     const railName = String(rail.name);
-    const configured = !Object.prototype.hasOwnProperty.call(rail, 'apiKey') || Boolean(rail.apiKey);
+    const configured = railName === 'deskcrew'
+      ? rail.enabled === true
+      : (!Object.prototype.hasOwnProperty.call(rail, 'apiKey') || Boolean(rail.apiKey));
     put(capabilities, `rail.${railName}.read`, configured
       ? CAPABILITY_STATUS.AVAILABLE
       : CAPABILITY_STATUS.SETUP_REQUIRED, CAPABILITY_ACCESS.READ, {
@@ -125,15 +127,33 @@ export function buildCapabilityRegistry({
     });
     for (const action of ['claim', 'submit']) {
       put(capabilities, `rail.${railName}.${action}`,
-        rail.mode === 'execute' ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED,
+        railName === 'deskcrew'
+          ? CAPABILITY_STATUS.UNAVAILABLE
+          : (rail.mode === 'execute' ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED),
         CAPABILITY_ACCESS.WRITE, {
           adapter: railName,
-          reason: rail.mode === 'execute' ? 'execution_mode_authorized' : 'rail_is_read_only'
+          reason: railName === 'deskcrew'
+            ? 'write_adapter_not_installed'
+            : (rail.mode === 'execute' ? 'execution_mode_authorized' : 'rail_is_read_only')
         });
     }
     put(capabilities, `rail.${railName}.payout.read`, CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.READ, {
       adapter: railName, reason: 'payout_adapter_not_installed'
     });
+    if (railName === 'deskcrew') {
+      for (const id of ['deskcrew.bounties.read']) {
+        put(capabilities, id, configured ? CAPABILITY_STATUS.AVAILABLE : CAPABILITY_STATUS.SETUP_REQUIRED,
+          CAPABILITY_ACCESS.READ, { adapter: railName, reason: configured ? 'public_read_adapter_enabled' : 'rail_disabled' });
+      }
+      put(capabilities, 'deskcrew.ticket_context.read', CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.READ, {
+        adapter: railName, reason: 'paid_context_adapter_not_installed'
+      });
+      for (const id of ['deskcrew.draft.submit', 'x402.payment', 'wallet.receive_usdc']) {
+        put(capabilities, id, CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.WRITE, {
+          adapter: railName, reason: 'authorization_gated_adapter_not_installed'
+        });
+      }
+    }
   }
 
   for (const [id, descriptor] of customRegistry) capabilities[id] = descriptor;

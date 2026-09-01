@@ -188,6 +188,12 @@ export function normalizeCandidate(input = {}) {
     requiredCapabilities: Array.isArray(input.requiredCapabilities) ? input.requiredCapabilities : [],
     nextValidation: input.nextValidation || input.next_validation || null,
     acceptanceCriteria: input.acceptanceCriteria || input.acceptance_criteria || null,
+    executionRequiredCapabilities: Array.isArray(input.executionRequiredCapabilities)
+      ? input.executionRequiredCapabilities
+      : [],
+    economicInput: input.economicInput || null,
+    economicScore: input.economicScore || null,
+    untrustedSource: input.untrustedSource === true,
     raw: input.raw || null
   };
 }

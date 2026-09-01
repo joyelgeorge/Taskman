@@ -1,5 +1,6 @@
 import { registerRail, getRail, listRails, setRailMode } from './registry.js';
 import { createTaskForceRail } from './taskforce.js';
+import { createDeskCrewRail } from './deskcrew.js';
 import { evaluateExecutionGate, assertExecutionAllowed } from './execution-gate.js';
 import { getRuntimeConfig } from '../config.js';
 
@@ -8,6 +9,7 @@ let initialized = false;
 export function initializeRails() {
   if (!initialized) {
     registerRail(createTaskForceRail());
+    registerRail(createDeskCrewRail());
     initialized = true;
   }
   return listRails();

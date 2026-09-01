@@ -36,8 +36,9 @@ import {
   GUIDANCE_EVALUATIONS,
   recordLearningInference
 } from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
 
-export async function runExecuteWorker({
+async function runExecuteWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
@@ -134,6 +135,10 @@ export async function runExecuteWorker({
     });
     outcomes.push(outcomeRecord);
     executed.push(outcomePayload);
+    addTraceEvent('pipeline.terminal', {
+      stage: 'EXECUTE', queue: 'outcomes', candidate_id: candidate.candidateId,
+      queue_item_id: outcomeRecord.id, outcome: outcomeStatus
+    });
 
     const priorLearningIds = item.payload.learning?.appliedLearningIds ||
       item.payload.validation?.learning?.appliedLearningIds || [];
@@ -173,6 +178,21 @@ export async function runExecuteWorker({
     outcomes,
     timestamp: startedAt
   };
+}
+
+export async function runExecuteWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.execute', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'EXECUTE'
+  }, async () => {
+    const result = await runExecuteWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('EXECUTE', result);
+    return result;
+  });
 }
 
 if (process.argv[1]?.endsWith('execute.js')) {

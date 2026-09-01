@@ -15,6 +15,12 @@ import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
 import { readJsonBody } from './limits.js';
+import {
+  getObservabilitySnapshot,
+  getPipelineObservabilitySummary,
+  recordScheduleRun,
+  withTelemetrySpan
+} from './observability.js';
 
 function send(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -23,6 +29,15 @@ function send(res, status, body) {
 }
 
 export async function handleRevenueRequest(req, res, url) {
+  if (req.method === 'GET' && url.pathname === '/api/revenue/observability') {
+    return send(res, 200, {
+      pipeline: await getPipelineObservabilitySummary({
+        maxStallMinutes: Number(url.searchParams.get('maxStallMinutes') || 60)
+      }),
+      telemetry: getObservabilitySnapshot({ includeTraces: url.searchParams.get('traces') !== 'false' })
+    });
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/revenue/status') {
     return send(res, 200, {
       storage: revenueStorageMode(),
@@ -82,17 +97,37 @@ export async function handleRevenueRequest(req, res, url) {
 
     let result = null;
     let error = null;
+    const runStarted = Date.now();
     try {
-      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy });
-      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy });
-      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy });
-      else throw new Error(`Unknown worker: ${workerName}`);
+      result = await withTelemetrySpan('api.scheduler.trigger', {
+        correlation_id: claim.runKey,
+        run_key: claim.runKey,
+        schedule_id: claim.job.id,
+        stage: workerName.toUpperCase(),
+        route: '/api/scheduler/jobs/:worker/trigger',
+        method: 'POST'
+      }, async () => {
+        const options = {
+          claimedBy,
+          correlationId: claim.runKey,
+          runKey: claim.runKey,
+          scheduleId: claim.job.id
+        };
+        if (workerName === 'discover') return runDiscoverWorker(options);
+        if (workerName === 'validate') return runValidateWorker(options);
+        if (workerName === 'execute') return runExecuteWorker(options);
+        throw new Error(`Unknown worker: ${workerName}`);
+      });
 
       await finishScheduledJobRun({
         jobId: claim.job.id,
         runKey: claim.runKey,
         status: 'COMPLETED',
         result
+      });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome: 'COMPLETED', durationMs: Date.now() - runStarted
       });
       return send(res, 200, { ok: true, claim, result });
     } catch (err) {
@@ -102,6 +137,10 @@ export async function handleRevenueRequest(req, res, url) {
         runKey: claim.runKey,
         status: 'FAILED',
         error
+      });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome: 'FAILED', durationMs: Date.now() - runStarted
       });
       return send(res, 500, { ok: false, claim, error });
     }

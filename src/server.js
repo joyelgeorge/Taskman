@@ -25,6 +25,13 @@ import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
 import { applySecurityHeaders } from './http-security.js';
+import {
+  getObservabilitySnapshot,
+  getPipelineObservabilitySummary,
+  recordMetric,
+  recordScheduleRun,
+  withTelemetrySpan
+} from './observability.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -33,6 +40,27 @@ const timers = new Map();
 const memoryUsage = { inputTokens: 0, outputTokens: 0, estimatedCost: 0 };
 let brainTimer = null;
 let internalSchedulerTimer = null;
+
+function boundedRoute(pathname) {
+  return pathname
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ':id')
+    .replace(/\/\d+(?=\/|$)/g, '/:id')
+    .slice(0, 120);
+}
+
+function observeApiRequest(req, res, pathname) {
+  const started = Date.now();
+  const route = boundedRoute(pathname);
+  res.once('finish', () => {
+    const labels = {
+      method: req.method,
+      route,
+      status_class: `${Math.floor(res.statusCode / 100)}xx`
+    };
+    recordMetric('api_requests_total', 1, labels);
+    recordMetric('api_request_duration_ms', Date.now() - started, labels, { kind: 'histogram' });
+  });
+}
 
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' });
@@ -167,10 +195,26 @@ async function tickInternalScheduler() {
 
     let result = null;
     let error = null;
+    const runStarted = Date.now();
     try {
-      if (workerName === 'discover') result = await runDiscoverWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'validate') result = await runValidateWorker({ claimedBy: claim.claimedBy });
-      else if (workerName === 'execute') result = await runExecuteWorker({ claimedBy: claim.claimedBy });
+      result = await withTelemetrySpan('scheduler.run', {
+        correlation_id: claim.runKey,
+        run_key: claim.runKey,
+        schedule_id: claim.job.id,
+        stage: workerName.toUpperCase(),
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
+      }, async () => {
+        const options = {
+          claimedBy: claim.claimedBy,
+          correlationId: claim.runKey,
+          runKey: claim.runKey,
+          scheduleId: claim.job.id
+        };
+        if (workerName === 'discover') return runDiscoverWorker(options);
+        if (workerName === 'validate') return runValidateWorker(options);
+        if (workerName === 'execute') return runExecuteWorker(options);
+        throw new Error(`Unknown scheduled worker: ${workerName}`);
+      });
 
       await finishScheduledJobRun({
         jobId: claim.job.id,
@@ -178,6 +222,12 @@ async function tickInternalScheduler() {
         status: 'COMPLETED',
         result,
         now: new Date()
+      });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome: 'COMPLETED',
+        durationMs: Date.now() - runStarted,
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
       });
       console.log(`[Taskman Scheduler] Completed scheduled firing for worker: ${workerName}`);
     } catch (err) {
@@ -189,6 +239,12 @@ async function tickInternalScheduler() {
         status: 'FAILED',
         error,
         now: new Date()
+      });
+      recordScheduleRun({
+        runKey: claim.runKey, scheduleId: claim.job.id, stage: workerName,
+        scheduledFor: claim.scheduledFor, outcome: 'FAILED',
+        durationMs: Date.now() - runStarted,
+        reclaimed: new Date(claim.scheduledFor).getTime() < now.getTime()
       });
     }
   }
@@ -209,6 +265,7 @@ const server = http.createServer(async (req, res) => {
   applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    observeApiRequest(req, res, url.pathname);
 
     if (req.method === 'GET' && url.pathname === '/health/live') {
       return json(res, 200, livenessSnapshot());
@@ -223,6 +280,18 @@ const server = http.createServer(async (req, res) => {
         internalSchedulerEnabled: process.env.TASKMAN_INTERNAL_SCHEDULER_ENABLED === 'true'
       });
       return json(res, health.ready ? 200 : 503, health);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/observability') {
+      return json(res, 200, getObservabilitySnapshot({
+        includeTraces: url.searchParams.get('traces') !== 'false'
+      }));
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/observability/pipeline') {
+      return json(res, 200, await getPipelineObservabilitySummary({
+        maxStallMinutes: Number(url.searchParams.get('maxStallMinutes') || 60)
+      }));
     }
 
     if (await handleMoltJobsRequest(req, res, url)) return;

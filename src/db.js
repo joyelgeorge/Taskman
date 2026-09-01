@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,12 @@ const runtimeConfig = getRuntimeConfig();
 const { Pool } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, '..', 'db', 'migrations');
+
+export const MIGRATION_ADVISORY_LOCK_ID = 847291048291;
+
+export function calculateChecksum(content) {
+  return createHash('sha256').update(content, 'utf8').digest('hex');
+}
 
 export const databaseEnabled = runtimeConfig.database.enabled;
 
@@ -42,32 +49,81 @@ export async function withTransaction(fn) {
   }
 }
 
-export async function migrate() {
+export async function migrate({ lockTimeoutMs = 15_000 } = {}) {
   if (!pool) return { enabled: false, applied: [] };
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      filename TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
-
-  const files = (await readdir(migrationsDir)).filter(f => f.endsWith('.sql')).sort();
-  const applied = [];
-
-  for (const filename of files) {
-    const exists = await pool.query('SELECT 1 FROM schema_migrations WHERE filename = $1', [filename]);
-    if (exists.rowCount) continue;
-
-    const sql = await readFile(join(migrationsDir, filename), 'utf8');
-    await withTransaction(async client => {
-      await client.query(sql);
-      await client.query('INSERT INTO schema_migrations(filename) VALUES($1)', [filename]);
-    });
-    applied.push(filename);
+  const timeout = Number(lockTimeoutMs);
+  if (!Number.isInteger(timeout) || timeout < 1 || timeout > 120_000) {
+    throw new Error('Migration lock timeout must be an integer between 1 and 120000 milliseconds');
   }
 
-  return { enabled: true, applied };
+  const client = await pool.connect();
+  let lockAcquired = false;
+  try {
+    await client.query("SELECT set_config('statement_timeout', $1, false)", [`${timeout}ms`]);
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_ADVISORY_LOCK_ID]);
+    lockAcquired = true;
+    await client.query("SELECT set_config('statement_timeout', '0', false)");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename TEXT PRIMARY KEY,
+        checksum TEXT,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    await client.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT');
+
+    const filenames = (await readdir(migrationsDir)).filter(file => file.endsWith('.sql')).sort();
+    const migrations = new Map();
+    for (const filename of filenames) {
+      const sql = await readFile(join(migrationsDir, filename), 'utf8');
+      migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+    }
+
+    const existingResult = await client.query('SELECT filename, checksum FROM schema_migrations');
+    const existing = new Map(existingResult.rows.map(row => [row.filename, row.checksum]));
+    for (const [filename, storedChecksum] of existing) {
+      const migration = migrations.get(filename);
+      if (!migration) throw new Error(`Applied migration is missing from source: ${filename}`);
+      if (storedChecksum && storedChecksum !== migration.checksum) {
+        throw new Error(`Checksum drift detected for migration ${filename}; applied migrations are immutable`);
+      }
+      if (!storedChecksum) {
+        await client.query(
+          'UPDATE schema_migrations SET checksum=$1 WHERE filename=$2 AND checksum IS NULL',
+          [migration.checksum, filename]
+        );
+      }
+    }
+
+    const applied = [];
+    for (const filename of filenames) {
+      if (existing.has(filename)) continue;
+      const migration = migrations.get(filename);
+      await client.query('BEGIN');
+      try {
+        await client.query(migration.sql);
+        await client.query(
+          'INSERT INTO schema_migrations(filename, checksum) VALUES($1,$2)',
+          [filename, migration.checksum]
+        );
+        await client.query('COMMIT');
+        applied.push(filename);
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    }
+
+    return { enabled: true, applied };
+  } finally {
+    try {
+      await client.query("SELECT set_config('statement_timeout', '0', false)");
+      if (lockAcquired) await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_ADVISORY_LOCK_ID]);
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export async function healthCheck() {

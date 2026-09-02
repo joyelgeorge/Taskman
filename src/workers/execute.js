@@ -25,17 +25,68 @@ import {
  * - NEVER simulate VALUE_CREATED or MONEY_EVENT.
  * - If no concrete authorized execution adapter/action is available, return BLOCKED, SETUP_REQUIRED, or REVALIDATE.
  * - Candidate estimatedValue is NEVER realized attributable value.
- * - Realized attributableValue must be 0 / null until verified by an actual execution outcome.
+ * - Realized attributableValue comes only from a settlement accepted by money-ledger,
+ *   which requires an external reference a payment processor can be re-queried for.
+ *   An executor's own claim about what it earned is discarded.
+ * - A rail whose probation budget or attempt allowance is spent without a verified
+ *   settlement is switched off rather than retried.
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
+import { runExecutionPlan } from '../transforms/execution-plan.js';
+import {
+  recordAttempt,
+  finishAttempt,
+  recordSettlement,
+  enforceRailViability,
+  isRailEnabled,
+  getRailState,
+  SETTLEMENT_STATUS
+} from '../money-ledger.js';
+import { globalBudgetStatus, enforceRailGovernor } from '../rail-governor.js';
 
 export async function runExecuteWorker({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  rail = 'default',
+  attemptCostCents = 0
 } = {}) {
   const startedAt = new Date().toISOString();
+
+  // A rail that burned its probation budget without a verified settlement stays off.
+  // Claiming work for it would spend real money to re-learn what the ledger knows.
+  if (!(await isRailEnabled(rail))) {
+    const state = await getRailState(rail);
+    return {
+      stage: 'EXECUTE',
+      status: 'RAIL_DISABLED',
+      rail,
+      reason: state?.disabled_reason || `rail ${rail} is disabled`,
+      claimedCount: 0,
+      outcomesCount: 0,
+      outcomes: [],
+      timestamp: startedAt
+    };
+  }
+
+  // The global monthly cap bounds every rail combined, including a SCALED rail
+  // whose own probation budget no longer applies — see docs/TARGET_DESIGN.md §8.
+  const budget = await globalBudgetStatus();
+  if (budget.exceeded) {
+    return {
+      stage: 'EXECUTE',
+      status: 'GLOBAL_BUDGET_EXCEEDED',
+      rail,
+      reason: `global monthly spend $${(budget.spentCents / 100).toFixed(2)} has reached the $${(budget.capCents / 100).toFixed(2)} cap`,
+      globalBudget: budget,
+      claimedCount: 0,
+      outcomesCount: 0,
+      outcomes: [],
+      timestamp: startedAt
+    };
+  }
+
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
   const capabilities = capabilitySnapshot();
 
@@ -46,10 +97,24 @@ export async function runExecuteWorker({
     const candidate = item.payload.candidate || item.payload;
     const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
 
+    // Every pass through this loop costs something, so every pass is recorded.
+    // Attempts are the denominator the kill-switch divides settlements by.
+    const attempt = await recordAttempt({
+      rail,
+      candidateKey: candidate.noveltyKey || item.noveltyKey || item.id,
+      stage: 'EXECUTE',
+      costCents: attemptCostCents,
+      evidence: { title: candidate.title || null, claimedBy }
+    });
+
+    // Routed through the execution-plan transform, whose post-condition rejects
+    // any plan that references a capability the registry does not actually grant
+    // — schema validation alone cannot catch a plausible-sounding fabrication
+    // like that. See docs/TARGET_DESIGN.md §11.
     let aiPlan = null;
     if (sharedReasoningEngine.isConfigured() || mockAiReasoning) {
       try {
-        const planResult = await sharedReasoningEngine.planExecution({
+        const planResult = await runExecutionPlan({
           candidate,
           availableCapabilities: capabilities,
           mockProvider: mockAiReasoning
@@ -74,8 +139,25 @@ export async function runExecuteWorker({
         stepOutput = await executorFn(candidate, capabilities, aiPlan);
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
-        // Only set attributable value if verified and provided by real executor output
-        attributableValue = Number(stepOutput.verifiedAttributableValue || stepOutput.attributableValue || 0);
+
+        // Realized value comes from a settlement the ledger accepted, never from the
+        // executor's own claim about what it earned. An executor that reports revenue
+        // without an external reference gets zero, by design.
+        if (stepOutput.settlement) {
+          const settlement = await recordSettlement({
+            ...stepOutput.settlement,
+            rail,
+            attemptId: attempt.id
+          });
+          if (settlement.status === SETTLEMENT_STATUS.CLEARED) {
+            attributableValue = settlement.netCents / 100;
+            outcomeStatus = 'MONEY_EVENT';
+            outcomeReason = `Verified settlement ${settlement.source}:${settlement.externalRef} cleared for ${settlement.netCents} cents`;
+          } else {
+            outcomeStatus = 'VALUE_CREATED';
+            outcomeReason = `Settlement ${settlement.source}:${settlement.externalRef} recorded, awaiting clearance`;
+          }
+        }
       } catch (err) {
         outcomeStatus = 'BLOCKED';
         outcomeReason = `Execution error: ${err.message}`;
@@ -100,6 +182,11 @@ export async function runExecuteWorker({
       executedBy: claimedBy,
       stepOutput
     };
+
+    await finishAttempt(attempt.id, {
+      status: outcomeStatus,
+      evidence: { outcomeReason, attributableValue }
+    });
 
     // Update execution_queue record
     await updateRevenueRecord(item.id, {
@@ -139,12 +226,21 @@ export async function runExecuteWorker({
     });
   }
 
+  // enforceRailViability is the legacy two-verdict check, kept for callers that
+  // only need CONTINUE/DISABLE. enforceRailGovernor is the phase-4 state machine
+  // (docs/TARGET_DESIGN.md §8) and is the one that actually writes rail_state.state.
+  const viability = await enforceRailViability({ rail });
+  const governor = await enforceRailGovernor({ rail });
+
   return {
     stage: 'EXECUTE',
     status: 'COMPLETED',
+    rail,
     claimedCount: claimed.length,
     outcomesCount: outcomes.length,
     outcomes,
+    viability,
+    governor,
     timestamp: startedAt
   };
 }

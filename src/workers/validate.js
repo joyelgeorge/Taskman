@@ -14,16 +14,10 @@ import {
   getRevenueState
 } from '../revenue-store.js';
 
-export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
-  'money_flow_scale',
-  'recurring_leakage',
-  'independent_trigger',
-  'permission_non_invasive',
-  'measurable_delta',
-  'monetization',
-  'no_transaction_ownership',
-  'competitive_whitespace'
-]);
+// Moved to src/gates.js so src/transforms/adversarial-validation.js can reference
+// the same list without importing this file (which imports the transform back).
+import { EIGHT_MONEY_FLOW_GATES } from '../gates.js';
+export { EIGHT_MONEY_FLOW_GATES };
 
 /**
  * Gate-result descriptor expected in candidate.gateEvidence:
@@ -157,8 +151,13 @@ export function evaluateEvidenceGates(candidate = {}) {
  * - Numeric qualification score alone MUST NEVER produce EXECUTABLE or THRESHOLD_CROSSED.
  * - Missing evidence must produce NEEDS_EVIDENCE.
  * - Programmable-money-flow THRESHOLD_CROSSED requires explicit evidence-backed PASS on all 8 gates.
+ * - Any AI-assisted gate evidence passes through src/transforms/adversarial-validation.js,
+ *   whose post-condition rejects evidence that is not a real citation (see that
+ *   file). This worker never calls the reasoning engine directly — see
+ *   docs/TARGET_DESIGN.md §11 (the LLM boundary).
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
+import { runAdversarialValidation } from '../transforms/adversarial-validation.js';
 
 export async function runValidateWorker({
   limit = 10,
@@ -179,10 +178,14 @@ export async function runValidateWorker({
     let candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
 
-    // If AI reasoning is available and candidate is missing gate evidence, run adversarial validation
+    // If AI reasoning is available and the candidate is missing gate evidence, run
+    // it through the adversarial-validation transform. A transform that fails its
+    // post-condition (fabricated or vague evidence) is discarded, not repaired —
+    // the candidate falls through to evidence-driven validation exactly as if no
+    // AI were configured at all.
     if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) && (!candidate.gateEvidence || Object.keys(candidate.gateEvidence).length === 0)) {
       try {
-        const aiValidation = await sharedReasoningEngine.validateAdversarial({
+        const aiValidation = await runAdversarialValidation({
           candidate,
           freshEvidence: candidate.evidence || [],
           mockProvider: mockAiReasoning

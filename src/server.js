@@ -20,6 +20,8 @@ import {
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { railEconomics, evaluateRailViability, setRailEnabled, getRailState } from './money-ledger.js';
+import { syncStripeSettlements } from './settlement-verifier.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
@@ -216,6 +218,36 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
+
+    // The only endpoint that reports money. Everything else reports estimates.
+    if (req.method === 'GET' && url.pathname === '/api/money/economics') {
+      return json(res, 200, { rails: await railEconomics(), asOf: new Date().toISOString() });
+    }
+
+    const railViabilityMatch = url.pathname.match(/^\/api\/money\/rails\/([^/]+)\/viability$/);
+    if (req.method === 'GET' && railViabilityMatch) {
+      const rail = decodeURIComponent(railViabilityMatch[1]);
+      return json(res, 200, { ...(await evaluateRailViability({ rail })), state: await getRailState(rail) });
+    }
+
+    const railEnableMatch = url.pathname.match(/^\/api\/money\/rails\/([^/]+)\/enabled$/);
+    if (req.method === 'POST' && railEnableMatch) {
+      const body = await readBody(req);
+      if (typeof body.enabled !== 'boolean') return json(res, 400, { error: 'enabled (boolean) is required' });
+      const rail = decodeURIComponent(railEnableMatch[1]);
+      return json(res, 200, await setRailEnabled(rail, body.enabled, body.reason || 'disabled manually'));
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/money/settlements/sync') {
+      const body = await readBody(req);
+      if (!body.rail) return json(res, 400, { error: 'rail is required' });
+      if (!process.env.STRIPE_API_KEY) return json(res, 400, { error: 'STRIPE_API_KEY is not configured' });
+      try {
+        return json(res, 200, await syncStripeSettlements({ rail: body.rail, since: body.since || null }));
+      } catch (error) {
+        return json(res, 502, { error: String(error.message || error) });
+      }
+    }
     if (req.method === 'GET' && url.pathname === '/api/brain/cycles') return json(res, 200, await listBrainCycles(50));
     if (req.method === 'POST' && url.pathname === '/api/brain/run') return json(res, 200, await executeBrainCycle('manual'));
 

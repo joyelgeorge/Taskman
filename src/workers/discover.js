@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import {
   CANONICAL_QUEUES,
   DISCOVERY_SOURCES,
@@ -17,16 +15,24 @@ import {
   getRevenueState
 } from '../revenue-store.js';
 import { discoverRail } from '../rails/index.js';
+import { isRailEnabled } from '../money-ledger.js';
 
 /**
  * Loads real candidates from configured discovery sources.
- * Sources can be:
+ *
+ * Sources are:
  * 1. Explicitly passed sampleCandidates / items from external API/webhook/scouts.
- * 2. Real configured rails (e.g. TaskForce rail if configured).
- * 3. Real persisted research runs/anchor files (e.g. data/money-flow-search-history.json).
- * 
+ * 2. Real configured rails whose ledger state is not DISABLED (e.g. TaskForce).
+ * 3. `@taskman/core` drones (packages/core/drones) via the signal-process cron,
+ *    which is the deterministic collector layer this system now runs on — see
+ *    docs/AUTONOMOUS_SYSTEM.md. Drone output reaches candidate_queue directly and
+ *    does not pass through this function.
+ *
  * Invariant: NEVER fabricate candidates or synthetic opportunity metrics.
- * If no real source produces candidates, returns an empty list.
+ * If no real source produces candidates, returns an empty list — and this worker
+ * says so loudly rather than silently repeating a prior conclusion. A discovery
+ * source that reads its own previous output is exactly the closed loop documented
+ * in docs/SYSTEM_DESIGN.md §9; there must be no path back to it here.
  */
 export async function discoverFromRealSources({
   sources = Object.keys(DISCOVERY_SOURCES),
@@ -39,67 +45,34 @@ export async function discoverFromRealSources({
     discovered.push(normalizeCandidate(c));
   }
 
-  // 2. Discover from configured rails if available
+  // 2. Discover from configured rails if available and not disabled by the ledger.
+  // Both rails registered today (taskforce, moltjobs) measured at effectively zero
+  // settlement in the market they target — see docs/TARGET_DESIGN.md §2 — so they
+  // ship disabled by default (src/rails/dead-rails.js) and this call is a no-op
+  // until a human re-enables one with evidence that has changed.
   if (sources.includes('bounty') || sources.includes('immediate_income')) {
     try {
-      const taskforceResult = await discoverRail('taskforce');
-      if (taskforceResult?.ok && Array.isArray(taskforceResult.tasks)) {
-        for (const t of taskforceResult.tasks) {
-          discovered.push(normalizeCandidate({
-            sourceType: 'bounty',
-            profile: 'bounty_execution_v1',
-            candidateId: t.id || t.taskId,
-            noveltyKey: `taskforce-${t.id || t.taskId}`,
-            title: t.title || t.name,
-            estimatedValue: Number(t.reward || t.budget || 0),
-            metrics: t.metrics || {},
-            evidence: t.evidence || [],
-            requiredCapabilities: t.requiredCapabilities || ['taskman.queue.read'],
-            raw: t
-          }));
+      if (await isRailEnabled('taskforce')) {
+        const taskforceResult = await discoverRail('taskforce');
+        if (taskforceResult?.ok && Array.isArray(taskforceResult.tasks)) {
+          for (const t of taskforceResult.tasks) {
+            discovered.push(normalizeCandidate({
+              sourceType: 'bounty',
+              profile: 'bounty_execution_v1',
+              candidateId: t.id || t.taskId,
+              noveltyKey: `taskforce-${t.id || t.taskId}`,
+              title: t.title || t.name,
+              estimatedValue: Number(t.reward || t.budget || 0),
+              metrics: t.metrics || {},
+              evidence: t.evidence || [],
+              requiredCapabilities: t.requiredCapabilities || ['taskman.queue.read'],
+              raw: t
+            }));
+          }
         }
       }
     } catch {
       // Rail not configured or unavailable; fail closed without fabricating
-    }
-  }
-
-  // 3. Ingest active hypothesis from real persisted research anchor if requested
-  if (sources.includes('structural_money_flow') && discovered.length === 0) {
-    try {
-      const historyFile = join(process.cwd(), 'data', 'money-flow-search-history.json');
-      const raw = await readFile(historyFile, 'utf8');
-      const data = JSON.parse(raw);
-      if (data?.current_leader && data.current_leader.id) {
-        const leader = data.current_leader;
-        discovered.push(normalizeCandidate({
-          sourceType: 'structural_money_flow',
-          profile: 'programmable_money_flow_v1',
-          candidateId: leader.id,
-          noveltyKey: `anchor-${leader.id}-${data.updated_at || data.schema_version}`,
-          title: leader.name,
-          moneyFlow: leader.state_transition,
-          trigger: leader.smallest_intervention,
-          evidence: [leader.strongest_evidence, leader.why_survived].filter(Boolean),
-          confidence: (leader.score && leader.max_score) ? leader.score / leader.max_score : 0.7,
-          metrics: {
-            flowScale: (leader.component_scores?.flow_scale || 0) / 5,
-            recurrence: (leader.component_scores?.leakage_magnitude || 0) / 5,
-            triggerIndependence: (leader.component_scores?.trigger_independence || 0) / 5,
-            permission: (leader.component_scores?.permission_non_invasiveness || 0) / 5,
-            deltaMeasurability: (leader.component_scores?.delta_measurability || 0) / 5,
-            monetization: (leader.component_scores?.monetization || 0) / 5,
-            executionAutonomy: (leader.component_scores?.build_simplicity || 0) / 5,
-            competitiveWhitespace: (leader.component_scores?.competitive_whitespace || 0) / 5,
-            setupBurden: (leader.component_scores?.distribution_burden || 0) / 5,
-            timeToMoney: (leader.component_scores?.integration_friction || 0) / 5
-          },
-          requiredCapabilities: ['web.read'],
-          raw: leader
-        }));
-      }
-    } catch {
-      // File missing or unreadable; do not invent records
     }
   }
 
@@ -108,7 +81,7 @@ export async function discoverFromRealSources({
 
 /**
  * Taskman Discover Worker
- * 
+ *
  * Responsibilities:
  * 1. Load learning_inference and discovery state.
  * 2. Invoke real configured source plugins/families.
@@ -117,42 +90,32 @@ export async function discoverFromRealSources({
  * 5. Call shared qualifyCandidate() with the selected profile.
  * 6. Enqueue accepted candidates into candidate_queue.
  * 7. Persist source performance / discovery state into learning_inference.
- * 
+ *
  * It must NOT execute candidate work or perform the full adversarial validation stage.
  * It must NEVER fabricate synthetic candidates or hardcode positive metrics.
+ * It must NEVER call a model to invent or synthesize a candidate: asking an LLM
+ * "what is a valuable unresolved money gap" returns the same answer every other
+ * holder of that model gets, so anything discoverable by prompting is arbitraged
+ * to zero on discovery — see docs/TARGET_DESIGN.md §1. Discovery is deterministic
+ * by contract; a model may only ever transform a candidate that already exists
+ * (src/transforms/), never originate one.
  */
-import { sharedReasoningEngine } from '../reasoning-engine.js';
-
 export async function runDiscoverWorker({
   sources = Object.keys(DISCOVERY_SOURCES),
   sampleCandidates = [],
-  claimedBy = 'taskman-discover-worker',
-  mockAiReasoning = null
+  claimedBy = 'taskman-discover-worker'
 } = {}) {
   const startedAt = new Date().toISOString();
   const learningState = await getRevenueState('discovery_learning') || { sourcesEvaluated: 0, totalEnqueued: 0 };
   const existingCandidates = await listRevenueRecords(CANONICAL_QUEUES.candidates, { limit: 500 });
   const existingNoveltyKeys = new Set(existingCandidates.map(c => c.noveltyKey).filter(Boolean));
 
-  // Gather baseline candidates from configured real sources
-  let candidatesToProcess = await discoverFromRealSources({ sources, sampleCandidates });
+  const candidatesToProcess = await discoverFromRealSources({ sources, sampleCandidates });
 
-  // If reasoning engine is available and we have source evidence / sample items, synthesize with AI
-  if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) && sampleCandidates.length > 0) {
-    try {
-      const aiResult = await sharedReasoningEngine.synthesizeDiscovery({
-        sourceEvidence: sampleCandidates,
-        existingHypotheses: existingCandidates.slice(0, 10),
-        mockProvider: mockAiReasoning
-      });
-      if (aiResult.ok && Array.isArray(aiResult.data?.candidates)) {
-        for (const aiCand of aiResult.data.candidates) {
-          candidatesToProcess.push(normalizeCandidate(aiCand));
-        }
-      }
-    } catch {
-      // Fail safely without blocking baseline discovery
-    }
+  if (candidatesToProcess.length === 0) {
+    // Silence here is the failure mode this worker exists to avoid repeating —
+    // see docs/SYSTEM_DESIGN.md §9. Say so loudly rather than returning quietly.
+    console.warn(`[discover] zero candidates from ${sources.length} source(s): ${sources.join(', ')}. No real source produced anything this run.`);
   }
 
   const enqueued = [];
@@ -231,6 +194,8 @@ export async function runDiscoverWorker({
     enqueued: enqueued.length,
     rejected: rejected.length,
     enqueuedRecords: enqueued,
+    sourcesQueried: sources,
+    zeroCandidates: candidatesToProcess.length === 0,
     timestamp: startedAt
   };
 }

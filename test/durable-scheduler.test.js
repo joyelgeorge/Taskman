@@ -308,7 +308,15 @@ test('11. Execute: authorized executor records MONEY_EVENT with verified attribu
     executorFn: async () => ({
       status: 'MONEY_EVENT',
       reason: 'Authorized execution completed',
-      verifiedAttributableValue: 125
+      // Attributable value is derived from the settlement, not asserted by the
+      // executor: $130.00 collected less $5.00 of processor fees.
+      settlement: {
+        source: 'stripe',
+        externalRef: `txn_${noveltyKey}`,
+        grossCents: 13000,
+        feeCents: 500,
+        status: 'CLEARED'
+      }
     })
   });
 

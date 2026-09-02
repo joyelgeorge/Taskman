@@ -13,11 +13,16 @@ export const LEGACY_QUEUE_ALIASES = Object.freeze({
   revenue_scan_inference: CANONICAL_QUEUES.inference
 });
 
+// 'structural_money_flow' (an anchor file the system wrote to itself) and
+// 'model_inference' (an LLM asked to originate a candidate) were removed here.
+// Both are exactly the closed loop documented in docs/SYSTEM_DESIGN.md §9 and
+// the discovery invariant in docs/TARGET_DESIGN.md §1: discovery must be
+// deterministic, and a source that reads the system's own prior output is not
+// a source. See src/workers/discover.js and packages/core/drones for the
+// deterministic collector layer that replaced them.
 export const DISCOVERY_SOURCES = Object.freeze({
   recent_events: { profile: 'programmable_money_flow_v1' },
   credible_writers: { profile: 'programmable_money_flow_v1' },
-  model_inference: { profile: 'programmable_money_flow_v1' },
-  structural_money_flow: { profile: 'programmable_money_flow_v1' },
   bounty: { profile: 'bounty_execution_v1' },
   immediate_income: { profile: 'immediate_income_v1' }
 });

@@ -54,25 +54,36 @@ test('AI Reasoning Engine: handles malformed JSON output safely', async () => {
   assert.ok(res.error.includes('not valid JSON'));
 });
 
-test('Discover Worker: AI synthesis enqueues valid opportunities into candidate_queue', async () => {
-  const mockAi = async () => JSON.stringify({
-    candidates: [{
-      candidateId: 'cand-disc-ai-1',
-      title: 'Valid AI Candidate',
-      noveltyKey: `ai-cand-${crypto.randomUUID()}`,
+test('Discover Worker: never calls a model, even when one is offered', async () => {
+  // Discovery is deterministic by contract (docs/TARGET_DESIGN.md §1): a model may
+  // transform an existing candidate, never originate one. runDiscoverWorker no
+  // longer accepts mockAiReasoning at all — passing it is simply ignored — and a
+  // sample candidate with no evidence must qualify or fail on its own merits.
+  let called = false;
+  const trackedAi = async () => { called = true; return '{"candidates":[]}'; };
+
+  const discRes = await runDiscoverWorker({
+    sampleCandidates: [{
+      id: 'src-1',
+      title: 'Source Input',
+      noveltyKey: `no-ai-${crypto.randomUUID()}`,
       profile: 'programmable_money_flow_v1',
       metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1 },
       evidence: ['https://aws.amazon.com/support/plans/']
-    }]
+    }],
+    mockAiReasoning: trackedAi
   });
 
-  const discRes = await runDiscoverWorker({
-    sampleCandidates: [{ id: 'src-1', title: 'Source Input' }],
-    mockAiReasoning: mockAi
-  });
-
+  assert.equal(called, false, 'discovery must never invoke a model, even one supplied by the caller');
   assert.equal(discRes.status, 'COMPLETED');
-  assert.ok(discRes.enqueued >= 1);
+  assert.ok(discRes.enqueued >= 1, 'the explicit sample candidate should still qualify deterministically');
+});
+
+test('Discover Worker: reports zero candidates loudly rather than staying silent', async () => {
+  const discRes = await runDiscoverWorker({ sources: ['recent_events'], sampleCandidates: [] });
+  assert.equal(discRes.zeroCandidates, true);
+  assert.equal(discRes.enqueued, 0);
+  assert.deepEqual(discRes.sourcesQueried, ['recent_events']);
 });
 
 test('Validate Worker: AI adversarial gate evaluation', async () => {

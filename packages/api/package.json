@@ -1,0 +1,8 @@
+{
+  "name": "@taskman/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "dependencies": { "@taskman/core": "1.0.0", "@taskman/db": "1.0.0" }
+}

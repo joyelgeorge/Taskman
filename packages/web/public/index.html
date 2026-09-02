@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskman Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Taskman <span>/ control</span></h1>
+    <div class="controls">
+      <input type="text" id="api-base" placeholder="https://your-api.onrender.com" aria-label="API base URL">
+      <input type="password" id="api-token" placeholder="API token (optional)" aria-label="API token">
+      <button id="save">Connect</button>
+      <button id="refresh" class="primary">Refresh</button>
+    </div>
+  </header>
+
+  <div id="error" class="err" hidden></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section>
+    <div class="sec-head"><h2>Crons</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Cron</th><th>Schedule</th><th>Status</th><th>Last run</th><th class="n">Silent</th><th></th></tr></thead>
+      <tbody id="crons"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Drones</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Drone</th><th>Kind</th><th>Status</th><th>Last OK</th><th class="n">Fails</th><th></th></tr></thead>
+      <tbody id="drones"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Open alerts</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Severity</th><th>Component</th><th>Message</th><th>Since</th></tr></thead>
+      <tbody id="alerts"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Revenue rails</h2><span id="global-budget" class="pill off"></span></div>
+    <div class="card"><table>
+      <thead><tr><th>Rail</th><th>State</th><th class="n">Attempts</th><th class="n">Spend</th><th class="n">Cleared</th><th class="n">Net</th><th class="n">ROI</th><th></th></tr></thead>
+      <tbody id="rails"><tr><td colspan="8" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Improvement proposals</h2></div>
+    <div class="card"><table>
+      <thead><tr><th class="n">Score</th><th>Source</th><th>Proposal</th><th></th></tr></thead>
+      <tbody id="improvements"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Recent signals</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Drone</th><th>Title</th><th>Status</th><th class="n">Score</th></tr></thead>
+      <tbody id="signals"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <p class="foot" id="foot">Set the API base URL and press Connect. The UI is static and holds no data of its own.</p>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

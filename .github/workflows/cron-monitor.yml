@@ -1,0 +1,20 @@
+# Watchdog: detects crons that have gone silent.
+name: cron · cron-monitor
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cron-cron-monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/_cron.yml
+    with:
+      name: cron-monitor
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

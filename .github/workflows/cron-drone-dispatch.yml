@@ -1,0 +1,20 @@
+# Flies every due drone and ingests what it brings back.
+name: cron · drone-dispatch
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cron-drone-dispatch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/_cron.yml
+    with:
+      name: drone-dispatch
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

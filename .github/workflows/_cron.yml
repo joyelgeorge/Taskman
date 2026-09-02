@@ -1,0 +1,46 @@
+# Shared runner for every Taskman cron.
+#
+# The crons talk to the database directly and never through the API, so a sleeping
+# free-tier web service cannot silently stop the autonomous system.
+name: cron
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Cron to run
+        type: string
+        required: true
+      timeout-minutes:
+        type: number
+        default: 10
+    secrets:
+      DATABASE_URL:
+        required: true
+      STRIPE_API_KEY:
+        required: false
+
+jobs:
+  run:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # `npm install` rather than `npm ci`, so the workflow keeps working whether
+      # or not package-lock.json is committed.
+      - run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Run ${{ inputs.name }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+          WEB_HEALTH_URL: ${{ vars.WEB_HEALTH_URL }}
+          HOSTNAME: github-actions
+        run: npm run cron -- ${{ inputs.name }}

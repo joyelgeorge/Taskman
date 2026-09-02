@@ -37,6 +37,32 @@ services:
       - key: MOLTJOBS_API_KEY
         sync: false
 
+  # Backend API. Free tier sleeps after inactivity, which is fine by design:
+  # crons talk to the database directly and never depend on this being awake.
+  - type: web
+    name: taskman-api
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install --omit=dev
+    startCommand: node packages/api/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskman-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        sync: false
+      - key: TASKMAN_API_TOKEN
+        sync: false
+      - key: STRIPE_API_KEY
+        sync: false
+
 databases:
   - name: taskman-db
     databaseName: taskman

@@ -1,0 +1,7 @@
+{
+  "name": "@taskman/crons",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@taskman/core": "1.0.0", "@taskman/db": "1.0.0" }
+}

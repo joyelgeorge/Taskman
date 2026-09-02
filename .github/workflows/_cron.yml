@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.node-version'
 
       # `npm install` rather than `npm ci`, so the workflow keeps working whether
       # or not package-lock.json is committed.

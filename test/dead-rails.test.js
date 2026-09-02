@@ -48,13 +48,23 @@ test('enableRailExecution refuses a disabled rail even with a valid gate', async
   );
 });
 
-test('railStatus reports ledger-enabled state alongside adapter mode', async () => {
+test('railStatus stays a plain adapter passthrough; ledger state is read separately', async () => {
+  // railStatus() must stay exactly listRails() — capability-registry.js's
+  // buildCapabilityRegistry() calls it as a synchronous default-parameter value
+  // and reads rail.apiKey off the raw adapter, so this cannot become async or
+  // remap the shape. Ledger-derived state (whether a rail is actually allowed to
+  // spend) lives in getRailState()/railEconomics() instead — see
+  // src/rails/index.js's top comment.
   resetLedgerMemory();
   const status = await railStatus();
   const taskforce = status.find(r => r.name === 'taskforce');
   assert.ok(taskforce);
   assert.equal(taskforce.mode, 'read_only');
-  assert.equal(taskforce.enabled, false);
+  assert.equal('apiKey' in taskforce, true, 'capability-registry.js reads rail.apiKey off the raw adapter');
+
+  await seedDeadRails();
+  const state = await getRailState('taskforce');
+  assert.equal(state.enabled, false, 'the ledger, not railStatus(), is the source of truth for whether a rail may spend');
 });
 
 test('the bounty discovery path is a silent no-op while the rail is disabled', async () => {

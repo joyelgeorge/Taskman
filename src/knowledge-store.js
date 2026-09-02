@@ -1,8 +1,9 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { databaseEnabled, query } from './db.js';
+import { getRuntimeConfig } from './config.js';
 
-const STORE_PATH = process.env.TASKMAN_KNOWLEDGE_PATH || 'data/runtime/knowledge-events.jsonl';
+const STORE_PATH = getRuntimeConfig().knowledgePath;
 
 async function ensureStore() {
   await mkdir(dirname(STORE_PATH), { recursive: true });

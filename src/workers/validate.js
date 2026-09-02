@@ -1,189 +1,76 @@
+import { CANONICAL_QUEUES, QUALIFICATION_PROFILES } from '../orchestration-profiles.js';
 import {
-  CANONICAL_QUEUES,
-  capabilitySnapshot
-} from '../orchestration-profiles.js';
-import {
-  qualifyCandidate,
-  missingCapabilities
+  evaluateQualificationEvidence,
+  qualifyCandidate
 } from '../qualification-engine.js';
 import {
   upsertRevenueRecord,
   claimRevenueRecords,
-  updateRevenueRecord,
-  setRevenueState,
-  getRevenueState
+  updateRevenueRecord
 } from '../revenue-store.js';
+import { sharedReasoningEngine } from '../reasoning-engine.js';
+import { runAdversarialValidation } from '../transforms/adversarial-validation.js';
+import {
+  evaluatePastGuidance,
+  GUIDANCE_EVALUATIONS,
+  recordLearningInference
+} from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError } from '../errors.js';
 
-// Moved to src/gates.js so src/transforms/adversarial-validation.js can reference
-// the same list without importing this file (which imports the transform back).
-import { EIGHT_MONEY_FLOW_GATES } from '../gates.js';
-export { EIGHT_MONEY_FLOW_GATES };
+export const EIGHT_MONEY_FLOW_GATES = Object.freeze([
+  ...QUALIFICATION_PROFILES.programmable_money_flow_v1.evidenceGates
+]);
 
-/**
- * Gate-result descriptor expected in candidate.gateEvidence:
- *   { [gateName]: { verdict: 'pass' | 'fail' | 'uncertain', evidenceRef: string } }
- *
- * Backwards-compat: candidate.gates provides legacy flat verdict strings.
- * If a gate has verdict='pass' in legacy gates[] but NO entry in gateEvidence with a
- * non-empty evidenceRef, it is treated as 'missing' (unverified assertion).
- */
 export function evaluateEvidenceGates(candidate = {}) {
-  const evidence = Array.isArray(candidate.evidence) ? candidate.evidence : [];
-  const profile = candidate.profile || 'programmable_money_flow_v1';
-  // Per-gate structured evidence: { [gate]: { verdict, evidenceRef } }
-  const gateEvidence = candidate.gateEvidence || {};
-  // Legacy flat verdicts — used as fallback only when gateEvidence is absent for a gate
-  const legacyGates = candidate.gates || candidate.raw?.gates || {};
+  return evaluateQualificationEvidence(candidate, candidate.profile || 'programmable_money_flow_v1');
+}
 
-  // If candidate has zero top-level evidence, it cannot be promoted regardless of gate assertions
-  if (evidence.length === 0) {
-    return {
-      passed: false,
-      status: 'NEEDS_EVIDENCE',
-      reason: 'No verifiable evidence attached to candidate',
-      gateResults: {}
-    };
-  }
-
-  if (profile === 'programmable_money_flow_v1') {
-    const gateResults = {};
-    const failedGates = [];
-    const uncertainGates = [];
-
-    for (const gate of EIGHT_MONEY_FLOW_GATES) {
-      // Per-gate binding takes priority
-      const perGate = gateEvidence[gate];
-      let verdict;
-      let evidenceRef;
-
-      if (perGate) {
-        verdict = String(perGate.verdict || '').toLowerCase();
-        evidenceRef = perGate.evidenceRef ? String(perGate.evidenceRef).trim() : '';
-      } else {
-        // Legacy flat string — accepted only if *some* global evidence exists AND verdict is 'pass'
-        verdict = String(legacyGates[gate] || '').toLowerCase();
-        evidenceRef = ''; // No specific citation — treated as missing for THRESHOLD_CROSSED
-      }
-
-      if (verdict === 'fail') {
-        gateResults[gate] = { verdict: 'fail', evidenceRef };
-        failedGates.push(gate);
-      } else if (verdict === 'pass' && evidenceRef) {
-        // Verified: pass with specific evidence reference
-        gateResults[gate] = { verdict: 'pass', evidenceRef };
-      } else {
-        // Unverified: pass without specific evidence, uncertain, or missing
-        const displayVerdict = (verdict === 'pass') ? 'pass_unverified' : (verdict || 'missing');
-        gateResults[gate] = { verdict: displayVerdict, evidenceRef: evidenceRef || null };
-        uncertainGates.push(gate);
-      }
-    }
-
-    if (failedGates.length > 0) {
-      return {
-        passed: false,
-        status: 'REJECTED',
-        reason: `Adversarial validation failed on gates: ${failedGates.join(', ')}`,
-        gateResults
-      };
-    }
-
-    if (uncertainGates.length > 0) {
-      return {
-        passed: false,
-        status: 'NEEDS_EVIDENCE',
-        reason: `Missing per-gate evidence citations on: ${uncertainGates.join(', ')}. Each gate pass must supply gateEvidence[gate].evidenceRef.`,
-        gateResults
-      };
-    }
-
-    return {
-      passed: true,
-      status: 'THRESHOLD_CROSSED',
-      reason: 'All 8 money-flow gates verified with individual evidence citations',
-      gateResults
-    };
-  }
-
-  if (profile === 'bounty_execution_v1' || profile === 'immediate_income_v1') {
-    const hasPayerEvidence = evidence.some(e => typeof e === 'string' && (e.includes('escrow') || e.includes('payer') || e.includes('bounty') || e.includes('http')));
-    const hasAcceptanceCriteria = Boolean(candidate.acceptanceCriteria || candidate.raw?.acceptance_criteria || candidate.raw?.description);
-    const hasReward = Number(candidate.estimatedValue ?? candidate.raw?.reward ?? candidate.raw?.budget ?? 0) > 0;
-
-    if (!hasPayerEvidence || !hasAcceptanceCriteria || !hasReward) {
-      return {
-        passed: false,
-        status: 'NEEDS_EVIDENCE',
-        reason: 'Missing evidence of verified payer, clear acceptance criteria, or reward amount',
-        gateResults: { hasPayerEvidence, hasAcceptanceCriteria, hasReward }
-      };
-    }
-
-    return {
-      passed: true,
-      status: 'EXECUTABLE',
-      reason: 'Bounty/income criteria verified with evidence',
-      gateResults: { hasPayerEvidence, hasAcceptanceCriteria, hasReward }
-    };
-  }
-
-  return {
-    passed: false,
-    status: 'NEEDS_EVIDENCE',
-    reason: `Unknown profile ${profile} requires evidence validation`,
-    gateResults: {}
-  };
+function classificationAfterCustomEvidence(qualification, evidenceCheck, profileName) {
+  if (!qualification.eligibleForValidation) return 'REJECTED';
+  if (!evidenceCheck?.passed) return evidenceCheck?.status || 'NEEDS_EVIDENCE';
+  if (qualification.setupState === 'BLOCKED') return 'BLOCKED';
+  if (qualification.setupState === 'SETUP_REQUIRED') return 'SETUP_REQUIRED';
+  return QUALIFICATION_PROFILES[profileName].passStatus;
 }
 
 /**
- * Taskman Validate Worker
- * 
- * Responsibilities:
- * 1. Claim from candidate_queue.
- * 2. Reuse existing evidence first; obtain only missing/stale evidence.
- * 3. Run the adversarial validation profile appropriate to the candidate.
- * 4. Write records to validation_queue.
- * 5. Enqueue EXECUTABLE, SETUP_REQUIRED, or THRESHOLD_CROSSED items into execution_queue.
- * 6. Write reusable findings to learning_inference.
- * 7. Release/requeue items that need more evidence.
- * 
- * Invariants:
- * - Numeric qualification score alone MUST NEVER produce EXECUTABLE or THRESHOLD_CROSSED.
- * - Missing evidence must produce NEEDS_EVIDENCE.
- * - Programmable-money-flow THRESHOLD_CROSSED requires explicit evidence-backed PASS on all 8 gates.
- * - Any AI-assisted gate evidence passes through src/transforms/adversarial-validation.js,
- *   whose post-condition rejects evidence that is not a real citation (see that
- *   file). This worker never calls the reasoning engine directly — see
- *   docs/TARGET_DESIGN.md §11 (the LLM boundary).
+ * Validate is the sole promotion boundary between candidate_queue and
+ * execution_queue. Numeric/model confidence never overrides profile evidence,
+ * capability health, or setup state.
+ *
+ * AI-assisted gate evidence, when a candidate is missing it, is routed through
+ * src/transforms/adversarial-validation.js rather than calling the reasoning
+ * engine directly — its post-condition rejects evidence that is not a real
+ * citation (a gate verdict backed only by the gate's own name echoed back, or a
+ * placeholder like "n/a"), which JSON schema validation alone cannot catch. A
+ * transform that fails its post-condition is discarded, not repaired: the
+ * candidate falls through to evidence-driven validation exactly as if no AI
+ * were configured at all. See docs/TARGET_DESIGN.md §11 (the LLM boundary).
  */
-import { sharedReasoningEngine } from '../reasoning-engine.js';
-import { runAdversarialValidation } from '../transforms/adversarial-validation.js';
-
-export async function runValidateWorker({
+async function runValidateWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-validate-worker',
   validatorFn = null,
-  mockAiReasoning = null
+  mockAiReasoning = null,
+  capabilityOptions = {},
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.candidates, { limit, claimedBy });
-  const capabilities = capabilitySnapshot();
-
   const validated = [];
   const promoted = [];
   const rejected = [];
   const needsEvidence = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     let candidate = item.payload.candidate || item.payload;
     const profileName = candidate.profile || 'programmable_money_flow_v1';
 
-    // If AI reasoning is available and the candidate is missing gate evidence, run
-    // it through the adversarial-validation transform. A transform that fails its
-    // post-condition (fabricated or vague evidence) is discarded, not repaired —
-    // the candidate falls through to evidence-driven validation exactly as if no
-    // AI were configured at all.
-    if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) && (!candidate.gateEvidence || Object.keys(candidate.gateEvidence).length === 0)) {
+    if ((sharedReasoningEngine.isConfigured() || mockAiReasoning) &&
+        (!candidate.gateEvidence || Object.keys(candidate.gateEvidence).length === 0)) {
       try {
         const aiValidation = await runAdversarialValidation({
           candidate,
@@ -191,53 +78,43 @@ export async function runValidateWorker({
           mockProvider: mockAiReasoning
         });
         if (aiValidation.ok && aiValidation.data?.gateEvidence) {
-          candidate = {
-            ...candidate,
-            gateEvidence: aiValidation.data.gateEvidence
-          };
+          candidate = { ...candidate, gateEvidence: aiValidation.data.gateEvidence };
         }
       } catch {
-        // Fall back gracefully to existing evidence
+        // Non-authoritative AI failure leaves the candidate evidence-incomplete.
       }
     }
-    
-    // 1. Initial qualification check
-    const qual = qualifyCandidate(candidate, profileName);
-    const missing = missingCapabilities(candidate, capabilities);
 
-    // 2. Perform adversarial evidence-driven gate validation
-    let evidenceCheck;
-    if (typeof validatorFn === 'function') {
-      evidenceCheck = await validatorFn(candidate, capabilities);
-    } else {
-      evidenceCheck = evaluateEvidenceGates(candidate);
-    }
-
-    let classification = evidenceCheck.status || 'NEEDS_EVIDENCE';
-
-    // If gates pass but capabilities are missing, classify as SETUP_REQUIRED
-    if (evidenceCheck.passed && missing.length > 0) {
-      classification = 'SETUP_REQUIRED';
-    }
+    const qualification = qualifyCandidate(candidate, profileName, { capabilityOptions });
+    const evidenceCheck = typeof validatorFn === 'function'
+      ? await validatorFn(candidate, qualification.capabilities)
+      : qualification.evidence;
+    const classification = typeof validatorFn === 'function'
+      ? classificationAfterCustomEvidence(qualification, evidenceCheck, profileName)
+      : qualification.recommendedStatus;
+    const missingCapabilities = [
+      ...qualification.capabilities.setupRequired,
+      ...qualification.capabilities.unavailable,
+      ...qualification.capabilities.unhealthy
+    ];
 
     const validationPayload = {
       candidate,
-      qualification: qual,
+      learning: item.payload.learning || null,
+      qualification,
       classification,
       evidenceCheck,
-      missingCapabilities: missing,
+      missingCapabilities,
       validatedAt: startedAt,
       validatedBy: claimedBy
     };
 
-    // Update the candidate record status
     await updateRevenueRecord(item.id, {
       status: classification === 'REJECTED' ? 'REJECTED' : 'VALIDATED',
       payload: { ...item.payload, validation: validationPayload },
       releaseClaim: true
     });
 
-    // Write record to validation_queue
     const valRecord = await upsertRevenueRecord({
       queue: CANONICAL_QUEUES.validation,
       noveltyKey: `val-${candidate.noveltyKey || item.id}`,
@@ -246,10 +123,43 @@ export async function runValidateWorker({
       payload: validationPayload
     });
     validated.push(valRecord);
+    addTraceEvent('queue.transition', {
+      stage: 'VALIDATE', queue: 'validation', candidate_id: candidate.candidateId,
+      queue_item_id: valRecord.id, outcome: classification
+    });
 
-    // Enqueue EXECUTABLE, SETUP_REQUIRED, or THRESHOLD_CROSSED items into execution_queue
+    const priorLearningIds = item.payload.learning?.appliedLearningIds || [];
+    const guidanceEvaluation = ['REJECTED', 'BLOCKED'].includes(classification)
+      ? GUIDANCE_EVALUATIONS.MISLEADING
+      : classification === 'NEEDS_EVIDENCE'
+        ? GUIDANCE_EVALUATIONS.INCONCLUSIVE
+        : GUIDANCE_EVALUATIONS.USEFUL;
+    for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
+      await evaluatePastGuidance(learningId, guidanceEvaluation, {
+        evidenceRef: `validation:${valRecord.id}`,
+        now: new Date(startedAt)
+      });
+    }
+
+    await recordLearningInference({
+      statement: `${candidate.sourceType || 'unknown'} validation classified candidate as ${classification}`,
+      classification: 'TEMPORARY_HINT',
+      confidence: classification === 'NEEDS_EVIDENCE' ? 0.45 : 0.6,
+      supportingEvidence: [`validation:${valRecord.id}`],
+      sourceWorker: claimedBy,
+      scope: `source:${candidate.sourceType || 'unknown'}`,
+      mandatoryChecks: qualification.evidence?.missingGates || [],
+      weightAdjustment: {
+        targetType: 'source',
+        target: candidate.sourceType || 'unknown',
+        delta: ['REJECTED', 'BLOCKED'].includes(classification) ? -0.1 : 0.05
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
+
     if (['EXECUTABLE', 'SETUP_REQUIRED', 'THRESHOLD_CROSSED'].includes(classification)) {
-      const execRecord = await upsertRevenueRecord({
+      promoted.push(await upsertRevenueRecord({
         queue: CANONICAL_QUEUES.execution,
         noveltyKey: `exec-${candidate.noveltyKey || item.id}`,
         status: 'NEW',
@@ -258,34 +168,16 @@ export async function runValidateWorker({
           candidate,
           validation: validationPayload,
           classification,
-          missingCapabilities: missing,
+          missingCapabilities,
+          learning: item.payload.learning || null,
           enqueuedAt: startedAt
         }
-      });
-      promoted.push(execRecord);
-    } else if (classification === 'REJECTED') {
+      }));
+    } else if (classification === 'REJECTED' || classification === 'BLOCKED') {
       rejected.push(candidate);
     } else {
       needsEvidence.push(candidate);
     }
-  }
-
-  // Write reusable findings into learning_inference
-  if (validated.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-validate-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 5,
-      payload: {
-        stage: 'VALIDATE',
-        claimedCount: claimed.length,
-        promotedCount: promoted.length,
-        rejectedCount: rejected.length,
-        needsEvidenceCount: needsEvidence.length,
-        timestamp: startedAt
-      }
-    });
   }
 
   return {
@@ -301,9 +193,24 @@ export async function runValidateWorker({
   };
 }
 
+export async function runValidateWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.validate', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'VALIDATE'
+  }, async () => {
+    const result = await runValidateWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('VALIDATE', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('validate.js')) {
   runValidateWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:validate:cli' });
     process.exit(1);
   });
 }

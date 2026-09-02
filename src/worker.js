@@ -3,6 +3,7 @@ import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
 import { claimScheduledJob, finishScheduledJobRun } from './durable-scheduler.js';
+import { logRestrictedError, stableErrorCode } from './errors.js';
 
 const command = process.argv[2]?.toLowerCase();
 
@@ -23,18 +24,20 @@ async function main() {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'COMPLETED',
           result
         });
       }
     } catch (err) {
-      console.error('[Taskman Worker] Discover Error:', err);
+      logRestrictedError(err, { context: 'worker:discover' });
       if (claim) {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'FAILED',
-          error: err.message
+          error: stableErrorCode(err)
         });
       }
       process.exit(1);
@@ -50,18 +53,20 @@ async function main() {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'COMPLETED',
           result
         });
       }
     } catch (err) {
-      console.error('[Taskman Worker] Validate Error:', err);
+      logRestrictedError(err, { context: 'worker:validate' });
       if (claim) {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'FAILED',
-          error: err.message
+          error: stableErrorCode(err)
         });
       }
       process.exit(1);
@@ -77,18 +82,20 @@ async function main() {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'COMPLETED',
           result
         });
       }
     } catch (err) {
-      console.error('[Taskman Worker] Execute Error:', err);
+      logRestrictedError(err, { context: 'worker:execute' });
       if (claim) {
         await finishScheduledJobRun({
           jobId: claim.job.id,
           runKey: claim.runKey,
+          leaseToken: claim.leaseToken,
           status: 'FAILED',
-          error: err.message
+          error: stableErrorCode(err)
         });
       }
       process.exit(1);
@@ -97,6 +104,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(err);
+  logRestrictedError(err, { context: 'worker:main' });
   process.exit(1);
 });

@@ -1,6 +1,6 @@
 -- The four-state rail governor (docs/TARGET_DESIGN.md §8).
 --
--- rail_state.enabled (006) was a human-settable boolean. It becomes a value
+-- rail_state.enabled (010) was a human-settable boolean. It becomes a value
 -- DERIVED from `state`, so there is exactly one place a rail's aliveness is
 -- decided, and "enabled" can no longer drift out of sync with the state machine
 -- that actually governs spend.
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS global_budget (
 
 INSERT INTO global_budget(id) VALUES ('default') ON CONFLICT (id) DO NOTHING;
 
--- rail_economics (006) now also reports the governed state, so a caller of
+-- rail_economics (010) now also reports the governed state, so a caller of
 -- railEconomics() can render PROBATION/PROVEN/SCALED/DISABLED without a second
 -- query. A rail with no attempts or settlements yet but a rail_state row (freshly
 -- registered) still appears, defaulting to PROBATION.

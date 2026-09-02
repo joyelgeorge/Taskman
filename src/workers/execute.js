@@ -1,7 +1,10 @@
 import {
-  CANONICAL_QUEUES,
-  capabilitySnapshot
+  CANONICAL_QUEUES
 } from '../orchestration-profiles.js';
+import {
+  evaluateRequiredCapabilities,
+  getRuntimeCapabilityMap
+} from '../capability-registry.js';
 import {
   claimRevenueRecords,
   updateRevenueRecord,
@@ -12,7 +15,7 @@ import {
 
 /**
  * Taskman Execute Worker
- * 
+ *
  * Responsibilities:
  * 1. Claim from execution_queue.
  * 2. Check shared capability registry.
@@ -20,7 +23,7 @@ import {
  * 4. Classify results (ADVANCED, COMPLETED, VALUE_CREATED, MONEY_EVENT, SETUP_REQUIRED, BLOCKED, REVALIDATE, REJECTED).
  * 5. Write results to economic_outcomes.
  * 6. Write execution/capability/economic lessons to learning_inference.
- * 
+ *
  * Invariants:
  * - NEVER simulate VALUE_CREATED or MONEY_EVENT.
  * - If no concrete authorized execution adapter/action is available, return BLOCKED, SETUP_REQUIRED, or REVALIDATE.
@@ -29,7 +32,7 @@ import {
  *   which requires an external reference a payment processor can be re-queried for.
  *   An executor's own claim about what it earned is discarded.
  * - A rail whose probation budget or attempt allowance is spent without a verified
- *   settlement is switched off rather than retried.
+ *   settlement is switched off rather than retried — see src/rail-governor.js.
  */
 import { sharedReasoningEngine } from '../reasoning-engine.js';
 import { runExecutionPlan } from '../transforms/execution-plan.js';
@@ -37,21 +40,31 @@ import {
   recordAttempt,
   finishAttempt,
   recordSettlement,
-  enforceRailViability,
+  evaluateRailViability,
   isRailEnabled,
   getRailState,
   SETTLEMENT_STATUS
 } from '../money-ledger.js';
 import { globalBudgetStatus, enforceRailGovernor } from '../rail-governor.js';
+import {
+  evaluatePastGuidance,
+  GUIDANCE_EVALUATIONS,
+  recordLearningInference
+} from '../learning-inference.js';
+import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
+import { logRestrictedError, stableErrorCode } from '../errors.js';
 
-export async function runExecuteWorker({
+async function runExecuteWorkerImpl({
   limit = 10,
   claimedBy = 'taskman-execute-worker',
   executorFn = null,
   mockAiReasoning = null,
+  capabilityOptions = {},
   rail = 'default',
-  attemptCostCents = 0
+  attemptCostCents = 0,
+  signal
 } = {}) {
+  signal?.throwIfAborted();
   const startedAt = new Date().toISOString();
 
   // A rail that burned its probation budget without a verified settlement stays off.
@@ -88,17 +101,21 @@ export async function runExecuteWorker({
   }
 
   const claimed = await claimRevenueRecords(CANONICAL_QUEUES.execution, { limit, claimedBy });
-  const capabilities = capabilitySnapshot();
+  const capabilities = getRuntimeCapabilityMap(capabilityOptions);
 
   const executed = [];
   const outcomes = [];
 
   for (const item of claimed) {
+    signal?.throwIfAborted();
     const candidate = item.payload.candidate || item.payload;
-    const missing = Array.isArray(item.payload.missingCapabilities) ? item.payload.missingCapabilities : [];
+    const requiredCapabilities = Array.isArray(candidate.requiredCapabilities)
+      ? candidate.requiredCapabilities
+      : [];
+    const capabilityDecision = evaluateRequiredCapabilities(requiredCapabilities, capabilityOptions);
 
     // Every pass through this loop costs something, so every pass is recorded.
-    // Attempts are the denominator the kill-switch divides settlements by.
+    // Attempts are the denominator the governor divides settlements by.
     const attempt = await recordAttempt({
       rail,
       candidateKey: candidate.noveltyKey || item.noveltyKey || item.id,
@@ -131,12 +148,16 @@ export async function runExecuteWorker({
     let stepOutput = null;
 
     // Check capabilities first
-    if (missing.length > 0) {
+    if (capabilityDecision.unavailable.length > 0 || capabilityDecision.unhealthy.length > 0) {
+      const blocked = [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy];
+      outcomeStatus = 'BLOCKED';
+      outcomeReason = `Required capabilities unavailable: ${blocked.join(', ')}`;
+    } else if (capabilityDecision.setupRequired.length > 0) {
       outcomeStatus = 'SETUP_REQUIRED';
-      outcomeReason = `Missing required capabilities: ${missing.join(', ')}`;
+      outcomeReason = `Required capabilities need setup: ${capabilityDecision.setupRequired.join(', ')}`;
     } else if (typeof executorFn === 'function') {
       try {
-        stepOutput = await executorFn(candidate, capabilities, aiPlan);
+        stepOutput = await executorFn(candidate, capabilities, aiPlan, { signal });
         outcomeStatus = stepOutput.status || 'COMPLETED';
         outcomeReason = stepOutput.reason || 'Executed via authorized executor function';
 
@@ -160,7 +181,7 @@ export async function runExecuteWorker({
         }
       } catch (err) {
         outcomeStatus = 'BLOCKED';
-        outcomeReason = `Execution error: ${err.message}`;
+        outcomeReason = `Execution error: ${stableErrorCode(err)}`;
       }
     } else {
       // Invariant: In the absence of a concrete authorized executor adapter,
@@ -169,6 +190,11 @@ export async function runExecuteWorker({
       outcomeReason = 'No authorized executable action adapter configured for this candidate type; safe default is BLOCKED';
       attributableValue = 0;
     }
+
+    await finishAttempt(attempt.id, {
+      status: outcomeStatus,
+      evidence: { outcomeReason, attributableValue }
+    });
 
     const outcomePayload = {
       candidateId: candidate.candidateId,
@@ -182,11 +208,6 @@ export async function runExecuteWorker({
       executedBy: claimedBy,
       stepOutput
     };
-
-    await finishAttempt(attempt.id, {
-      status: outcomeStatus,
-      evidence: { outcomeReason, attributableValue }
-    });
 
     // Update execution_queue record
     await updateRevenueRecord(item.id, {
@@ -205,31 +226,46 @@ export async function runExecuteWorker({
     });
     outcomes.push(outcomeRecord);
     executed.push(outcomePayload);
-  }
-
-  // Write lessons into learning_inference
-  if (outcomes.length > 0) {
-    await upsertRevenueRecord({
-      queue: CANONICAL_QUEUES.inference,
-      noveltyKey: `inference-execute-${startedAt.slice(0, 13)}`,
-      status: 'NEW',
-      priority: 8,
-      payload: {
-        stage: 'EXECUTE',
-        claimedCount: claimed.length,
-        outcomesCount: outcomes.length,
-        moneyEventsCount: outcomes.filter(o => o.status === 'MONEY_EVENT').length,
-        blockedCount: outcomes.filter(o => o.status === 'BLOCKED').length,
-        setupRequiredCount: outcomes.filter(o => o.status === 'SETUP_REQUIRED').length,
-        timestamp: startedAt
-      }
+    addTraceEvent('pipeline.terminal', {
+      stage: 'EXECUTE', queue: 'outcomes', candidate_id: candidate.candidateId,
+      queue_item_id: outcomeRecord.id, outcome: outcomeStatus
     });
+
+    const priorLearningIds = item.payload.learning?.appliedLearningIds ||
+      item.payload.validation?.learning?.appliedLearningIds || [];
+    const guidanceEvaluation = ['COMPLETED', 'ADVANCED', 'VALUE_CREATED', 'MONEY_EVENT'].includes(outcomeStatus)
+      ? GUIDANCE_EVALUATIONS.USEFUL
+      : ['BLOCKED', 'REJECTED'].includes(outcomeStatus)
+        ? GUIDANCE_EVALUATIONS.MISLEADING
+        : GUIDANCE_EVALUATIONS.INCONCLUSIVE;
+    for (const learningId of priorLearningIds) {
+      signal?.throwIfAborted();
+      await evaluatePastGuidance(learningId, guidanceEvaluation, {
+        evidenceRef: `outcome:${outcomeRecord.id}`,
+        now: new Date(startedAt)
+      });
+    }
+    await recordLearningInference({
+      statement: `${candidate.sourceType || 'unknown'} execution ended ${outcomeStatus}: ${outcomeReason}`,
+      classification: 'TEMPORARY_HINT',
+      confidence: 0.65,
+      supportingEvidence: [`outcome:${outcomeRecord.id}`],
+      sourceWorker: claimedBy,
+      scope: `candidate:${candidate.candidateId || candidate.noveltyKey || item.id}`,
+      mandatoryChecks: [...capabilityDecision.unavailable, ...capabilityDecision.unhealthy, ...capabilityDecision.setupRequired],
+      weightAdjustment: {
+        targetType: 'source',
+        target: candidate.sourceType || 'unknown',
+        delta: guidanceEvaluation === GUIDANCE_EVALUATIONS.USEFUL ? 0.05 : -0.1
+      },
+      createdAt: startedAt
+    }, { now: new Date(startedAt) });
   }
 
-  // enforceRailViability is the legacy two-verdict check, kept for callers that
+  // evaluateRailViability is the legacy two-verdict check, kept for callers that
   // only need CONTINUE/DISABLE. enforceRailGovernor is the phase-4 state machine
   // (docs/TARGET_DESIGN.md §8) and is the one that actually writes rail_state.state.
-  const viability = await enforceRailViability({ rail });
+  const viability = await evaluateRailViability({ rail });
   const governor = await enforceRailGovernor({ rail });
 
   return {
@@ -245,9 +281,24 @@ export async function runExecuteWorker({
   };
 }
 
+export async function runExecuteWorker(options = {}) {
+  const started = Date.now();
+  return withTelemetrySpan('pipeline.execute', {
+    correlation_id: options.correlationId,
+    run_key: options.runKey,
+    schedule_id: options.scheduleId,
+    stage: 'EXECUTE'
+  }, async () => {
+    const result = await runExecuteWorkerImpl(options);
+    result.durationMs = Date.now() - started;
+    recordStageResult('EXECUTE', result);
+    return result;
+  });
+}
+
 if (process.argv[1]?.endsWith('execute.js')) {
   runExecuteWorker().then(res => console.log(JSON.stringify(res, null, 2))).catch(err => {
-    console.error(err);
+    logRestrictedError(err, { context: 'worker:execute:cli' });
     process.exit(1);
   });
 }

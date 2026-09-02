@@ -51,7 +51,8 @@ test('AI Reasoning Engine: handles malformed JSON output safely', async () => {
   const mock = async () => 'Not valid JSON at all';
   const res = await engine.reason({ prompt: 'test', mockProvider: mock });
   assert.equal(res.ok, false);
-  assert.ok(res.error.includes('not valid JSON'));
+  assert.equal(res.error, 'MODEL_OUTPUT_INVALID');
+  assert.equal('rawText' in res, false);
 });
 
 test('Discover Worker: never calls a model, even when one is offered', async () => {
@@ -99,7 +100,7 @@ test('Validate Worker: AI adversarial gate evaluation', async () => {
         title: 'Adversarial Test Candidate',
         noveltyKey,
         profile: 'programmable_money_flow_v1',
-        evidence: ['https://aws.amazon.com/support/plans/'],
+        evidence: Array.from({ length: 8 }, (_, index) => `https://aws.amazon.com/${index + 1}`),
         metrics: { flowScale: 1, recurrence: 1, triggerIndependence: 1, permission: 1, deltaMeasurability: 1, monetization: 1, executionAutonomy: 1, competitiveWhitespace: 1, setupBurden: 0, timeToMoney: 1 }
       }
     }
@@ -143,10 +144,14 @@ test('Execute Worker: AI plan passes through to authorized executor function', a
   });
 
   let receivedPlan = null;
+  // taskman.queue.read is the one capability capability-registry.js marks
+  // AVAILABLE unconditionally; web.read is UNAVAILABLE by default (no runtime
+  // adapter installed), so a plan naming it is correctly rejected by
+  // src/transforms/execution-plan.js's post-condition — see docs/SYSTEM_DESIGN.md §13.
   const mockPlan = async () => JSON.stringify({
     actionSummary: 'Execute optimized support right-sizing API call',
     requiredAdapters: ['aws_support_adapter'],
-    steps: [{ order: 1, action: 'Query metrics', capability: 'web.read' }]
+    steps: [{ order: 1, action: 'Query metrics', capability: 'taskman.queue.read' }]
   });
 
   const execRes = await runExecuteWorker({

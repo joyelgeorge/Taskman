@@ -1,14 +1,23 @@
 import { databaseEnabled, query, withTransaction } from './db.js';
+import {
+  INVALID_INTERVAL_CODE,
+  MAX_INTERVAL_SECONDS,
+  normalizeIntervalMinutes,
+  normalizeStoredIntervalSeconds
+} from './interval-validator.js';
+import { stableErrorCode } from './errors.js';
 
 const memory = { tasks: [], runs: [] };
 
 function rowToTask(row) {
+  const interval = normalizeStoredIntervalSeconds(row.interval_seconds);
   return {
     id: row.id,
     scenarioId: row.scenario_id,
     title: row.title,
     prompt: row.source_prompt || row.objective,
-    intervalMinutes: row.interval_seconds ? Math.round(row.interval_seconds / 60) : null,
+    intervalMinutes: interval.valid ? interval.value : null,
+    scheduleWarning: interval.valid ? null : INVALID_INTERVAL_CODE,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -18,8 +27,17 @@ function rowToTask(row) {
 }
 
 export async function createTaskRecord({ id, scenarioId, title, prompt, intervalMinutes }) {
+  const interval = normalizeIntervalMinutes(intervalMinutes);
+  if (!interval.valid) {
+    const error = new Error(interval.error);
+    error.code = interval.code;
+    error.statusCode = 400;
+    throw error;
+  }
+  const canonicalInterval = interval.value;
+
   if (!databaseEnabled) {
-    const task = { id, scenarioId, title, prompt, intervalMinutes, status: 'active', createdAt: new Date().toISOString() };
+    const task = { id, scenarioId, title, prompt, intervalMinutes: canonicalInterval, status: 'active', createdAt: new Date().toISOString() };
     memory.tasks.unshift(task);
     return task;
   }
@@ -37,16 +55,29 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
       [id, prompt]
     );
 
-    if (intervalMinutes) {
+    if (canonicalInterval) {
       await client.query(
         `INSERT INTO triggers (task_id, type, interval_seconds, timezone, next_fire_at, enabled)
          VALUES ($1,'interval',$2,'Asia/Kolkata',now() + ($2 || ' seconds')::interval,TRUE)`,
-        [id, Math.max(60, Math.round(intervalMinutes * 60))]
+        [id, canonicalInterval * 60]
       );
     }
 
-    return rowToTask({ ...taskResult.rows[0], source_prompt: prompt, interval_seconds: intervalMinutes ? intervalMinutes * 60 : null });
+    return rowToTask({ ...taskResult.rows[0], source_prompt: prompt, interval_seconds: canonicalInterval ? canonicalInterval * 60 : null });
   });
+}
+
+export async function quarantineInvalidIntervalTriggers() {
+  if (!databaseEnabled) return { disabled: 0 };
+  const result = await query(
+    `UPDATE triggers
+     SET enabled=FALSE, updated_at=now()
+     WHERE enabled=TRUE AND type='interval'
+       AND (interval_seconds IS NULL OR interval_seconds < 60 OR interval_seconds > $1 OR MOD(interval_seconds, 60) <> 0)
+     RETURNING id`,
+    [MAX_INTERVAL_SECONDS]
+  );
+  return { disabled: result.rowCount };
 }
 
 export async function listTaskRecords() {
@@ -58,7 +89,7 @@ export async function listTaskRecords() {
     FROM tasks t
     JOIN task_versions tv ON tv.task_id = t.id AND tv.version = t.current_version
     LEFT JOIN LATERAL (
-      SELECT interval_seconds FROM triggers WHERE task_id=t.id AND enabled=TRUE ORDER BY created_at DESC LIMIT 1
+      SELECT interval_seconds FROM triggers WHERE task_id=t.id ORDER BY created_at DESC LIMIT 1
     ) tr ON TRUE
     LEFT JOIN LATERAL (
       SELECT finished_at, result FROM runs WHERE task_id=t.id ORDER BY created_at DESC LIMIT 1
@@ -75,7 +106,7 @@ export async function getTaskRecord(id) {
     FROM tasks t
     JOIN task_versions tv ON tv.task_id=t.id AND tv.version=t.current_version
     LEFT JOIN LATERAL (
-      SELECT interval_seconds FROM triggers WHERE task_id=t.id AND enabled=TRUE ORDER BY created_at DESC LIMIT 1
+      SELECT interval_seconds FROM triggers WHERE task_id=t.id ORDER BY created_at DESC LIMIT 1
     ) tr ON TRUE
     WHERE t.id=$1
   `, [id]);
@@ -94,7 +125,16 @@ export async function toggleTaskStatus(id) {
     WHERE id=$1 RETURNING status
   `, [id]);
   if (!result.rowCount) return null;
-  await query('UPDATE triggers SET enabled=$2, updated_at=now() WHERE task_id=$1', [id, result.rows[0].status === 'active']);
+  await query(
+    `UPDATE triggers
+     SET enabled=CASE
+       WHEN type='interval' THEN $2 AND interval_seconds BETWEEN 60 AND $3 AND MOD(interval_seconds, 60)=0
+       ELSE $2
+     END,
+     updated_at=now()
+     WHERE task_id=$1`,
+    [id, result.rows[0].status === 'active', MAX_INTERVAL_SECONDS]
+  );
   return getTaskRecord(id);
 }
 
@@ -115,17 +155,27 @@ export async function createRunRecord({ id, taskId, scenarioId, reason, status, 
 }
 
 export async function finishRunRecord(run) {
+  const storedErrorCode = run.status === 'failed' ? stableErrorCode(run.error) : null;
   if (!databaseEnabled) {
     const existing = memory.runs.find(r => r.id === run.id);
-    if (existing) Object.assign(existing, run);
-    return run;
+    if (existing) Object.assign(existing, run, { error: storedErrorCode, errorDetail: null });
+    return { ...run, error: storedErrorCode, errorDetail: null };
   }
-  const resultJson = run.result ? { text: run.result, nextBestAction: run.nextBestAction, provider: run.provider, model: run.model } : null;
+  const resultJson = {
+    ...(run.result ? {
+      text: run.result,
+      nextBestAction: run.nextBestAction,
+      provider: run.provider,
+      model: run.model
+    } : {}),
+    ...(run.fallbacks?.length ? { fallbacks: run.fallbacks } : {}),
+    ...(run.latencyMs ? { latencyMs: run.latencyMs } : {})
+  };
   await query(
     `UPDATE runs SET status=$2, result=$3::jsonb, error_code=$4, finished_at=$5 WHERE id=$1`,
-    [run.id, run.status, JSON.stringify(resultJson), run.error || null, run.finishedAt]
+    [run.id, run.status, JSON.stringify(resultJson), storedErrorCode, run.finishedAt]
   );
-  return run;
+  return { ...run, error: storedErrorCode, errorDetail: null };
 }
 
 export async function listRunRecords(limit = 50) {
@@ -145,6 +195,9 @@ export async function listRunRecords(limit = 50) {
     provider: r.result?.provider || null,
     model: r.result?.model || null,
     error: r.error_code,
+    errorDetail: null,
+    fallbacks: r.result?.fallbacks || [],
+    latencyMs: r.result?.latencyMs || null,
     startedAt: r.started_at,
     finishedAt: r.finished_at
   }));

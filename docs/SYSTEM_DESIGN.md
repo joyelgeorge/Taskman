@@ -15,6 +15,17 @@ document is descriptive and the others are aspirational. That distinction is the
 reason this file exists: the divergences are not small, and one of them is the
 reason the system has never produced money.
 
+> **Scope note (2026-09-03):** this document's money/discovery/rail-governance
+> sections (§4, §7–§13) are current as of the reconciliation with `main` on this
+> date. A large body of unrelated work landed on `main` in parallel — an
+> authoritative capability registry, a restructured qualification engine,
+> request idempotency, observability/telemetry, and three new rails (DeskCrew,
+> Taskmarket, uGig) — documented in their own files (`docs/CAPABILITIES.md`,
+> `docs/QUALIFICATION.md`, `docs/OBSERVABILITY.md`, `docs/ERRORS.md`) rather than
+> re-described here. §1's diagram and §5–§6 predate that work and describe the
+> money-layer's own view of the pipeline; treat their line counts and file
+> references as illustrative, not exhaustive.
+
 ---
 
 ## 1. System at a glance
@@ -44,8 +55,10 @@ reason the system has never produced money.
                   money-ledger (verified settlement)
 ```
 
-Node 20, ESM, PostgreSQL via `pg`. One runtime dependency. Deployed on Render
-(`render.yaml`) as a single web service with a managed Postgres.
+Node 24 (`.node-version`), ESM, PostgreSQL via `pg`. One runtime dependency for
+the legacy engine. Deployed on Render (`render.yaml`) as a web service with a
+managed Postgres; `packages/api`/`packages/web`/`packages/crons` are the separate
+autonomous-system workspace described in `docs/AUTONOMOUS_SYSTEM.md`.
 
 ## 2. Runtime topology
 
@@ -62,7 +75,12 @@ one exercised by CI.
 
 ## 3. Data model
 
-Twenty-three tables across six migrations. Grouped by what they are actually for:
+33+ tables across 14 migration files (`db/migrations/` for the legacy engine,
+`packages/db/migrations/` for the autonomous-system workspace — both applied by
+`packages/db/migrate.js`; the legacy engine's own `scripts/migrate.js` applies
+`db/migrations/` only). Grouped by what the money-layer tables are actually for
+— the mutation ledger, capability, and other upstream-added tables are not
+enumerated here; see the docs listed in the scope note above.
 
 **Task execution (001)** — `scenarios`, `tasks`, `task_versions`, `triggers`, `runs`,
 `run_steps`. The original recurring-task engine. Live.
@@ -85,7 +103,7 @@ queues, discriminated by a `queue` column) and `revenue_scan_state`. Live and bu
 **Scheduler (004, 005)** — `scheduled_jobs`, `scheduled_job_runs`, with lease tokens
 for multi-instance safety. Live.
 
-**Settlement ledger (006)** — `rail_attempts`, `settlements`, `rail_state`, and the
+**Settlement ledger (010)** — `rail_attempts`, `settlements`, `rail_state`, and the
 `rail_economics` view. Added 2026-09-02. See §8.
 
 ## 4. The pipeline
@@ -95,15 +113,17 @@ All three stages share one mechanism: `revenue_records` rows are claimed with
 
 ### DISCOVER (`src/workers/discover.js`)
 
-Six configured discovery sources (`DISCOVERY_SOURCES`), of which the code implements
-three paths:
+Four configured discovery sources (`DISCOVERY_SOURCES`); the code implements two
+real paths:
 
 1. `sampleCandidates` passed by the caller.
-2. The TaskForce rail, if `TASKFORCE_API_KEY` is set.
-3. `data/money-flow-search-history.json` — but **only if the first two produced nothing**.
+2. Configured rails — TaskForce (ledger-gated, disabled by default; §10 gap 5),
+   DeskCrew and Taskmarket (config-flag-gated: `DESKCREW_ENABLED`/`TASKMARKET_ENABLED`).
 
-Candidates are normalized, scored by `qualifyCandidate()` against a profile, deduped
-by `noveltyKey`, and enqueued.
+The self-referential anchor-file path (`data/money-flow-search-history.json`) is
+deleted — see §9 and §13. Candidates are normalized, scored by `qualifyCandidate()`
+against a profile, deduped by `noveltyKey`, and enqueued. Zero real candidates now
+returns `zeroCandidates: true` and logs loudly rather than returning silently.
 
 ### VALIDATE (`src/workers/validate.js`)
 
@@ -152,9 +172,14 @@ register into a `Map` and are looked up by name.
 `payoutPathExecutable`, `noRecurringManualStep`, `noUpfrontSpend`,
 `noUnsupportedSigning`) and fails closed.
 
-Two rails exist: `TaskForceRail` (`task-force.app`) and a MoltJobs client
-(`moltjobs.io`). Both target the agent-work-marketplace category. §10 covers what
-that means economically.
+Five rails are registered: `TaskForceRail` (`task-force.app`) and a MoltJobs
+client (`moltjobs.io`) — both agent-work-marketplace, both ledger-disabled by
+default (§10 gap 5, `src/rails/dead-rails.js`) — plus DeskCrew, Taskmarket and
+uGig, added upstream in parallel with this document's money-layer work and gated
+by their own config flags rather than the settlement ledger. Granting a rail
+execute mode now requires **both** gates to agree — the operator allowlist
+(`TASKMAN_ALLOW_WRITE_RAILS`/`TASKMAN_WRITE_RAILS`, `src/config.js`) and a
+non-`DISABLED` ledger state — composed in `src/rails/index.js:enableRailExecution()`.
 
 ## 8. Money ledger
 
@@ -203,7 +228,7 @@ Phases 2–5 of `TARGET_DESIGN.md` §11 are implemented (2026-09-02). Status bel
 | # | Gap | Evidence | State |
 |---|---|---|---|
 | 1 | Discovery is self-referential | §9. Sole scheduled source was the system's own anchor file | **Closed** — the anchor-file path is deleted from `discoverFromRealSources()`; `DISCOVERY_SOURCES` no longer lists `structural_money_flow`. Deterministic collectors (`packages/core/drones`) are the replacement source, feeding `candidate_queue` via the `signal-process` cron. Zero real candidates now returns `zeroCandidates: true` and logs loudly instead of silently repeating. |
-| 2 | `money_events` is unreachable | One writer, no emitter | **Closed** (prior session) — superseded by `settlements`/`rail_attempts` (006). `money_events` remains in the schema, unused; a future migration may drop it. |
+| 2 | `money_events` is unreachable | One writer, no emitter | **Closed** (prior session) — superseded by `settlements`/`rail_attempts` (010). `money_events` remains in the schema, unused; a future migration may drop it. |
 | 3 | Three unreconciled scoring systems | §5 | Open — `brain.js`, `scenario-engine.js`, `qualification-engine.js` still share no scale. Out of scope for phases 2–5. |
 | 4 | Provider routing is static, not capability-based | §6 vs `MONEY_TASK_CORE.md` §7 | Open — `providers.js` is still an ordered fallback list. |
 | 5 | Both rails target a market measured at 2 settled payouts in 30 days | `TARGET_DESIGN.md` §2 | **Closed** — `TaskForceRail` and the MoltJobs client are registered but seeded `DISABLED` by `src/rails/dead-rails.js` with the measurement as `disabled_reason`. `discoverRail()` and `enableRailExecution()` both refuse a disabled rail. Code and tests kept intact; re-enabling either is a one-line manual call with fresh evidence. |
@@ -219,7 +244,7 @@ Enforced in code:
 - Rails default to `read_only`; side effects require an explicit mode change.
 - The execution gate fails closed on any missing hard gate.
 - Discovery never fabricates candidates — every path returns empty rather than inventing, and never calls a model (§13).
-- Realized value requires a settlement with an external reference (006).
+- Realized value requires a settlement with an external reference (010).
 - A rail that fails to pay within its probation budget is switched off automatically by the governor (§12); re-enabling one is a manual act only.
 - A model call's output must satisfy both a JSON schema and a transform-specific deterministic post-condition before a worker may use it (§13).
 

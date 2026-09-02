@@ -187,7 +187,7 @@ it is adversarial by design. The rules:
 
 ## 10. Data model changes
 
-Migration 006 already adds `rail_attempts`, `settlements`, `rail_state`, and the
+Migration 010 already adds `rail_attempts`, `settlements`, `rail_state`, and the
 `rail_economics` view. The target design adds:
 
 - `rail_state.state` (`PROBATION|PROVEN|SCALED|DISABLED`) replacing the boolean
@@ -206,7 +206,7 @@ must not remain a second, unenforced place where money can be claimed.
 
 Each phase is independently shippable and leaves the system working.
 
-**Phase 1 — measurement (done, 2026-09-02).** Migration 006, `money-ledger.js`,
+**Phase 1 — measurement (done, 2026-09-02).** Migration 010, `money-ledger.js`,
 `settlement-verifier.js`, execute-worker wiring, `/api/money/*`. The system can now
 state what it has earned, and stop a rail that earns nothing.
 

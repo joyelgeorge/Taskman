@@ -70,7 +70,7 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
     if (canonicalInterval) {
       await client.query(
         `INSERT INTO triggers (task_id, type, interval_seconds, timezone, next_fire_at, enabled)
-         VALUES ($1,'interval',$2,'Asia/Kolkata',now() + ($2 || ' seconds')::interval,TRUE)`,
+         VALUES ($1,'interval',$2::integer,'Asia/Kolkata',now() + ($2::text || ' seconds')::interval,TRUE)`,
         [id, canonicalInterval * 60]
       );
     }

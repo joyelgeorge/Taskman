@@ -6,6 +6,7 @@ import {
   normalizeStoredIntervalSeconds
 } from './interval-validator.js';
 import { stableErrorCode } from './errors.js';
+import { CONCURRENCY_POLICY, normalizeConcurrencyPolicy } from './scheduler-concurrency.js';
 
 const memory = { tasks: [], runs: [] };
 
@@ -17,6 +18,10 @@ function rowToTask(row) {
     title: row.title,
     prompt: row.source_prompt || row.objective,
     intervalMinutes: interval.valid ? interval.value : null,
+    concurrencyPolicy: normalizeConcurrencyPolicy(
+      row.policy?.concurrencyPolicy || row.concurrencyPolicy || CONCURRENCY_POLICY.FORBID,
+      { allowConcurrent: true }
+    ),
     scheduleWarning: interval.valid ? null : INVALID_INTERVAL_CODE,
     status: row.status,
     createdAt: row.created_at,
@@ -26,7 +31,7 @@ function rowToTask(row) {
   };
 }
 
-export async function createTaskRecord({ id, scenarioId, title, prompt, intervalMinutes }) {
+export async function createTaskRecord({ id, scenarioId, title, prompt, intervalMinutes, concurrencyPolicy }) {
   const interval = normalizeIntervalMinutes(intervalMinutes);
   if (!interval.valid) {
     const error = new Error(interval.error);
@@ -35,9 +40,16 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
     throw error;
   }
   const canonicalInterval = interval.value;
+  const requestedConcurrency = String(concurrencyPolicy || CONCURRENCY_POLICY.FORBID).trim().toUpperCase();
+  const canonicalConcurrency = normalizeConcurrencyPolicy(requestedConcurrency, {
+    allowConcurrent: requestedConcurrency === CONCURRENCY_POLICY.ALLOW
+  });
 
   if (!databaseEnabled) {
-    const task = { id, scenarioId, title, prompt, intervalMinutes: canonicalInterval, status: 'active', createdAt: new Date().toISOString() };
+    const task = {
+      id, scenarioId, title, prompt, intervalMinutes: canonicalInterval,
+      concurrencyPolicy: canonicalConcurrency, status: 'active', createdAt: new Date().toISOString()
+    };
     memory.tasks.unshift(task);
     return task;
   }
@@ -51,19 +63,23 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
 
     await client.query(
       `INSERT INTO task_versions (task_id, version, source_prompt, plan, policy)
-       VALUES ($1,1,$2,'{}'::jsonb,'{}'::jsonb)`,
-      [id, prompt]
+       VALUES ($1,1,$2,'{}'::jsonb,$3::jsonb)`,
+      [id, prompt, JSON.stringify({ concurrencyPolicy: canonicalConcurrency })]
     );
 
     if (canonicalInterval) {
       await client.query(
         `INSERT INTO triggers (task_id, type, interval_seconds, timezone, next_fire_at, enabled)
-         VALUES ($1,'interval',$2,'Asia/Kolkata',now() + ($2 || ' seconds')::interval,TRUE)`,
+         VALUES ($1,'interval',$2::integer,'Asia/Kolkata',now() + ($2::text || ' seconds')::interval,TRUE)`,
         [id, canonicalInterval * 60]
       );
     }
 
-    return rowToTask({ ...taskResult.rows[0], source_prompt: prompt, interval_seconds: canonicalInterval ? canonicalInterval * 60 : null });
+    return rowToTask({
+      ...taskResult.rows[0], source_prompt: prompt,
+      interval_seconds: canonicalInterval ? canonicalInterval * 60 : null,
+      policy: { concurrencyPolicy: canonicalConcurrency }
+    });
   });
 }
 
@@ -83,7 +99,7 @@ export async function quarantineInvalidIntervalTriggers() {
 export async function listTaskRecords() {
   if (!databaseEnabled) return memory.tasks;
   const result = await query(`
-    SELECT t.*, tv.source_prompt, tr.interval_seconds,
+    SELECT t.*, tv.source_prompt, tv.policy, tr.interval_seconds,
       lr.finished_at AS last_run_at,
       lr.result->>'text' AS last_result
     FROM tasks t
@@ -102,7 +118,7 @@ export async function listTaskRecords() {
 export async function getTaskRecord(id) {
   if (!databaseEnabled) return memory.tasks.find(t => t.id === id) || null;
   const result = await query(`
-    SELECT t.*, tv.source_prompt, tr.interval_seconds
+    SELECT t.*, tv.source_prompt, tv.policy, tr.interval_seconds
     FROM tasks t
     JOIN task_versions tv ON tv.task_id=t.id AND tv.version=t.current_version
     LEFT JOIN LATERAL (

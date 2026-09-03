@@ -412,11 +412,15 @@ export async function finishScheduledJobRun({
 
   if (!databaseEnabled) {
     const job = memoryJobs.get(jobId);
+    if (!job) return { ok: false, error: 'job not found' };
+
+    // Validate the current owner before changing either the job or its run.
+    // An absent current token is also a mismatch for a token-bearing caller.
+    if (leaseToken && job.leaseToken !== leaseToken) {
+      return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
+    }
+
     if (job) {
-      // Fencing: if a leaseToken was given, only clear the lease if it still matches
-      if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) {
-        return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
-      }
       const nextRun = computeNextRunAt(job.scheduleExpression, finishTime);
       job.leaseOwner = null;
       job.leaseExpiresAt = null;
@@ -443,9 +447,29 @@ export async function finishScheduledJobRun({
   }
 
   return withTransaction(async client => {
-    // 1. Update scheduled_job_runs
+    // Lock the job first. This serializes completion with lease reclamation and
+    // ensures a stale worker cannot mutate the run before its token is checked.
+    const jobRes = await client.query(
+      'SELECT * FROM scheduled_jobs WHERE id = $1 FOR UPDATE',
+      [jobId]
+    );
+    if (jobRes.rows.length === 0) return { ok: false, error: 'job not found' };
+
+    const job = jobRes.rows[0];
+
+    // A token-bearing caller must exactly own the current lease. Treat a cleared
+    // token as a mismatch too, preventing duplicate late completion.
+    if (leaseToken && job.lease_token !== leaseToken) {
+      return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
+    }
+
+    const nextRun = computeNextRunAt(job.schedule_expression, finishTime);
+
+    // The run row carries the same fencing token minted by claimScheduledJob.
+    // Keep legacy tokenless callers compatible while token-bearing callers can
+    // only finish their own exact claim.
     if (runKey) {
-      await client.query(`
+      const runUpdate = await client.query(`
         UPDATE scheduled_job_runs
         SET status = $1,
             finished_at = $2,
@@ -453,24 +477,23 @@ export async function finishScheduledJobRun({
             error = $4,
             updated_at = now()
         WHERE run_key = $5
-      `, [status, finishTime.toISOString(), JSON.stringify(result || {}), error ? String(error) : null, runKey]);
+          AND ($6::uuid IS NULL OR lease_token = $6::uuid)
+      `, [
+        status,
+        finishTime.toISOString(),
+        JSON.stringify(result || {}),
+        error ? String(error) : null,
+        runKey,
+        leaseToken
+      ]);
+
+      if (leaseToken && runUpdate.rowCount === 0) {
+        return { ok: false, fenced: true, reason: 'run lease token mismatch — run owned by a different worker', jobId, runKey };
+      }
     }
 
-    // 2. Fetch job to get scheduleExpression and current leaseToken
-    const jobRes = await client.query('SELECT * FROM scheduled_jobs WHERE id = $1', [jobId]);
-    if (jobRes.rows.length === 0) return { ok: false, error: 'job not found' };
-
-    const job = jobRes.rows[0];
-
-    // Fencing: if caller provided a leaseToken, only clear the lease if it matches
-    // what is stored. A stale worker (A) will have a different token than the new owner (B).
-    if (leaseToken && job.lease_token && job.lease_token !== leaseToken) {
-      return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
-    }
-
-    const nextRun = computeNextRunAt(job.schedule_expression, finishTime);
-
-    // 3. Update scheduled_jobs clearing lease and advancing next_run_at
+    // Clear only the lease validated above. The token predicate also protects
+    // against future refactors that introduce another lease mutation in this transaction.
     const isSuccess = status === 'COMPLETED';
     const updateRes = await client.query(`
       UPDATE scheduled_jobs
@@ -483,14 +506,20 @@ export async function finishScheduledJobRun({
           last_error = CASE WHEN NOT $2 THEN $4 ELSE last_error END,
           updated_at = now()
       WHERE id = $5
+        AND ($6::uuid IS NULL OR lease_token = $6::uuid)
       RETURNING *
     `, [
       nextRun.toISOString(),
       isSuccess,
       finishTime.toISOString(),
       error ? String(error) : null,
-      jobId
+      jobId,
+      leaseToken
     ]);
+
+    if (updateRes.rows.length === 0) {
+      return { ok: false, fenced: true, reason: 'lease token mismatch — lease owned by a different worker', jobId, runKey };
+    }
 
     return {
       ok: true,

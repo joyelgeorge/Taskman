@@ -74,6 +74,23 @@
     </table></div>
   </section>
 
+  <section>
+    <div class="sec-head"><h2>Satellite scans</h2><button id="scan-run" class="mini">scan now</button></div>
+    <div class="card"><table>
+      <thead><tr><th>Target</th><th>Reachable</th><th>Bot defense</th><th>Shape</th><th>Verdict</th><th>Last scan</th></tr></thead>
+      <tbody id="scans"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Finance</h2></div>
+    <div class="tiles" id="finance-tiles"></div>
+    <div class="card"><table>
+      <thead><tr><th>Rail</th><th>State</th><th class="n">Cleared</th><th class="n">Spend</th><th class="n">Net</th><th class="n">Margin</th></tr></thead>
+      <tbody id="finance-rails"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
   <p class="foot" id="foot">Set the API base URL and press Connect. The UI is static and holds no data of its own.</p>
 </div>
 <script src="app.js"></script>

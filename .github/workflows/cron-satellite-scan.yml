@@ -1,0 +1,20 @@
+# Reconnaissance of candidate money-flow venues: reachable, bot-defended, what shape.
+name: cron · satellite-scan
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cron-satellite-scan
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/_cron.yml
+    with:
+      name: satellite-scan
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

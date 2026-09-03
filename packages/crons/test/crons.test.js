@@ -4,9 +4,9 @@ import { slotSeconds, runKeyFor } from '../lib/slot.js';
 import { runCron } from '../lib/run.js';
 import { cronNames, getJob } from '../registry.js';
 import { CRON_DEFINITIONS, cronStatuses, listCronRuns, resetCronMemory, resetAlertMemory, listAlerts,
-         registerCron, resetDroneMemory, resetSignalMemory } from '@taskman/core';
+         registerCron, resetDroneMemory, resetSignalMemory, resetScanMemory, DEFAULT_TARGETS } from '@taskman/core';
 
-function reset() { resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory(); }
+function reset() { resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory(); resetScanMemory(); }
 
 test('slot length is derived from the cron expression', () => {
   assert.equal(slotSeconds('*/15 * * * *'), 900);
@@ -90,4 +90,13 @@ test('drone-dispatch seeds the default fleet on an empty install', async () => {
   const job = getJob('drone-dispatch');
   const result = await job.handler({ fetchImpl: async () => ({ ok: true, status: 200, text: async () => '{"hits":[]}' }) });
   assert.ok(result.dispatched >= 3, 'the default fleet should be registered and flown');
+});
+
+test('satellite-scan seeds the three hand-checked venues on an empty install and scans each once', async () => {
+  reset();
+  const job = getJob('satellite-scan');
+  const result = await job.handler({
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => `<title>x</title>${'x'.repeat(500)}` })
+  });
+  assert.equal(result.scanned, DEFAULT_TARGETS.length);
 });

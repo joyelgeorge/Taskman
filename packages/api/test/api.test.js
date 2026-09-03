@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from '../server.js';
-import { resetCronMemory, resetAlertMemory, resetDroneMemory, resetSignalMemory, registerDrone } from '@taskman/core';
+import {
+  resetCronMemory, resetAlertMemory, resetDroneMemory, resetSignalMemory, registerDrone,
+  resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory
+} from '@taskman/core';
 
 async function withServer(fn) {
   const server = createServer();
@@ -15,7 +18,10 @@ const get = async (base, path) => {
   return { status: response.status, body: await response.json() };
 };
 
-function reset() { resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory(); }
+function reset() {
+  resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory();
+  resetScanMemory(); resetFinanceMemory(); resetLedgerMemory(); resetGovernorMemory();
+}
 
 test('status summarises every subsystem', async () => {
   reset();
@@ -145,6 +151,103 @@ test('re-enabling a disabled rail requires the token when one is configured', as
       assert.equal(authorized.status, 200);
       const body = await authorized.json();
       assert.equal(body.state, 'PROBATION');
+    });
+  } finally {
+    delete process.env.TASKMAN_API_TOKEN;
+  }
+});
+
+test('scans/targets requires the token to add a target, but reads stay open', async () => {
+  reset();
+  process.env.TASKMAN_API_TOKEN = 'secret-token';
+  try {
+    await withServer(async base => {
+      const unauthorized = await fetch(`${base}/api/scans/targets`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetKey: 'x', targetUrl: 'https://x.example' })
+      });
+      assert.equal(unauthorized.status, 401);
+
+      assert.equal((await get(base, '/api/scans')).status, 200);
+      assert.equal((await get(base, '/api/scans/targets')).status, 200);
+
+      const authorized = await fetch(`${base}/api/scans/targets`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer secret-token' },
+        body: JSON.stringify({ targetKey: 'x', targetUrl: 'https://x.example' })
+      });
+      assert.equal(authorized.status, 200);
+    });
+  } finally {
+    delete process.env.TASKMAN_API_TOKEN;
+  }
+});
+
+test('POST /api/scans/run scans every registered target and the result shows up in GET /api/scans', async () => {
+  reset();
+  // The route calls the job handler with no fetchImpl — correctly: an HTTP
+  // caller must never be able to inject its own fetch implementation into a
+  // server-side prober. That means this test's only offline option is stubbing
+  // the real global fetch for its duration. The stub must still delegate calls
+  // aimed at this test's own local server (127.0.0.1) to the real fetch, or the
+  // test harness's own HTTP calls below would be intercepted too.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes('127.0.0.1')) return realFetch(url, init);
+    return { ok: true, status: 200, text: async () => `<title>x</title>${'x'.repeat(500)}` };
+  };
+  try {
+    await withServer(async base => {
+      const run = await fetch(`${base}/api/scans/run`, { method: 'POST' });
+      assert.equal(run.status, 200);
+      const runBody = await run.json();
+      assert.ok(runBody.result.scanned >= 3, 'the default three hand-checked venues should be seeded and scanned');
+
+      const { body } = await get(base, '/api/scans');
+      assert.ok(body.scans.length >= 3);
+      assert.ok(body.scans.every(s => 'verdict' in s && 'shape' in s));
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('finance/report is reachable with no auth and reports a real, empty-safe shape', async () => {
+  reset();
+  await withServer(async base => {
+    const { status, body } = await get(base, '/api/finance/report');
+    assert.equal(status, 200);
+    assert.equal(body.lifetime.netCents, 0);
+    assert.ok(Array.isArray(body.perRail));
+    assert.match(body.projection.method, /not a forecast/);
+  });
+});
+
+test('recording an expense requires the token when one is configured, and rejects a bad category', async () => {
+  reset();
+  process.env.TASKMAN_API_TOKEN = 'secret-token';
+  try {
+    await withServer(async base => {
+      const unauthorized = await fetch(`${base}/api/finance/expenses`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ category: 'infra', amountCents: 500 })
+      });
+      assert.equal(unauthorized.status, 401);
+
+      const badCategory = await fetch(`${base}/api/finance/expenses`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer secret-token' },
+        body: JSON.stringify({ category: 'yacht', amountCents: 500 })
+      });
+      assert.equal(badCategory.status, 400);
+
+      const ok = await fetch(`${base}/api/finance/expenses`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer secret-token' },
+        body: JSON.stringify({ category: 'infra', amountCents: 500, description: 'hosting' })
+      });
+      assert.equal(ok.status, 200);
+
+      const { body } = await get(base, '/api/finance/expenses');
+      assert.equal(body.expenses.length, 1);
+      assert.ok(body.categories.includes('marketing'));
     });
   } finally {
     delete process.env.TASKMAN_API_TOKEN;

@@ -37,16 +37,17 @@ Each is separately deployable and shares nothing but the database.
 | **web** | `packages/web` | Vercel | Static dashboard. Holds no data; reads the API cross-origin. |
 | **crons** | `packages/crons` | GitHub Actions | Six jobs, each its own workflow with its own history. |
 
-## The six crons
+## The seven crons
 
 | Cron | Schedule | Watchdog tolerance | Does |
 |---|---|---|---|
 | `drone-dispatch` | `*/15 * * * *` | 1h | Flies every due drone, ingests signals, seeds the fleet on an empty install |
 | `signal-process` | `*/20 * * * *` | 90m | Scores new signals, promotes survivors into `candidate_queue` |
 | `health-check` | `*/30 * * * *` | 2h | Checks db, deployed services, drones and crons; opens and resolves alerts |
-| `cron-monitor` | `0 * * * *` | 3h | The watchdog over the other five |
+| `cron-monitor` | `0 * * * *` | 3h | The watchdog over the other six |
 | `revenue-check` | `0 */6 * * *` | 9h | Syncs settlements from Stripe, enforces rail viability |
 | `improve` | `0 3 * * *` | 30h | Researches the system's own evidence, files proposals |
+| `satellite-scan` | `0 8 * * *` | 32h | Reconnaissance of candidate money-flow venues — see below |
 
 Tolerances are far wider than the schedules because free schedulers are not
 punctual — GitHub Actions commonly runs tens of minutes late. A watchdog that
@@ -82,12 +83,49 @@ anything matching is stored as `QUARANTINED`: visible for inspection, never
 claimable for processing. It is rejected rather than sanitized, because sanitizing
 invites a bypass. Promoted candidates carry `untrustedContent: true`.
 
+## Satellite scans
+
+Before this system automates a venue, something has to establish whether the
+venue can be automated at all — is it reachable by an honest client, or does it
+bot-defend from the first request; is it a job board, a catalog, a single-record
+lookup, a bulk dataset? That reconnaissance was originally done by hand (Upwork,
+Fiverr, a state unclaimed-property registry); `satellite-scan` is the same
+algorithm, formalized: one polite GET per registered target, once a day,
+pattern-matched against known Cloudflare/PerimeterX/generic block signatures and
+a keyword-family shape classifier (`packages/core/scans/prober.js`).
+
+It does not try to get past what it finds. A block page is a finding, not an
+obstacle to route around — the verdict says so and stops. A response too short to
+be real content is reported as "shape undetermined, likely JS-rendered," not
+guessed at. Results land in `satellite_scans` (append-only — a venue's shape or
+defense posture changing over time is a new row, not an overwrite) and
+`satellite_targets` (the watch list, upsertable via `POST /api/scans/targets`
+the same way a drone is added). `GET /api/scans` returns the latest verdict per
+target; the dashboard's "scan now" button forces an off-schedule run.
+
+The three seed targets (`packages/core/scans/targets.js`) are the exact venues
+already hand-checked — a fresh install's first run reproduces what was found by
+hand, which is the point: the automated version should agree with the manual one,
+or the automated version is wrong.
+
+## Finance
+
+`packages/core/finance/` turns the ledger's raw rows into a report a person can
+decide from — net position, per-rail margin, trailing burn rate, runway against
+the global budget cap, and a naive linear projection explicitly labeled as one.
+Deterministic only; no model touches money math anywhere in this module.
+`expenses` (migration 013) holds operational cost that isn't tied to one rail
+attempt — hosting, tooling, and, once one exists, a marketing campaign's spend,
+tagged by `campaign_key` so it rolls into the same report without a second
+accounting path. `GET /api/finance/report`, `GET/POST /api/finance/expenses`.
+Full design and the marketing half this connects to: `docs/MARKETING_FINANCE_WING.md`.
+
 ## Running it
 
 ```bash
 cp .env.example .env          # DATABASE_URL is the only required value
 npm install
-npm run migrate               # applies all 9 migrations
+npm run migrate:all           # applies every migration, both directories
 npm run smoke                 # runs the whole chain once, hits the real internet
 ```
 
@@ -96,7 +134,7 @@ Then, in separate terminals:
 ```bash
 npm run api                   # :3100
 npm run web                   # :3200  — enter the API URL in the header
-npm run scheduler             # all six crons in-process
+npm run scheduler             # all seven crons in-process
 ```
 
 A single cron: `npm run cron -- drone-dispatch` (add `--force` to ignore the slot).
@@ -108,8 +146,8 @@ Without `DATABASE_URL` everything runs in memory: useful for `npm test` and
 
 1. **Neon** — create a project, copy the connection string.
 2. **GitHub** — add `DATABASE_URL` (and optionally `STRIPE_API_KEY`) as repository
-   secrets; add `API_HEALTH_URL` / `WEB_HEALTH_URL` as repository variables. The six
-   workflows in `.github/workflows/` start on their own schedules.
+   secrets; add `API_HEALTH_URL` / `WEB_HEALTH_URL` as repository variables. The
+   seven workflows in `.github/workflows/` start on their own schedules.
 3. **Render** — deploy from `render.yaml`; it defines `taskman-api`. Set
    `CORS_ORIGIN` to the UI's origin and `TASKMAN_API_TOKEN` to any random string.
 4. **Vercel** — deploy `packages/web` (its `vercel.json` sets `public` as the output

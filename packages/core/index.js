@@ -26,3 +26,14 @@ export {
 export {
   proposeImprovement, listImprovements, decideImprovement, researchImprovements, resetImprovementMemory
 } from './improve/index.js';
+
+export {
+  scanTarget, BOT_DEFENSE_SIGNATURES, SHAPE_SIGNALS, MIN_SIGNAL_HITS,
+  registerTarget, listTargets, setTargetEnabled,
+  recordScan, latestScans, scanHistory, resetScanMemory,
+  DEFAULT_TARGETS, runSatelliteScan
+} from './scans/index.js';
+
+export {
+  recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES, financeReport
+} from './finance/index.js';

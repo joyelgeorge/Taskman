@@ -96,6 +96,12 @@ export const CRON_DEFINITIONS = [
     schedule: '0 3 * * *',
     maxSilenceSeconds: 108000,
     description: 'Researches the system’s own evidence and files improvement proposals.'
+  },
+  {
+    cronName: 'satellite-scan',
+    schedule: '0 8 * * *',
+    maxSilenceSeconds: 115200,
+    description: 'Reconnaissance of candidate money-flow venues — reachable? bot-defended? what shape? Once a day: venue structure does not change hour to hour, and infrequent, honest single GETs are the polite way to ask a third-party site whether it can be automated at all.'
   }
 ];
 

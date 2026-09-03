@@ -8,7 +8,9 @@ import {
   railEconomics, evaluateRailViability,
   evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget,
   setRailEnabled,
-  DRONE_KINDS
+  DRONE_KINDS,
+  listTargets, registerTarget, setTargetEnabled, latestScans, scanHistory,
+  financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES
 } from '@taskman/core';
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
@@ -183,6 +185,70 @@ export async function route(req, url, readBody) {
     const body = await readBody();
     if (!Number.isFinite(Number(body.capCents))) return { status: 400, body: { error: 'capCents (number) is required' } };
     return { status: 200, body: await setGlobalMonthlyBudget(body.capCents) };
+  }
+
+  // ---- satellite scans ------------------------------------------------------
+  // Reconnaissance findings on candidate money-flow venues: reachable? bot-
+  // defended? what shape? — the automated version of the manual check run
+  // against Upwork, Fiverr, and California's unclaimed-property registry.
+  if (method === 'GET' && pathname === '/api/scans') {
+    return { status: 200, body: { scans: await latestScans() } };
+  }
+
+  if (method === 'GET' && pathname === '/api/scans/targets') {
+    return { status: 200, body: { targets: await listTargets() } };
+  }
+
+  if (method === 'POST' && pathname === '/api/scans/targets') {
+    const body = await readBody();
+    if (!body.targetKey || !body.targetUrl) {
+      return { status: 400, body: { error: 'targetKey and targetUrl are required' } };
+    }
+    return { status: 200, body: await registerTarget(body) };
+  }
+
+  const targetEnabled = pathname.match(/^\/api\/scans\/targets\/([^/]+)\/enabled$/);
+  if (method === 'POST' && targetEnabled) {
+    const body = await readBody();
+    if (typeof body.enabled !== 'boolean') return { status: 400, body: { error: 'enabled (boolean) is required' } };
+    const target = await setTargetEnabled(decodeURIComponent(targetEnabled[1]), body.enabled);
+    return target ? { status: 200, body: target } : notFound;
+  }
+
+  const targetHistory = pathname.match(/^\/api\/scans\/targets\/([^/]+)\/history$/);
+  if (method === 'GET' && targetHistory) {
+    return { status: 200, body: { scans: await scanHistory(decodeURIComponent(targetHistory[1])) } };
+  }
+
+  if (method === 'POST' && pathname === '/api/scans/run') {
+    const job = getJob('satellite-scan');
+    return { status: 200, body: await runCron(job.definition, () => job.handler(), { force: true }) };
+  }
+
+  // ---- finance --------------------------------------------------------------
+  // Deterministic only — see docs/MARKETING_FINANCE_WING.md §3. No model touches
+  // money math anywhere in this route group.
+  if (method === 'GET' && pathname === '/api/finance/report') {
+    const trailingDays = Math.min(Math.max(Number(url.searchParams.get('trailingDays') || 30), 1), 365);
+    return { status: 200, body: await financeReport({ trailingDays }) };
+  }
+
+  if (method === 'GET' && pathname === '/api/finance/expenses') {
+    const category = url.searchParams.get('category');
+    const campaignKey = url.searchParams.get('campaignKey');
+    return { status: 200, body: { categories: EXPENSE_CATEGORIES, expenses: await listExpenses({ category, campaignKey }) } };
+  }
+
+  if (method === 'POST' && pathname === '/api/finance/expenses') {
+    const body = await readBody();
+    if (!body.category || !Number.isFinite(Number(body.amountCents))) {
+      return { status: 400, body: { error: 'category and amountCents (number) are required', categories: EXPENSE_CATEGORIES } };
+    }
+    try {
+      return { status: 200, body: await recordExpense(body) };
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
   }
 
   // ---- improvements -------------------------------------------------------

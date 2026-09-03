@@ -89,9 +89,10 @@ function renderGlobalBudget(budget) {
 async function load() {
   $('error').hidden = true;
   try {
-    const [status, crons, drones, alerts, money_, improvements, signals] = await Promise.all([
+    const [status, crons, drones, alerts, money_, improvements, signals, scans, finance] = await Promise.all([
       api('/api/status'), api('/api/crons'), api('/api/drones'), api('/api/alerts'),
-      api('/api/money/economics'), api('/api/improvements'), api('/api/signals?limit=25')
+      api('/api/money/economics'), api('/api/improvements'), api('/api/signals?limit=25'), api('/api/scans'),
+      api('/api/finance/report')
     ]);
 
     renderTiles({ status, alerts: alerts.alerts, rails: money_.rails, signals: signals.stats });
@@ -164,6 +165,39 @@ async function load() {
         <td class="n">${s.score == null ? '—' : Number(s.score).toFixed(2)}</td>
       </tr>`, 'No signals yet.', 4);
 
+    rows('scans', scans.scans, s => `
+      <tr>
+        <td class="k">${s.targetUrl ? `<a href="${esc(s.targetUrl)}" target="_blank" rel="noopener noreferrer">${esc(s.targetKey)}</a>` : esc(s.targetKey)}</td>
+        <td><span class="pill ${s.reachable ? 'ok' : 'bad'}">${s.reachable ? 'yes' : 'no'}</span></td>
+        <td><span class="pill ${s.botDefended ? 'bad' : 'ok'}">${s.botDefended ? (s.botDefenseVendor || 'yes') : 'no'}</span></td>
+        <td class="k">${esc(s.shape)}</td>
+        <td class="wrap-any" style="color:var(--muted)">${esc(s.verdict)}</td>
+        <td>${esc(ago(s.scannedAt))}</td>
+      </tr>`, 'No scans yet — press "scan now" or wait for the daily cron.', 6);
+
+    const financeTiles = [
+      { label: 'Net position (lifetime)', value: money(finance.lifetime.netCents), sub: finance.lifetime.marginPct == null ? 'no cleared revenue yet' : `${finance.lifetime.marginPct}% margin`, tone: finance.lifetime.netCents >= 0 ? 'good' : 'alarm' },
+      { label: `Burn rate (${finance.trailing.days}d)`, value: `${money(finance.trailing.burnRateCentsPerDay)}/day`, sub: `${money(finance.trailing.spendCents)} spent trailing ${finance.trailing.days}d` },
+      { label: 'Runway', value: finance.runway.runwayDays == null ? '—' : `${finance.runway.runwayDays}d`, sub: finance.runway.note || `${money(finance.runway.remainingCents)} of budget left` },
+      { label: 'Projected next 30d net', value: money(finance.projection.projectedNext30DaysNetCents), sub: 'naive linear extrapolation, not a forecast' }
+    ];
+    $('finance-tiles').innerHTML = financeTiles.map(t => `
+      <div class="tile ${t.tone || ''}">
+        <div class="label">${esc(t.label)}</div>
+        <div class="value">${esc(t.value)}</div>
+        <div class="sub">${esc(t.sub)}</div>
+      </div>`).join('');
+
+    rows('finance-rails', finance.perRail, r => `
+      <tr>
+        <td class="k">${esc(r.rail)}</td>
+        <td><span class="pill ${RAIL_TONE[r.state] || 'warn'}">${esc(r.state || 'PROBATION')}</span></td>
+        <td class="n">${money(r.clearedCents)}</td>
+        <td class="n">${money(r.spendCents)}</td>
+        <td class="n">${money(r.netCents)}</td>
+        <td class="n">${r.marginPct == null ? '—' : `${r.marginPct}%`}</td>
+      </tr>`, 'No rails yet.', 6);
+
     $('foot').textContent = `Updated ${new Date().toLocaleTimeString()} — ${store.base}`;
   } catch (error) {
     $('error').hidden = false;
@@ -210,6 +244,19 @@ $('save').addEventListener('click', () => {
   load();
 });
 $('refresh').addEventListener('click', load);
+$('scan-run').addEventListener('click', async () => {
+  const button = $('scan-run');
+  button.disabled = true; button.textContent = 'scanning…';
+  try {
+    await api('/api/scans/run', { method: 'POST' });
+    await load();
+  } catch (error) {
+    $('error').hidden = false;
+    $('error').textContent = error.message;
+  } finally {
+    button.disabled = false; button.textContent = 'scan now';
+  }
+});
 
 $('api-base').value = store.base;
 $('api-token').value = store.token;

@@ -13,6 +13,8 @@ export {
   markSettlementCleared,
   railEconomics,
   railWindow,
+  listAttempts,
+  listSettlements,
   evaluateRailViability,
   enforceRailViability,
   getRailState,

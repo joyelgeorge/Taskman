@@ -224,6 +224,46 @@ export async function markSettlementCleared(source, externalRef, verification = 
   return result.rows[0] ? normalizeSettlement(result.rows[0]) : null;
 }
 
+/**
+ * Individual attempt rows, not the aggregate railEconomics() returns.
+ *
+ * Needed because an attempt's `evidence` carries per-order detail the sums
+ * throw away — how long a job actually took, most importantly. A rail can look
+ * profitable per settlement and still be a bad business at three hours a job,
+ * and only the individual rows can say so.
+ */
+export async function listAttempts({ rail = null, limit = 200 } = {}) {
+  if (!databaseEnabled) {
+    return memory.attempts
+      .filter(a => !rail || a.rail === rail)
+      .slice(-limit).reverse().map(normalizeAttempt);
+  }
+  const params = [];
+  let where = '';
+  if (rail) { params.push(rail); where = 'WHERE rail = $1'; }
+  params.push(Math.min(Number(limit) || 200, 1000));
+  const result = await query(
+    `SELECT * FROM rail_attempts ${where} ORDER BY started_at DESC LIMIT $${params.length}`, params
+  );
+  return result.rows.map(normalizeAttempt);
+}
+
+export async function listSettlements({ rail = null, limit = 200 } = {}) {
+  if (!databaseEnabled) {
+    return memory.settlements
+      .filter(s => !rail || s.rail === rail)
+      .slice(-limit).reverse().map(normalizeSettlement);
+  }
+  const params = [];
+  let where = '';
+  if (rail) { params.push(rail); where = 'WHERE rail = $1'; }
+  params.push(Math.min(Number(limit) || 200, 1000));
+  const result = await query(
+    `SELECT * FROM settlements ${where} ORDER BY created_at DESC LIMIT $${params.length}`, params
+  );
+  return result.rows.map(normalizeSettlement);
+}
+
 export async function railEconomics(rail = null) {
   if (!databaseEnabled) {
     const names = new Set([

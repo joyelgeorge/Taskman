@@ -89,10 +89,10 @@ function renderGlobalBudget(budget) {
 async function load() {
   $('error').hidden = true;
   try {
-    const [status, crons, drones, alerts, money_, improvements, signals, scans, finance] = await Promise.all([
+    const [status, crons, drones, alerts, money_, improvements, signals, scans, finance, orders] = await Promise.all([
       api('/api/status'), api('/api/crons'), api('/api/drones'), api('/api/alerts'),
       api('/api/money/economics'), api('/api/improvements'), api('/api/signals?limit=25'), api('/api/scans'),
-      api('/api/finance/report')
+      api('/api/finance/report'), api('/api/orders')
     ]);
 
     renderTiles({ status, alerts: alerts.alerts, rails: money_.rails, signals: signals.stats });
@@ -175,6 +175,23 @@ async function load() {
         <td>${esc(ago(s.scannedAt))}</td>
       </tr>`, 'No scans yet — press "scan now" or wait for the daily cron.', 6);
 
+    const econ = orders.economics;
+    const rateEl = $('order-economics');
+    rateEl.className = `pill ${econ.effectiveHourlyRateCents == null ? 'off' : econ.effectiveHourlyRateCents >= 2000 ? 'ok' : 'warn'}`;
+    rateEl.textContent = econ.effectiveHourlyRateCents == null
+      ? `${econ.orders} orders · nothing cleared yet`
+      : `${money(econ.effectiveHourlyRateCents)}/hr effective · ${econ.paidOrders}/${econ.orders} paid`;
+
+    rows('orders', orders.orders, o => `
+      <tr>
+        <td class="k">${esc(o.orderId)}${o.notes ? `<br><span style="color:var(--muted);font-size:.9em">${esc(o.notes)}</span>` : ''}</td>
+        <td><span class="pill ${o.orderStatus === 'PAID' ? 'ok' : o.orderStatus === 'CANCELLED' ? 'bad' : 'warn'}">${esc(o.orderStatus)}</span></td>
+        <td class="n">${money(o.priceCents)}</td>
+        <td class="n">${o.minutesSpent}</td>
+        <td class="n">${o.payout ? money(o.payout.netCents) : '—'}</td>
+        <td>${o.payout ? '' : `<button class="mini" data-order-payout="${esc(o.orderId)}" data-price="${o.priceCents}">mark paid</button>`}</td>
+      </tr>`, 'No orders logged yet.', 6);
+
     const financeTiles = [
       { label: 'Net position (lifetime)', value: money(finance.lifetime.netCents), sub: finance.lifetime.marginPct == null ? 'no cleared revenue yet' : `${finance.lifetime.marginPct}% margin`, tone: finance.lifetime.netCents >= 0 ? 'good' : 'alarm' },
       { label: `Burn rate (${finance.trailing.days}d)`, value: `${money(finance.trailing.burnRateCentsPerDay)}/day`, sub: `${money(finance.trailing.spendCents)} spent trailing ${finance.trailing.days}d` },
@@ -222,6 +239,17 @@ document.addEventListener('click', async event => {
     } else if (target.dataset.improve) {
       await api(`/api/improvements/${encodeURIComponent(target.dataset.improve)}/decision`,
         { method: 'POST', body: { status: target.dataset.decision } });
+    } else if (target.dataset.orderPayout) {
+      // What Fiverr actually deposits after its cut — never the buyer's price,
+      // which is why this asks rather than assuming the price cleared.
+      const gross = prompt(`Gross payout for order ${target.dataset.orderPayout}, in dollars (before Fiverr's fee):`);
+      if (gross == null) return;
+      const fee = prompt('Fiverr fee, in dollars (0 if already net):', '0');
+      if (fee == null) return;
+      await api(`/api/orders/${encodeURIComponent(target.dataset.orderPayout)}/payout`, {
+        method: 'POST',
+        body: { grossCents: Math.round(Number(gross) * 100), feeCents: Math.round(Number(fee) * 100) }
+      });
     } else if (target.dataset.railReenable) {
       // Manual only, by design — see docs/TARGET_DESIGN.md §8. The system never
       // argues its own way out of a market that did not pay it.
@@ -244,6 +272,39 @@ $('save').addEventListener('click', () => {
   load();
 });
 $('refresh').addEventListener('click', load);
+$('order-add').addEventListener('click', async () => {
+  const button = $('order-add');
+  const orderId = $('order-id').value.trim();
+  const price = Number($('order-price').value);
+  const minutes = Number($('order-minutes').value);
+
+  if (!orderId || !(price > 0) || !(minutes > 0)) {
+    $('error').hidden = false;
+    $('error').textContent = 'Order ID, price and minutes are all required — minutes especially: an unmeasured hour is how a rail looks profitable while losing.';
+    return;
+  }
+
+  button.disabled = true; button.textContent = 'saving…';
+  try {
+    await api('/api/orders', {
+      method: 'POST',
+      body: {
+        orderId,
+        priceCents: Math.round(price * 100),
+        minutesSpent: Math.round(minutes),
+        notes: $('order-notes').value.trim() || null
+      }
+    });
+    $('order-id').value = ''; $('order-price').value = ''; $('order-minutes').value = ''; $('order-notes').value = '';
+    await load();
+  } catch (error) {
+    $('error').hidden = false;
+    $('error').textContent = error.message;
+  } finally {
+    button.disabled = false; button.textContent = 'Log order';
+  }
+});
+
 $('scan-run').addEventListener('click', async () => {
   const button = $('scan-run');
   button.disabled = true; button.textContent = 'scanning…';

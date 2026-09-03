@@ -83,6 +83,23 @@
   </section>
 
   <section>
+    <div class="sec-head"><h2>Gig orders</h2><span id="order-economics" class="pill off"></span></div>
+    <div class="card" style="padding: 14px; border-bottom: 1px solid var(--rule)">
+      <div class="controls">
+        <input type="text" id="order-id" placeholder="Fiverr order ID" aria-label="Order ID">
+        <input type="text" id="order-price" placeholder="Price $" aria-label="Price in dollars">
+        <input type="text" id="order-minutes" placeholder="Minutes" aria-label="Minutes spent">
+        <input type="text" id="order-notes" placeholder="Notes (optional)" aria-label="Notes">
+        <button id="order-add" class="primary">Log order</button>
+      </div>
+    </div>
+    <div class="card"><table>
+      <thead><tr><th>Order</th><th>Status</th><th class="n">Price</th><th class="n">Min</th><th class="n">Payout</th><th></th></tr></thead>
+      <tbody id="orders"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
     <div class="sec-head"><h2>Finance</h2></div>
     <div class="tiles" id="finance-tiles"></div>
     <div class="card"><table>

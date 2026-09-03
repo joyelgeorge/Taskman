@@ -37,3 +37,8 @@ export {
 export {
   recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES, financeReport
 } from './finance/index.js';
+
+export {
+  ORDER_STATUS, registerServiceRail, recordOrder, markOrderDelivered,
+  recordOrderPayout, listOrders, orderEconomics
+} from './orders/index.js';

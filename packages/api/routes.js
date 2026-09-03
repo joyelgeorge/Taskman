@@ -10,7 +10,8 @@ import {
   setRailEnabled,
   DRONE_KINDS,
   listTargets, registerTarget, setTargetEnabled, latestScans, scanHistory,
-  financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES
+  financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES,
+  recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics
 } from '@taskman/core';
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
@@ -246,6 +247,51 @@ export async function route(req, url, readBody) {
     }
     try {
       return { status: 200, body: await recordExpense(body) };
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
+  }
+
+  // ---- orders (gig rails) ---------------------------------------------------
+  // Marketplace orders fulfilled by hand — see docs/FIVERR_LANE.md and #135.
+  // An order is a rail attempt and its payout is a settlement; there is no
+  // separate orders table, deliberately.
+  const DEFAULT_GIG_RAIL = 'fiverr-bookkeeping';
+
+  if (method === 'GET' && pathname === '/api/orders') {
+    const rail = url.searchParams.get('rail') || DEFAULT_GIG_RAIL;
+    const [orders, economics] = await Promise.all([listOrders({ rail }), orderEconomics({ rail })]);
+    return { status: 200, body: { rail, economics, orders } };
+  }
+
+  if (method === 'POST' && pathname === '/api/orders') {
+    const body = await readBody();
+    try {
+      return { status: 200, body: await recordOrder({ rail: body.rail || DEFAULT_GIG_RAIL, ...body }) };
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
+  }
+
+  const orderDelivered = pathname.match(/^\/api\/orders\/([^/]+)\/delivered$/);
+  if (method === 'POST' && orderDelivered) {
+    const body = await readBody();
+    const updated = await markOrderDelivered(decodeURIComponent(orderDelivered[1]), body);
+    return updated ? { status: 200, body: updated } : notFound;
+  }
+
+  const orderPayout = pathname.match(/^\/api\/orders\/([^/]+)\/payout$/);
+  if (method === 'POST' && orderPayout) {
+    const body = await readBody();
+    try {
+      return {
+        status: 200,
+        body: await recordOrderPayout({
+          rail: body.rail || DEFAULT_GIG_RAIL,
+          orderId: decodeURIComponent(orderPayout[1]),
+          ...body
+        })
+      };
     } catch (error) {
       return { status: 400, body: { error: String(error.message || error) } };
     }

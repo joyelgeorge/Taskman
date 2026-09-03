@@ -98,6 +98,12 @@ export const CRON_DEFINITIONS = [
     description: 'Researches the system’s own evidence and files improvement proposals.'
   },
   {
+    cronName: 'data-collect',
+    schedule: '0 17 * * *',
+    maxSilenceSeconds: 115200,
+    description: 'Collects declared observation sources, rolls the day up, prunes raw rows past retention. Once a day, after the ECB publishes.'
+  },
+  {
     cronName: 'satellite-scan',
     schedule: '0 8 * * *',
     maxSilenceSeconds: 115200,

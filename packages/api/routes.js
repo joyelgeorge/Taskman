@@ -11,7 +11,8 @@ import {
   DRONE_KINDS,
   listTargets, registerTarget, setTargetEnabled, latestScans, scanHistory,
   financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES,
-  recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics
+  recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics,
+  listSources, registerSource, listObservations, listRollups, storageStats
 } from '@taskman/core';
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
@@ -295,6 +296,38 @@ export async function route(req, url, readBody) {
     } catch (error) {
       return { status: 400, body: { error: String(error.message || error) } };
     }
+  }
+
+  // ---- observations (the data store) ----------------------------------------
+  // See docs/DATA_ECOSYSTEM.md. Rollups are the asset and are kept forever;
+  // raw rows are disposable and pruned past retention.
+  if (method === 'GET' && pathname === '/api/data') {
+    const [sources, storage] = await Promise.all([listSources(), storageStats()]);
+    return { status: 200, body: { sources, storage } };
+  }
+
+  if (method === 'POST' && pathname === '/api/data/sources') {
+    const body = await readBody();
+    try {
+      return { status: 200, body: await registerSource(body) };
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
+  }
+
+  if (method === 'GET' && pathname === '/api/data/series') {
+    const seriesKey = url.searchParams.get('key');
+    const limit = Math.min(Number(url.searchParams.get('limit') || 90), 1000);
+    const [rollups, raw] = await Promise.all([
+      listRollups({ seriesKey, limit }),
+      listObservations({ seriesKey, limit: 20 })
+    ]);
+    return { status: 200, body: { seriesKey, rollups, recentRaw: raw } };
+  }
+
+  if (method === 'POST' && pathname === '/api/data/collect') {
+    const job = getJob('data-collect');
+    return { status: 200, body: await runCron(job.definition, () => job.handler(), { force: true }) };
   }
 
   // ---- improvements -------------------------------------------------------

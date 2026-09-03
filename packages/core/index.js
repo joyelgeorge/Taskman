@@ -42,3 +42,11 @@ export {
   ORDER_STATUS, registerServiceRail, recordOrder, markOrderDelivered,
   recordOrderPayout, listOrders, orderEconomics
 } from './orders/index.js';
+
+export {
+  collectSource, extractXmlAttributes, isAllowed, parseRobots, isAllowedByRules, resetRobotsCache,
+  registerSource, listSources, dueSources, recordSourceRun,
+  recordObservations, listObservations, rollupDay, pruneRawObservations,
+  listRollups, storageStats, resetObservationMemory, RAW_RETENTION_DAYS,
+  DEFAULT_SOURCES, crossRate, runDataCollection
+} from './observations/index.js';

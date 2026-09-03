@@ -6,8 +6,9 @@ _Built 2026-09-02. Implements the collection and observability half of `TARGET_D
 
 Drones fly to the internet on a schedule and bring back signals. Signals are scored
 against deterministic rules and the survivors become candidates for the money
-pipeline. Six crons run the whole thing, one of which watches the other five, and
-another of which reads the system's own evidence and files improvement proposals.
+pipeline. Eight crons run the whole thing: one watches the other seven, one reads the
+system's own evidence and files improvement proposals, and one accumulates the
+longitudinal data series the others read from.
 
 ```text
   internet
@@ -32,22 +33,23 @@ Each is separately deployable and shares nothing but the database.
 | Component | Path | Runs on | Notes |
 |---|---|---|---|
 | **db** | `packages/db` | Neon | Schema, migrations, pool. Migrations span `db/migrations` and `packages/db/migrations`. |
-| **core** | `packages/core` | library | Drones, signals, health, alerts, improvements, ledger bridge. |
+| **core** | `packages/core` | library | Drones, signals, scans, observations, finance, orders, health, alerts, improvements, ledger bridge. |
 | **api** | `packages/api` | Render free | JSON API. Sleeps when idle — nothing depends on it being awake. |
 | **web** | `packages/web` | Vercel | Static dashboard. Holds no data; reads the API cross-origin. |
-| **crons** | `packages/crons` | GitHub Actions | Six jobs, each its own workflow with its own history. |
+| **crons** | `packages/crons` | GitHub Actions | Eight jobs, each its own workflow with its own history. |
 
-## The seven crons
+## The eight crons
 
 | Cron | Schedule | Watchdog tolerance | Does |
 |---|---|---|---|
 | `drone-dispatch` | `*/15 * * * *` | 1h | Flies every due drone, ingests signals, seeds the fleet on an empty install |
 | `signal-process` | `*/20 * * * *` | 90m | Scores new signals, promotes survivors into `candidate_queue` |
 | `health-check` | `*/30 * * * *` | 2h | Checks db, deployed services, drones and crons; opens and resolves alerts |
-| `cron-monitor` | `0 * * * *` | 3h | The watchdog over the other six |
+| `cron-monitor` | `0 * * * *` | 3h | The watchdog over the other seven |
 | `revenue-check` | `0 */6 * * *` | 9h | Syncs settlements from Stripe, enforces rail viability |
 | `improve` | `0 3 * * *` | 30h | Researches the system's own evidence, files proposals |
 | `satellite-scan` | `0 8 * * *` | 32h | Reconnaissance of candidate money-flow venues — see below |
+| `data-collect` | `0 17 * * *` | 32h | Collects declared observation sources, rolls up the day, prunes raw rows — see `docs/DATA_ECOSYSTEM.md` |
 
 Tolerances are far wider than the schedules because free schedulers are not
 punctual — GitHub Actions commonly runs tens of minutes late. A watchdog that
@@ -108,6 +110,19 @@ already hand-checked — a fresh install's first run reproduces what was found b
 hand, which is the point: the automated version should agree with the manual one,
 or the automated version is wrong.
 
+## Data collection
+
+`data-collect` accumulates the longitudinal series described in
+`docs/DATA_ECOSYSTEM.md`. Two rules are enforced in code rather than documented:
+a source must declare its **licence** and the **decision it changes** before it
+can be registered, and **robots.txt is checked before every fetch** — a
+disallowed path is recorded as a refusal and never retried.
+
+Retention is part of the schema, not an afterthought: raw rows are pruned after
+90 days, and the daily rollup — roughly 1/100th the size and what any
+downstream question actually needs — is kept indefinitely. That is what makes
+the store free to run forever on a 0.5 GB tier.
+
 ## Finance
 
 `packages/core/finance/` turns the ledger's raw rows into a report a person can
@@ -134,7 +149,7 @@ Then, in separate terminals:
 ```bash
 npm run api                   # :3100
 npm run web                   # :3200  — enter the API URL in the header
-npm run scheduler             # all seven crons in-process
+npm run scheduler             # all eight crons in-process
 ```
 
 A single cron: `npm run cron -- drone-dispatch` (add `--force` to ignore the slot).
@@ -147,7 +162,7 @@ Without `DATABASE_URL` everything runs in memory: useful for `npm test` and
 1. **Neon** — create a project, copy the connection string.
 2. **GitHub** — add `DATABASE_URL` (and optionally `STRIPE_API_KEY`) as repository
    secrets; add `API_HEALTH_URL` / `WEB_HEALTH_URL` as repository variables. The
-   seven workflows in `.github/workflows/` start on their own schedules.
+   eight workflows in `.github/workflows/` start on their own schedules.
 3. **Render** — deploy from `render.yaml`; it defines `taskman-api`. Set
    `CORS_ORIGIN` to the UI's origin and `TASKMAN_API_TOKEN` to any random string.
 4. **Vercel** — deploy `packages/web` (its `vercel.json` sets `public` as the output

@@ -11,7 +11,11 @@ import { listSignals, listAlerts, listImprovements, signalStats } from '@taskman
  * real outbound requests, so it answers the only question that matters on a fresh
  * checkout: does the system actually collect, process, monitor and report.
  */
-const ORDER = ['drone-dispatch', 'signal-process', 'health-check', 'cron-monitor', 'revenue-check', 'improve'];
+// Collection first so later stages have something to read, then the rest in
+// registry order — derived rather than hardcoded, so adding a cron cannot
+// silently leave it out of the smoke run the way it did twice already.
+const FIRST = ['drone-dispatch', 'signal-process', 'data-collect'];
+const ORDER = [...FIRST, ...[...jobs.keys()].filter(name => !FIRST.includes(name))];
 
 const pad = (s, n) => String(s).padEnd(n);
 

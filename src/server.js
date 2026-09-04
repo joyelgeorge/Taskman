@@ -31,6 +31,7 @@ import {
 import { syncGitHubWork, getActionableWorkQueue, claimActionableWorkItem, releaseActionableWorkItem, WORK_ELIGIBILITY } from './github-intake.js';
 import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-agent-adapter.js';
 import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
+import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -528,6 +529,25 @@ const server = http.createServer(async (req, res) => {
         mergePrFn: async ({ prNumber }) => ({ sha: `merge-commit-${prNumber}` })
       });
       return json(res, 200, result);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/strategic/objectives') {
+      const status = url.searchParams.get('status') || null;
+      return json(res, 200, { objectives: await listStrategicObjectives({ status }) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/strategic/objectives') {
+      const body = await readJsonBody(req);
+      const objective = await createStrategicObjective(body);
+      return json(res, 201, objective);
+    }
+    const directiveMatch = url.pathname.match(/^\/api\/strategic\/objectives\/([^/]+)\/directives$/);
+    if (req.method === 'POST' && directiveMatch) {
+      const body = await readJsonBody(req);
+      const directive = await addStrategicDirective({ objectiveId: directiveMatch[1], ...body });
+      return json(res, 201, directive);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/strategic/brief') {
+      const objectiveId = url.searchParams.get('objectiveId') || null;
+      return json(res, 200, await generateStrategicBrief({ objectiveId }));
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

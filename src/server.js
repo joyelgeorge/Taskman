@@ -35,6 +35,13 @@ import { createStrategicObjective, listStrategicObjectives, addStrategicDirectiv
 import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
 import { FIRST_PAYING_CUSTOMER_PROFILE, qualifyProspect } from './customer-profile.js';
 import { MINIMUM_STACK_CONFIG, verifyCustomerStackReady } from './integration-stack.js';
+import {
+  getCustomerWorkflowState,
+  configureCustomerWorkflow,
+  setCustomerIntegration,
+  setCustomerWorkflowActive,
+  executeCustomerReconciliation
+} from './customer-workflow.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -572,6 +579,33 @@ const server = http.createServer(async (req, res) => {
         config: MINIMUM_STACK_CONFIG,
         readiness: verifyCustomerStackReady()
       });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/customer/workflow') {
+      return json(res, 200, getCustomerWorkflowState());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/configure') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      return json(res, 200, configureCustomerWorkflow(body));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/integration') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      return json(res, 200, setCustomerIntegration(body));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/status') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, setCustomerWorkflowActive(Boolean(body.active)));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/reconcile') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, executeCustomerReconciliation(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

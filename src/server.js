@@ -58,6 +58,12 @@ import {
   getCustomerInstance,
   listCustomerInstances
 } from './customer-template.js';
+import {
+  PRIMARY_ACQUISITION_CHANNEL,
+  recordProspect,
+  advanceProspectStage,
+  getFunnelMetrics
+} from './acquisition-funnel.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -656,6 +662,28 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 201, instantiateCustomerTemplate(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/acquisition/channel') {
+      return json(res, 200, PRIMARY_ACQUISITION_CHANNEL);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/acquisition/metrics') {
+      return json(res, 200, getFunnelMetrics());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/acquisition/prospects') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 201, recordProspect(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/acquisition/prospects/advance') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, advanceProspectStage(body));
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

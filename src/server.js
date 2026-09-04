@@ -34,6 +34,7 @@ import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
 import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
 import { FIRST_PAYING_CUSTOMER_PROFILE, qualifyProspect } from './customer-profile.js';
+import { MINIMUM_STACK_CONFIG, verifyCustomerStackReady } from './integration-stack.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -565,6 +566,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/commercial/customer/qualify') {
       const body = await readJsonBody(req).catch(() => ({}));
       return json(res, 200, qualifyProspect(body));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/stack') {
+      return json(res, 200, {
+        config: MINIMUM_STACK_CONFIG,
+        readiness: verifyCustomerStackReady()
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

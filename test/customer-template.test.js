@@ -102,11 +102,11 @@ test('executeInstanceReconciliation isolates evidence and history between tenant
   const i2 = getCustomerInstance('inst-2');
 
   assert.equal(i1.metrics.totalBatchesRun, 1);
-  assert.equal(i1.metrics.totalVerifiedFeeRecoveryCents, 10000);
+  assert.equal(i1.metrics.totalReconciledFeesCents, 10000);
   assert.equal(i1.history.length, 1);
 
   // Instance 2 remains untouched
   assert.equal(i2.metrics.totalBatchesRun, 0);
-  assert.equal(i2.metrics.totalVerifiedFeeRecoveryCents, 0);
+  assert.equal(i2.metrics.totalReconciledFeesCents, 0);
   assert.equal(i2.history.length, 0);
 });

@@ -147,22 +147,29 @@ function renderCustomerWorkflow(data) {
     estSavingsEl.textContent = `$${(est / 100).toFixed(2)} / yr`;
   }
 
+  const recFeesEl = $('#reconciledFees');
+  if (recFeesEl) {
+    const rec = data.valueMetrics?.reconciledPlatformFeesCents || 0;
+    recFeesEl.textContent = `$${(rec / 100).toFixed(2)}`;
+  }
+
   const verSavingsEl = $('#verifiedSavings');
   if (verSavingsEl) {
-    const ver = data.valueMetrics?.verifiedRecoveredFeesCents || 0;
-    verSavingsEl.textContent = `$${(ver / 100).toFixed(2)}`;
+    const confirmed = data.valueMetrics?.customerConfirmedSavingsCents || 0;
+    const recovered = data.valueMetrics?.verifiedCashRecoveredCents || 0;
+    verSavingsEl.textContent = `$${((confirmed + recovered) / 100).toFixed(2)}`;
   }
 
   const evRefEl = $('#verifiedEvidenceRef');
   if (evRefEl) {
     evRefEl.textContent = data.valueMetrics?.lastVerifiedEvidenceRef
-      ? `Audit ref: ${data.valueMetrics.lastVerifiedEvidenceRef} (${data.valueMetrics.verifiedReconciliationCount} runs)`
+      ? `Audit ref: ${data.valueMetrics.lastVerifiedEvidenceRef} (${data.valueMetrics.reconciliationCount || 0} runs)`
       : 'Evidence: No verified runs yet';
   }
 
   const billEl = $('#billingBasisDetails');
   if (billEl && data.billingBasis) {
-    billEl.innerHTML = `<div>Model: ${esc(data.billingBasis.pricingModel)} (${esc(data.billingBasis.monthlyBasePrice)} + ${esc(data.billingBasis.batchFee)})</div><div class="muted" style="margin-top:4px;">${esc(data.billingBasis.terms)}</div>`;
+    billEl.innerHTML = `<div>Model: ${esc(data.billingBasis.pricingModel)} (${esc(data.billingBasis.monthlyBasePrice)} + ${esc(data.billingBasis.batchFee)})</div><div class="muted customer-margin-small">${esc(data.billingBasis.terms)}</div>`;
   }
 
   const histEl = $('#customerHistory');
@@ -175,7 +182,9 @@ function renderCustomerWorkflow(data) {
           <span class="pill">${esc(h.evidenceRef)}</span>
           <span class="muted">${new Date(h.executedAt).toLocaleString()}</span>
         </div>
-        <div class="muted">Tax-deductible platform fees verified: $${(h.verifiedTaxFeeSavingsCents / 100).toFixed(2)}</div>
+        <div class="muted">Platform fee expense itemized: $${((h.categorizedPlatformFeesCents || 0) / 100).toFixed(2)}</div>
+        <div class="muted">Confirmed savings applied: $${((h.confirmedSavingsCents || 0) / 100).toFixed(2)}</div>
+        ${!h.confirmedSavingsCents ? `<button data-confirm-outcome="${esc(h.id)}" data-amount="${h.categorizedPlatformFeesCents || 0}" class="customer-margin-small">Confirm & apply tax deduction</button>` : '<span class="pill">Outcome confirmed</span>'}
         ${h.discrepancies?.length ? `<div class="result">${esc(JSON.stringify(h.discrepancies, null, 2))}</div>` : ''}
       </div>
     `).join('') : '<p class="muted">No reconciliation outcomes yet.</p>';
@@ -317,6 +326,25 @@ $('#runCustomerBatch')?.addEventListener('click', async () => {
 });
 
 document.addEventListener('click', async e => {
+  const confirmBtn = e.target.closest('[data-confirm-outcome]');
+  if (confirmBtn) {
+    try {
+      const runId = confirmBtn.dataset.confirmOutcome;
+      const amount = Number(confirmBtn.dataset.amount) || 0;
+      await requestJson('/api/commercial/customer/workflow/confirm-outcome', mutationOptions({
+        method: 'POST',
+        body: JSON.stringify({
+          runId,
+          outcomeType: 'CONFIRMED_TAX_DEDUCTION',
+          confirmedAmountCents: amount,
+          actor: 'customer_dashboard_user',
+          reason: 'Customer verified platform fee deduction on dashboard'
+        })
+      }));
+      await refreshDashboard({ supersede: true });
+    } catch (err) { alert(err.message); }
+  }
+
   const intBtn = e.target.closest('[data-integration]');
   if (intBtn) {
     try {

@@ -10,9 +10,13 @@ const runtimeConfig = getRuntimeConfig();
 
 const { Pool } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationsDir = join(__dirname, '..', 'db', 'migrations');
+const migrationDirs = [
+  join(__dirname, '..', 'db', 'migrations'),
+  join(__dirname, '..', 'packages', 'db', 'migrations')
+];
 
 export const MIGRATION_ADVISORY_LOCK_ID = 847291048291;
+
 
 export function calculateChecksum(content) {
   return createHash('sha256').update(content, 'utf8').digest('hex');
@@ -73,12 +77,21 @@ export async function migrate({ lockTimeoutMs = 15_000 } = {}) {
     `);
     await client.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT');
 
-    const filenames = (await readdir(migrationsDir)).filter(file => file.endsWith('.sql')).sort();
     const migrations = new Map();
-    for (const filename of filenames) {
-      const sql = await readFile(join(migrationsDir, filename), 'utf8');
-      migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+    for (const dir of migrationDirs) {
+      let files = [];
+      try {
+        files = await readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const filename of files.filter(file => file.endsWith('.sql'))) {
+        const sql = await readFile(join(dir, filename), 'utf8');
+        migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+      }
     }
+    const filenames = [...migrations.keys()].sort();
+
 
     const existingResult = await client.query('SELECT filename, checksum FROM schema_migrations');
     const existing = new Map(existingResult.rows.map(row => [row.filename, row.checksum]));

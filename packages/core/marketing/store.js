@@ -252,3 +252,11 @@ export function resetMarketingMemory() {
   mem.campaigns.clear();
   mem.leads.clear();
 }
+
+export async function resetMarketingStore() {
+  resetMarketingMemory();
+  if (databaseEnabled) {
+    await query('TRUNCATE leads, campaigns CASCADE');
+  }
+}
+

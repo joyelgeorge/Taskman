@@ -11,11 +11,17 @@ import {
   getLead,
   updateLeadStatus,
   listLeads,
-  resetMarketingMemory
+  resetMarketingMemory,
+  resetMarketingStore
 } from '../packages/core/marketing/store.js';
 
+test.beforeEach(async () => {
+  await resetMarketingStore();
+});
+
 test('upsertCampaign registers and updates campaigns with epoch and budget windowing', async () => {
-  resetMarketingMemory();
+  await resetMarketingStore();
+
 
   const campaign = await upsertCampaign({
     campaignKey: 'unclaimed-property-ca',
@@ -51,7 +57,7 @@ test('upsertCampaign registers and updates campaigns with epoch and budget windo
 });
 
 test('createLead stores candidate buyer records and supports status lifecycle', async () => {
-  resetMarketingMemory();
+  await resetMarketingStore();
 
   await upsertCampaign({
     campaignKey: 'fiverr-leakage',
@@ -83,3 +89,8 @@ test('createLead stores candidate buyer records and supports status lifecycle', 
   assert.equal(list.length, 1);
   assert.equal(list[0].id, lead.id);
 });
+
+test.after(async () => {
+  await resetMarketingStore();
+});
+

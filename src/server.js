@@ -32,6 +32,7 @@ import { syncGitHubWork, getActionableWorkQueue, claimActionableWorkItem, releas
 import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-agent-adapter.js';
 import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
+import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -548,6 +549,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/strategic/brief') {
       const objectiveId = url.searchParams.get('objectiveId') || null;
       return json(res, 200, await generateStrategicBrief({ objectiveId }));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/wedge') {
+      return json(res, 200, COMMERCIAL_WEDGE_SPEC);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/fiverr/reconcile') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const report = reconcileFiverrPayoutBatch(body);
+      return json(res, 200, report);
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

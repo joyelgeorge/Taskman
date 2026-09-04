@@ -17,11 +17,11 @@ import {
 const originalNodeEnv = process.env.NODE_ENV;
 const originalExportFlag = process.env.TASKMAN_BILLING_EXPORT_ENABLED;
 
-beforeEach(() => {
+beforeEach(async () => {
   process.env.NODE_ENV = 'test';
   delete process.env.TASKMAN_BILLING_EXPORT_ENABLED;
-  resetMeteringForTesting();
-  configureMemoryAccountPlan({
+  await resetMeteringForTesting();
+  await configureMemoryAccountPlan({
     accountId: 'acct-test',
     entitlements: [
       { metricId: 'ai_tokens', hardLimit: 100, softLimit: 80 },
@@ -30,12 +30,14 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
   if (originalNodeEnv == null) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = originalNodeEnv;
   if (originalExportFlag == null) delete process.env.TASKMAN_BILLING_EXPORT_ENABLED;
   else process.env.TASKMAN_BILLING_EXPORT_ENABLED = originalExportFlag;
+  await resetMeteringForTesting();
 });
+
 
 test('unknown and exhausted entitlements fail closed before spend', async () => {
   assert.deepEqual(
@@ -131,9 +133,10 @@ test('account summaries require an explicit UTC window and paginate with opaque 
 });
 
 test('development plan and live billing export both remain fail closed in production', async () => {
-  resetMeteringForTesting();
+  await resetMeteringForTesting();
   seedDevelopmentPlan();
   process.env.NODE_ENV = 'production';
+
   const decision = await checkEntitlement({ accountId: 'local-default', metricId: 'ai_tokens', proposedQuantity: 1 });
   assert.equal(decision.allowed, false);
   assert.equal(decision.code, 'DEVELOPMENT_PLAN_FORBIDDEN');

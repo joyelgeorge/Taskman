@@ -110,3 +110,38 @@ test('the projection is explicitly labeled as a naive extrapolation, never prese
   const report = await financeReport({});
   assert.match(report.projection.method, /not a forecast/);
 });
+
+test('financeReport converts cleared USD settlements to INR at historical observed ECB cross rate', async () => {
+  reset();
+  const { recordObservations, rollupDay, resetObservationMemory } = await import('../observations/store.js');
+  resetObservationMemory();
+
+  // Record observations for 2026-09-01
+  await recordObservations('ecb-euro-reference-rates', [
+    { seriesKey: 'fx.eur.USD', valueNum: 1.0850, observedAt: '2026-09-01T16:00:00Z' },
+    { seriesKey: 'fx.eur.INR', valueNum: 95.4200, observedAt: '2026-09-01T16:00:00Z' }
+  ]);
+  await rollupDay({ date: '2026-09-01' });
+
+  // Record cleared settlement verified on 2026-09-01
+  // USD 100 net = 10000 cents.
+  await recordSettlement({
+    rail: 'r',
+    source: 'stripe',
+    externalRef: 'txn_fx_1',
+    grossCents: 10000,
+    feeCents: 0,
+    currency: 'USD',
+    status: SETTLEMENT_STATUS.CLEARED,
+    verifiedAt: '2026-09-01T18:00:00Z'
+  });
+
+  const report = await financeReport({});
+  assert.equal(report.lifetime.grossClearedCents, 10000);
+  assert.ok(report.lifetime.grossClearedInrPaise > 0);
+  assert.equal(report.lifetime.fxConversions.length, 1);
+  assert.equal(report.lifetime.fxConversions[0].derived, true);
+  assert.equal(report.lifetime.fxConversions[0].currency, 'USD');
+  // rate = 95.4200 / 1.0850 = 87.9447
+  assert.equal(Number(report.lifetime.fxConversions[0].rate.toFixed(2)), 87.94);
+});

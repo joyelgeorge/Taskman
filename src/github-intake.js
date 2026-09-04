@@ -373,7 +373,7 @@ export async function persistWorkItems(items, repo) {
       item.eligibilityStatus,
       item.eligibilityReason,
       JSON.stringify(item.rawPayload),
-      item.githubUpdatedAt
+      item.githubUpdatedAt || item.github_updated_at || new Date().toISOString()
     ]);
   }
   return items;
@@ -604,5 +604,12 @@ export async function releaseActionableWorkItem({
 
 export function resetIntakeMemory() {
   memoryStore.clear();
+}
+
+export async function resetIntakeStore() {
+  resetIntakeMemory();
+  if (databaseEnabled) {
+    await query('TRUNCATE github_work_items CASCADE');
+  }
 }
 

@@ -6,6 +6,7 @@ import {
   setCustomerIntegration,
   setCustomerWorkflowActive,
   executeCustomerReconciliation,
+  confirmCustomerOutcome,
   _resetCustomerWorkflowState
 } from '../src/customer-workflow.js';
 
@@ -32,8 +33,10 @@ test('configureCustomerWorkflow updates customer profile and calculates unverifi
   assert.equal(updated.configuredInputs.agencyName, 'Apex Creative Studio');
   assert.equal(updated.configuredInputs.fiverrUsername, 'apexpro');
   assert.ok(updated.valueMetrics.estimatedAnnualSavingsCents > 0);
-  // Verified savings must remain 0
-  assert.equal(updated.valueMetrics.verifiedRecoveredFeesCents, 0);
+  assert.equal(updated.economicTaxonomy.estimatedSavingsCents, updated.valueMetrics.estimatedAnnualSavingsCents);
+  // Verified cash recovered and confirmed savings must remain 0
+  assert.equal(updated.valueMetrics.verifiedCashRecoveredCents, 0);
+  assert.equal(updated.economicTaxonomy.verifiedCashRecoveredCents, 0);
 });
 
 test('workflow cannot be activated until blockers are resolved', () => {
@@ -60,7 +63,7 @@ test('workflow cannot be activated until blockers are resolved', () => {
   assert.ok(state.activatedAt);
 });
 
-test('executeCustomerReconciliation verifies real economic value and logs audit evidence', () => {
+test('executeCustomerReconciliation categorizes platform fees without fabricating recovered cash', () => {
   configureCustomerWorkflow({
     agencyName: 'Apex Creative Studio',
     fiverrUsername: 'apexpro'
@@ -79,9 +82,50 @@ test('executeCustomerReconciliation verifies real economic value and logs audit 
   const { report, state } = executeCustomerReconciliation({ transactions, deposits });
 
   assert.equal(report.balanced, true);
-  assert.equal(state.valueMetrics.verifiedRecoveredFeesCents, 30000); // $300.00 platform fees verified
-  assert.equal(state.valueMetrics.verifiedReconciliationCount, 1);
+  // Reconciled platform fees are tracked
+  assert.equal(state.valueMetrics.reconciledPlatformFeesCents, 30000);
+  assert.equal(state.economicTaxonomy.categorizedPlatformFeesCents, 30000);
+  assert.equal(state.economicTaxonomy.reconciledAmountCents, 150000);
+  assert.equal(state.economicTaxonomy.identifiedDiscrepancyCents, 0);
+
+  // CRITICAL DEFECT FIX: verifiedCashRecoveredCents and confirmed savings must be 0!
+  assert.equal(state.valueMetrics.verifiedCashRecoveredCents, 0);
+  assert.equal(state.economicTaxonomy.verifiedCashRecoveredCents, 0);
+  assert.equal(state.economicTaxonomy.customerConfirmedSavingsCents, 0);
+
+  assert.equal(state.valueMetrics.reconciliationCount, 1);
   assert.ok(state.valueMetrics.lastVerifiedEvidenceRef.startsWith('fiverr-recon-'));
   assert.equal(state.reconciliationHistory.length, 1);
-  assert.equal(state.reconciliationHistory[0].verifiedTaxFeeSavingsCents, 30000);
+});
+
+test('confirmCustomerOutcome establishes immutable cryptographic audit binding', () => {
+  configureCustomerWorkflow({
+    agencyName: 'Apex Creative Studio',
+    fiverrUsername: 'apexpro'
+  });
+  setCustomerIntegration({ integration: 'fiverrStatements', connected: true });
+  setCustomerWorkflowActive(true);
+
+  const { state: reconState } = executeCustomerReconciliation({
+    transactions: [{ grossAmount: 1000.00, platformFee: 200.00 }],
+    deposits: [{ amount: 800.00 }]
+  });
+
+  const runId = reconState.reconciliationHistory[0].id;
+
+  const { confirmation, state: confirmedState } = confirmCustomerOutcome({
+    runId,
+    outcomeType: 'CONFIRMED_TAX_DEDUCTION',
+    confirmedAmountCents: 20000,
+    actor: 'cpa_auditor@apex.com',
+    reason: 'Verified and applied as allowable platform expense on Form 1040 Schedule C'
+  });
+
+  assert.ok(confirmation.confirmationId.startsWith('conf_'));
+  assert.equal(confirmation.runId, runId);
+  assert.equal(confirmation.confirmedAmountCents, 20000);
+  assert.equal(confirmation.outcomeType, 'CONFIRMED_TAX_DEDUCTION');
+  assert.equal(confirmedState.economicTaxonomy.customerConfirmedSavingsCents, 20000);
+  assert.equal(confirmedState.valueMetrics.customerConfirmedSavingsCents, 20000);
+  assert.equal(confirmedState.confirmedOutcomes.length, 1);
 });

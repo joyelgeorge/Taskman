@@ -78,7 +78,9 @@ export function instantiateCustomerTemplate({
     activatedAt: null,
     metrics: {
       totalBatchesRun: 0,
-      totalVerifiedFeeRecoveryCents: 0,
+      totalReconciledFeesCents: 0,
+      totalConfirmedSavingsCents: 0,
+      totalVerifiedCashRecoveredCents: 0,
       lastEvidenceRef: null
     },
     history: []
@@ -165,17 +167,18 @@ export function executeInstanceReconciliation(instanceId, { transactions = [], d
   }
 
   const report = reconcileFiverrPayoutBatch({ transactions, deposits });
-  const feeRecoveryCents = report.summary.platformFeesCents;
+  const platformFeesCents = report.summary.platformFeesCents;
 
   instance.metrics.totalBatchesRun += 1;
-  instance.metrics.totalVerifiedFeeRecoveryCents += feeRecoveryCents;
+  instance.metrics.totalReconciledFeesCents += platformFeesCents;
   instance.metrics.lastEvidenceRef = report.evidenceRef;
 
   const entry = {
     runId: `run_${Date.now()}`,
     executedAt: report.reconciledAt,
     balanced: report.balanced,
-    verifiedFeeRecoveryCents: feeRecoveryCents,
+    categorizedPlatformFeesCents: platformFeesCents,
+    confirmedSavingsCents: 0,
     evidenceRef: report.evidenceRef,
     summary: report.summary,
     discrepancies: report.discrepancies

@@ -40,7 +40,8 @@ import {
   configureCustomerWorkflow,
   setCustomerIntegration,
   setCustomerWorkflowActive,
-  executeCustomerReconciliation
+  executeCustomerReconciliation,
+  confirmCustomerOutcome
 } from './customer-workflow.js';
 import {
   calculateValueLinkedBilling,
@@ -625,6 +626,14 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 200, executeCustomerReconciliation(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/confirm-outcome') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, confirmCustomerOutcome(body));
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

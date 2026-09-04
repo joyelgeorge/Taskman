@@ -33,6 +33,7 @@ import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-ag
 import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
 import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
+import { FIRST_PAYING_CUSTOMER_PROFILE, qualifyProspect } from './customer-profile.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -557,6 +558,13 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       const report = reconcileFiverrPayoutBatch(body);
       return json(res, 200, report);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/customer-profile') {
+      return json(res, 200, FIRST_PAYING_CUSTOMER_PROFILE);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/qualify') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      return json(res, 200, qualifyProspect(body));
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

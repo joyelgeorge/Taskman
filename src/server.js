@@ -73,6 +73,11 @@ import {
   advanceProspectStage,
   getFunnelMetrics
 } from './acquisition-funnel.js';
+import {
+  startActivationSession,
+  generateInstantAuditPreview,
+  getActivationMetrics
+} from './instant-activation.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -637,6 +642,17 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         return json(res, 400, { error: err.message });
       }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/activation/preview') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, generateInstantAuditPreview(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/activation/metrics') {
+      return json(res, 200, getActivationMetrics());
     }
     if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/upload/fiverr') {
       const body = await readJsonBody(req).catch(() => ({}));

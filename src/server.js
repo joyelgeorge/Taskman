@@ -42,6 +42,12 @@ import {
   setCustomerWorkflowActive,
   executeCustomerReconciliation
 } from './customer-workflow.js';
+import {
+  calculateValueLinkedBilling,
+  transitionInvoiceCommercialState,
+  getAccountBillableEvents,
+  BILLING_RULES
+} from './value-billing.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -603,6 +609,29 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 200, executeCustomerReconciliation(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/billing/rules') {
+      return json(res, 200, BILLING_RULES);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/billing/events') {
+      const accountId = url.searchParams.get('accountId') || null;
+      return json(res, 200, getAccountBillableEvents(accountId));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/billing/calculate') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, calculateValueLinkedBilling(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/billing/transition') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, transitionInvoiceCommercialState(body));
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

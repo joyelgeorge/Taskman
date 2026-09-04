@@ -24,6 +24,10 @@ import {
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import {
+  BILLABLE_METRICS, initializeMetering, requireEntitlement, recordMeterEvent,
+  accountUsageSummary, checkEntitlement, billingExportStatus
+} from './metering.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -116,6 +120,7 @@ function deriveNextAction(envelope, run) {
 async function executeTask(task, reason = 'manual', signal) {
   const run = {
     id: crypto.randomUUID(), taskId: task.id, scenarioId: task.scenarioId || null,
+    accountId: task.accountId || process.env.TASKMAN_DEFAULT_ACCOUNT_ID || 'local-default',
     reason, status: 'running', startedAt: new Date().toISOString()
   };
   await createRunRecord(run);
@@ -123,6 +128,21 @@ async function executeTask(task, reason = 'manual', signal) {
   const knowledgeBefore = await getKnowledgeSnapshot({ taskId: task.id });
   let envelope = null;
   try {
+    const maximumRunTokens = Number(process.env.TASKMAN_MAX_RUN_TOKENS || 4096);
+    if (!Number.isInteger(maximumRunTokens) || maximumRunTokens < 1) throw new Error('INVALID_MAX_RUN_TOKENS');
+    await requireEntitlement({
+      accountId: run.accountId,
+      metricId: BILLABLE_METRICS.AI_TOKENS.id,
+      metricVersion: BILLABLE_METRICS.AI_TOKENS.version,
+      proposedQuantity: maximumRunTokens
+    });
+    await requireEntitlement({
+      accountId: run.accountId,
+      metricId: BILLABLE_METRICS.SUCCESSFUL_RUNS.id,
+      metricVersion: BILLABLE_METRICS.SUCCESSFUL_RUNS.version,
+      proposedQuantity: 1
+    });
+
     const prompt = buildLearningPrompt({ objective: task.prompt, context: compactKnowledge(knowledgeBefore) });
     const result = await runWithFallback(prompt, { runTimeoutMs: LIMITS.runTimeoutMs, signal });
     envelope = validateLearningEnvelope(parseLearningEnvelope(result.text));
@@ -138,6 +158,30 @@ async function executeTask(task, reason = 'manual', signal) {
     run.fallbacks = result.fallbacks;
     memoryUsage.inputTokens += result.inputTokens;
     memoryUsage.outputTokens += result.outputTokens;
+
+    const tokenQuantity = (result.inputTokens || 0) + (result.outputTokens || 0);
+    if (tokenQuantity > 0) {
+      await recordMeterEvent({
+        accountId: run.accountId,
+        metricId: BILLABLE_METRICS.AI_TOKENS.id,
+        metricVersion: BILLABLE_METRICS.AI_TOKENS.version,
+        unit: BILLABLE_METRICS.AI_TOKENS.unit,
+        quantity: tokenQuantity,
+        sourceId: `${run.id}:ai_tokens`,
+        occurredAt: new Date(),
+        provenance: { runId: run.id, provider: result.provider, model: result.model }
+      });
+    }
+    await recordMeterEvent({
+      accountId: run.accountId,
+      metricId: BILLABLE_METRICS.SUCCESSFUL_RUNS.id,
+      metricVersion: BILLABLE_METRICS.SUCCESSFUL_RUNS.version,
+      unit: BILLABLE_METRICS.SUCCESSFUL_RUNS.unit,
+      quantity: 1,
+      sourceId: `${run.id}:successful_run`,
+      occurredAt: new Date(),
+      provenance: { runId: run.id, provider: result.provider, model: result.model }
+    });
   } catch (e) {
     run.status = 'failed';
     run.error = stableErrorCode(e, 'PROVIDER_UNAVAILABLE');
@@ -368,7 +412,10 @@ const server = http.createServer(async (req, res) => {
       const usage = databaseEnabled ? await usageSummary() : memoryUsage;
       return json(res, 200, {
         ...health,
-        providers, usage, database,
+        providers,
+        usage: { kind: 'operational_non_billable', ...usage },
+        metering: { authoritative: true, accountScoped: true, billingExport: billingExportStatus() },
+        database,
         structuredLearning: true,
         autonomousBrain: true,
         revenueExplorerQueues: true,
@@ -382,6 +429,39 @@ const server = http.createServer(async (req, res) => {
         brainIntervalMinutes: brainInterval.valid ? brainInterval.value : null,
         configuration: runtimeConfig.safeSummary
       });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/usage') {
+      const accountId = url.searchParams.get('accountId');
+      const from = url.searchParams.get('from');
+      const to = url.searchParams.get('to');
+      if (!accountId || !from || !to) return json(res, 400, { error: 'accountId, from, and to are required' });
+      try {
+        return json(res, 200, await accountUsageSummary({
+          accountId, from, to,
+          limit: url.searchParams.get('limit') || 50,
+          cursor: url.searchParams.get('cursor') || null
+        }));
+      } catch (error) {
+        if (error instanceof TypeError) return json(res, 400, { error: error.message });
+        throw error;
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/entitlements/check') {
+      const accountId = url.searchParams.get('accountId');
+      const metricId = url.searchParams.get('metricId');
+      if (!accountId || !metricId) return json(res, 400, { error: 'accountId and metricId are required' });
+      try {
+        return json(res, 200, await checkEntitlement({
+          accountId, metricId,
+          metricVersion: Number(url.searchParams.get('metricVersion') || 1),
+          proposedQuantity: Number(url.searchParams.get('quantity') || 1)
+        }));
+      } catch (error) {
+        if (error instanceof TypeError || String(error.message).startsWith('UNKNOWN_') || String(error.message).includes('MISMATCH')) {
+          return json(res, 400, { error: error.message });
+        }
+        throw error;
+      }
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
@@ -441,6 +521,11 @@ const server = http.createServer(async (req, res) => {
       if (!body.prompt?.trim()) {
         return sendProblem(res, new AppError('INVALID_REQUEST'), { req, context: 'create_task' });
       }
+      const accountId = body.accountId?.trim() || process.env.TASKMAN_DEFAULT_ACCOUNT_ID ||
+        (process.env.NODE_ENV === 'production' ? null : 'local-default');
+      if (!accountId) {
+        return sendProblem(res, new AppError('INVALID_REQUEST', 'accountId is required'), { req, context: 'create_task_account' });
+      }
       const interval = normalizeIntervalMinutes(body.intervalMinutes);
       if (!interval.valid) {
         return sendProblem(res, new AppError(interval.code), { req, context: 'create_task_interval' });
@@ -452,6 +537,7 @@ const server = http.createServer(async (req, res) => {
         execute: async () => {
           const task = await createTaskRecord({
             id: crypto.randomUUID(),
+            accountId,
             scenarioId: body.scenarioId || null,
             title: body.title?.trim() || body.prompt.trim().slice(0, 60),
             prompt: body.prompt.trim(),
@@ -538,6 +624,7 @@ installShutdownSignals(shutdownCoordinator);
 
 if (databaseEnabled) {
   const migration = await migrate();
+  await initializeMetering();
   const scenarios = await seedScenarios();
   const tasks = await seedCoreTasks();
   const intervalQuarantine = await quarantineInvalidIntervalTriggers();
@@ -545,6 +632,7 @@ if (databaseEnabled) {
   const overdue = await reconcileOverdueJobs();
   console.log('Taskman database ready', { migration, scenarios, tasks, intervalQuarantine, overdueCount: overdue.length });
 } else {
+  await initializeMetering();
   await initializeScheduler();
 }
 await restoreSchedules();

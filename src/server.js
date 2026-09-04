@@ -30,6 +30,7 @@ import {
 } from './metering.js';
 import { syncGitHubWork, getActionableWorkQueue, claimActionableWorkItem, releaseActionableWorkItem, WORK_ELIGIBILITY } from './github-intake.js';
 import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-agent-adapter.js';
+import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -509,6 +510,24 @@ const server = http.createServer(async (req, res) => {
         title: claimedWork.title,
         message: 'No coding agent backend configured to execute work package'
       });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/merge-train/records') {
+      const repo = url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const status = url.searchParams.get('status') || null;
+      return json(res, 200, {
+        repo,
+        records: await listMergeTrainRecords({ repo, status })
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/merge-train/tick') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const repo = body.repo || url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const result = await processMergeTrainStep({
+        repo,
+        candidatePrs: body.candidatePrs || [],
+        mergePrFn: async ({ prNumber }) => ({ sha: `merge-commit-${prNumber}` })
+      });
+      return json(res, 200, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

@@ -17,7 +17,9 @@ test('PRIMARY_ACQUISITION_CHANNEL defines selected channel, profile, and concret
   assert.equal(PRIMARY_ACQUISITION_CHANNEL.channelId, 'fiverr_community_and_subreddits_outbound');
   assert.ok(PRIMARY_ACQUISITION_CHANNEL.outreachAsset.headline.includes('Fiverr withdrawal'));
   assert.ok(PRIMARY_ACQUISITION_CHANNEL.outreachAsset.copy.includes('reconciliation tool'));
-  assert.equal(FUNNEL_STAGES.length, 7);
+  assert.equal(FUNNEL_STAGES.length, 8);
+  assert.ok(FUNNEL_STAGES.includes('DEMO_TRIAL'));
+  assert.ok(FUNNEL_STAGES.includes('REFERRAL'));
 });
 
 test('recordProspect qualifies lead and initializes funnel stage', () => {
@@ -25,33 +27,37 @@ test('recordProspect qualifies lead and initializes funnel stage', () => {
     prospectId: 'prospect_agency_1',
     name: 'Pixelcraft Studio',
     monthlyVolumeCents: 450000, // $4,500/mo volume (qualifies)
-    manualHoursMonthly: 6
+    manualHoursMonthly: 6,
+    referredBy: 'ref_agency_0'
   });
 
   assert.equal(prospect.prospectId, 'prospect_agency_1');
   assert.equal(prospect.stage, 'QUALIFIED');
   assert.equal(prospect.qualification.qualified, true);
+  assert.equal(prospect.referredBy, 'ref_agency_0');
   assert.equal(prospect.history.length, 1);
 });
 
-test('advanceProspectStage transitions stages, accumulates metrics, and records objections', () => {
+test('advanceProspectStage transitions stages, accumulates CAC, payback and records objections', () => {
   recordProspect({
     prospectId: 'prospect_agency_2',
     name: 'Vortex Visuals',
     monthlyVolumeCents: 350000
   });
 
-  // Advance to DEMO_SESSION with objection
+  // Advance to DEMO_TRIAL with objection
   const demo = advanceProspectStage({
     prospectId: 'prospect_agency_2',
-    toStage: 'DEMO_SESSION',
+    toStage: 'DEMO_TRIAL',
     timeSpentMinutes: 20,
+    acquisitionCostCents: 200,
     objection: 'Prefers Excel macro over web tool',
     note: 'Completed 20min walkthrough demo'
   });
 
-  assert.equal(demo.stage, 'DEMO_SESSION');
+  assert.equal(demo.stage, 'DEMO_TRIAL');
   assert.equal(demo.timeSpentMinutes, 20);
+  assert.equal(demo.acquisitionCostCents, 200);
   assert.equal(demo.objections.length, 1);
   assert.equal(demo.objections[0].objection, 'Prefers Excel macro over web tool');
 
@@ -60,7 +66,8 @@ test('advanceProspectStage transitions stages, accumulates metrics, and records 
     prospectId: 'prospect_agency_2',
     toStage: 'PAID',
     timeSpentMinutes: 10,
-    acquisitionCostCents: 500
+    acquisitionCostCents: 300,
+    revenueCollectedCents: 1900
   });
 
   assert.equal(paid.stage, 'PAID');
@@ -71,6 +78,8 @@ test('advanceProspectStage transitions stages, accumulates metrics, and records 
   const metrics = getFunnelMetrics();
   assert.equal(metrics.totalProspects, 1);
   assert.equal(metrics.paidCount, 1);
+  assert.equal(metrics.cacCents, 500); // $5.00 CAC
   assert.equal(metrics.conversionRate, '100.0%');
+  assert.equal(metrics.paybackMonths, '0.3');
   assert.equal(metrics.recordedObjections.length, 1);
 });

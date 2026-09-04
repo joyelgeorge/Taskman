@@ -180,3 +180,14 @@ export async function enforceRailGovernor(options) {
 export function resetGovernorMemory() {
   memoryBudget.monthlyCapCents = Number(process.env.GLOBAL_MONTHLY_BUDGET_CENTS || 50_000);
 }
+
+export async function resetGovernorStore() {
+  resetGovernorMemory();
+  if (databaseEnabled) {
+    await query(`
+      INSERT INTO global_budget(id, monthly_cap_cents) VALUES ('default', 50000)
+      ON CONFLICT (id) DO UPDATE SET monthly_cap_cents = 50000, updated_at = now()
+    `);
+  }
+}
+

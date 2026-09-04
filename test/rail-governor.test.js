@@ -2,23 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   recordAttempt, recordSettlement, setRailEnabled, setRailState, getRailState, railEconomics,
-  isRailEnabled, resetLedgerMemory, SETTLEMENT_STATUS
+  isRailEnabled, resetLedgerMemory, resetLedgerStore, SETTLEMENT_STATUS
 } from '../src/money-ledger.js';
 import {
-  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory
+  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory, resetGovernorStore
 } from '../src/rail-governor.js';
 
-function reset() { resetLedgerMemory(); resetGovernorMemory(); }
+async function reset() {
+  await resetLedgerStore();
+  await resetGovernorStore();
+}
 
 test('a freshly registered rail starts in PROBATION', async () => {
-  reset();
+  await reset();
   const verdict = await evaluateRailGovernor({ rail: 'fresh' });
   assert.equal(verdict.state, 'PROBATION');
   assert.equal(verdict.nextState, 'PROBATION');
 });
 
 test('PROBATION promotes to PROVEN on the first cleared settlement', async () => {
-  reset();
+  await reset();
   await recordAttempt({ rail: 'r', costCents: 500 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, status: SETTLEMENT_STATUS.CLEARED });
 
@@ -28,7 +31,7 @@ test('PROBATION promotes to PROVEN on the first cleared settlement', async () =>
 });
 
 test('PROBATION disables on budget exhaustion with zero settlements', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 6; i += 1) await recordAttempt({ rail: 'r', costCents: 1000 });
 
   const verdict = await enforceRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
@@ -38,7 +41,7 @@ test('PROBATION disables on budget exhaustion with zero settlements', async () =
 });
 
 test('DISABLED never leaves on its own', async () => {
-  reset();
+  await reset();
   await setRailState('r', 'DISABLED', 'spent the budget');
   const verdict = await enforceRailGovernor({ rail: 'r' });
   assert.equal(verdict.nextState, 'DISABLED');
@@ -46,7 +49,7 @@ test('DISABLED never leaves on its own', async () => {
 });
 
 test('a manual re-enable gives a genuine fresh probation window', async () => {
-  reset();
+  await reset();
   // Spend past the budget and let the governor disable it.
   for (let i = 0; i < 6; i += 1) await recordAttempt({ rail: 'r', costCents: 1000 });
   await enforceRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
@@ -63,7 +66,7 @@ test('a manual re-enable gives a genuine fresh probation window', async () => {
 });
 
 test('PROVEN demotes to PROBATION when trailing ROI collapses', async () => {
-  reset();
+  await reset();
   await recordAttempt({ rail: 'r', costCents: 100 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_old', grossCents: 200, status: SETTLEMENT_STATUS.CLEARED });
   await setRailState('r', 'PROVEN');
@@ -77,7 +80,7 @@ test('PROVEN demotes to PROBATION when trailing ROI collapses', async () => {
 });
 
 test('PROVEN promotes to SCALED once lifetime ROI and volume both clear the bar', async () => {
-  reset();
+  await reset();
   await setRailState('r', 'PROVEN');
   await recordAttempt({ rail: 'r', costCents: 1000 });
   for (let i = 0; i < 10; i += 1) {
@@ -90,7 +93,7 @@ test('PROVEN promotes to SCALED once lifetime ROI and volume both clear the bar'
 });
 
 test('PROVEN does not promote below the settlement-count floor even at high ROI', async () => {
-  reset();
+  await reset();
   await setRailState('r', 'PROVEN');
   await recordAttempt({ rail: 'r', costCents: 100 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED });
@@ -100,7 +103,7 @@ test('PROVEN does not promote below the settlement-count floor even at high ROI'
 });
 
 test('SCALED descales to PROVEN when lifetime ROI falls through the floor', async () => {
-  reset();
+  await reset();
   await setRailState('r', 'SCALED');
   await recordAttempt({ rail: 'r', costCents: 10000 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
@@ -110,7 +113,7 @@ test('SCALED descales to PROVEN when lifetime ROI falls through the floor', asyn
 });
 
 test('SCALED stays scaled with no per-rail budget cap', async () => {
-  reset();
+  await reset();
   await setRailState('r', 'SCALED');
   for (let i = 0; i < 5; i += 1) {
     await recordSettlement({ rail: 'r', source: 'stripe', externalRef: `txn_${i}`, grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED });
@@ -121,7 +124,7 @@ test('SCALED stays scaled with no per-rail budget cap', async () => {
 });
 
 test('railEconomics reports the governed state alongside the numbers', async () => {
-  reset();
+  await reset();
   await setRailState('proven-rail', 'PROVEN');
   await setRailState('dead-rail', 'DISABLED', 'no settlements');
 
@@ -133,7 +136,7 @@ test('railEconomics reports the governed state alongside the numbers', async () 
 });
 
 test('the global monthly budget aggregates spend across every rail', async () => {
-  reset();
+  await reset();
   await setGlobalMonthlyBudget(10000);
   await recordAttempt({ rail: 'a', costCents: 4000 });
   await recordAttempt({ rail: 'b', costCents: 4000 });
@@ -149,12 +152,12 @@ test('the global monthly budget aggregates spend across every rail', async () =>
 });
 
 test('a rail that has no state row yet is treated as available, not blocked', async () => {
-  reset();
+  await reset();
   assert.equal(await isRailEnabled('never-registered'), true);
 });
 
 test('re-enabling increments the probation epoch, and old attempts keep the old one', async () => {
-  reset();
+  await reset();
   const { recordAttempt } = await import('../src/money-ledger.js');
   const before = await recordAttempt({ rail: 'r', costCents: 100 });
   assert.equal(before.probationEpoch, 0);
@@ -170,7 +173,7 @@ test('re-enabling increments the probation epoch, and old attempts keep the old 
 test('two writes landing in the same instant still land in different probation windows', async () => {
   // Regression: a timestamp-boundary implementation can misclassify writes that
   // share a millisecond. Nothing here waits on real time, by design.
-  reset();
+  await reset();
   const { recordAttempt, railProbationWindow } = await import('../src/money-ledger.js');
   for (let i = 0; i < 6; i += 1) await recordAttempt({ rail: 'r', costCents: 1000 });
   await enforceRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
@@ -184,3 +187,8 @@ test('two writes landing in the same instant still land in different probation w
   const verdict = await evaluateRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
   assert.equal(verdict.nextState, 'PROBATION');
 });
+
+test.after(async () => {
+  await reset();
+});
+

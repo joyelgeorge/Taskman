@@ -536,3 +536,11 @@ export function resetLedgerMemory() {
   memory.attempts.length = 0;
   memory.settlements.length = 0;
 }
+
+export async function resetLedgerStore() {
+  resetLedgerMemory();
+  if (databaseEnabled) {
+    await query('TRUNCATE rail_attempts, settlements, rail_state CASCADE');
+  }
+}
+

@@ -7,6 +7,9 @@ import { runValidateWorker } from '../src/workers/validate.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
 import { CANONICAL_QUEUES } from '../src/orchestration-profiles.js';
 import { upsertRevenueRecord, listRevenueRecords } from '../src/revenue-store.js';
+import { resetLedgerStore } from '../src/money-ledger.js';
+import { resetGovernorStore } from '../src/rail-governor.js';
+
 
 test('AI Reasoning Engine: validates discovery_synthesis schema strictly', () => {
   const validData = {
@@ -125,6 +128,8 @@ test('Validate Worker: AI adversarial gate evaluation', async () => {
 });
 
 test('Execute Worker: AI plan passes through to authorized executor function', async () => {
+  await resetLedgerStore();
+  await resetGovernorStore();
   const noveltyKey = `ai-exec-${crypto.randomUUID()}`;
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
@@ -167,3 +172,9 @@ test('Execute Worker: AI plan passes through to authorized executor function', a
   assert.ok(receivedPlan);
   assert.equal(receivedPlan.actionSummary, 'Execute optimized support right-sizing API call');
 });
+
+test.after(async () => {
+  await resetLedgerStore();
+  await resetGovernorStore();
+});
+

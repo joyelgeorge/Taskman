@@ -61,6 +61,13 @@ import {
 } from './customer-template.js';
 import { parseFiverrActivityCsv, parseBankDepositsCsv } from './fiverr-csv-parser.js';
 import {
+  NAMED_ACTIONS,
+  recordActionIntent,
+  approveActionIntent,
+  dispatchOutboxAction,
+  reconcileOutboxSettlement
+} from './action-registry.js';
+import {
   PRIMARY_ACQUISITION_CHANNEL,
   recordProspect,
   advanceProspectStage,
@@ -655,6 +662,25 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 200, confirmCustomerOutcome(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/actions') {
+      return json(res, 200, NAMED_ACTIONS);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/actions/intent') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 201, recordActionIntent(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/actions/approve') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 200, approveActionIntent(body));
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

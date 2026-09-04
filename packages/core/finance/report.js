@@ -1,5 +1,6 @@
-import { railEconomics, railWindow, globalBudgetStatus } from '../ledger.js';
+import { railEconomics, railWindow, globalBudgetStatus, listSettlements } from '../ledger.js';
 import { listExpenses } from './store.js';
+import { resolveUsdInrRate } from './fx.js';
 
 /**
  * Turns raw ledger rows into a report a person can actually decide from.
@@ -51,6 +52,36 @@ export async function financeReport({ trailingDays = 30, now = new Date() } = {}
     ? Math.round(budget.remainingCents / burnRateCentsPerDay)
     : null;
 
+  // FX conversion: resolve USD -> INR for cleared settlements
+  const allSettlements = await listSettlements();
+  const clearedSettlements = allSettlements.filter(s => s.status === 'CLEARED');
+
+  let grossClearedInrPaise = 0;
+  let hasInrConversion = false;
+  const settlementConversions = [];
+
+  for (const s of clearedSettlements) {
+    if (s.currency === 'USD') {
+      const fx = await resolveUsdInrRate(s.verifiedAt || s.createdAt);
+      if (fx && fx.rate) {
+        hasInrConversion = true;
+        // s.netCents is in USD cents. Rate is INR per USD.
+        // 1 USD cent = 1/100 USD. Paise = cents * rate
+        const netPaise = Math.round(s.netCents * fx.rate);
+        grossClearedInrPaise += netPaise;
+        settlementConversions.push({
+          settlementId: s.id,
+          currency: 'USD',
+          netCents: s.netCents,
+          rate: fx.rate,
+          derived: true,
+          observedDate: fx.observedDate,
+          netInrPaise: netPaise
+        });
+      }
+    }
+  }
+
   const perRail = rails.map(r => ({
     rail: r.rail,
     state: r.state,
@@ -66,11 +97,13 @@ export async function financeReport({ trailingDays = 30, now = new Date() } = {}
     asOf: now.toISOString(),
     lifetime: {
       grossClearedCents,
+      grossClearedInrPaise: hasInrConversion ? grossClearedInrPaise : null,
       railSpendCents,
       expenseCents: allTimeExpenseCents,
       totalSpendCents,
       netCents,
-      marginPct: marginPct(grossClearedCents, totalSpendCents)
+      marginPct: marginPct(grossClearedCents, totalSpendCents),
+      fxConversions: settlementConversions
     },
     trailing: {
       days: trailingDays,

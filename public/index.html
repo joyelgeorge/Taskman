@@ -15,6 +15,62 @@
       <button id="retryDashboard" type="button">Retry now</button>
     </div>
 
+    <section class="card customer-onboarding" id="customerSection">
+      <div class="row">
+        <h2 class="row-heading">Client Workflow: Fiverr Payout & Reconciliation</h2>
+        <span id="customerWorkflowStatus" class="panel-status" aria-live="polite">Loading…</span>
+        <button id="toggleWorkflowActive" class="primary" hidden>Activate workflow</button>
+      </div>
+      <p class="muted">First-customer automated wedge for boutique digital agencies and Top-Rated Fiverr sellers. Connect statements, audit fee withholdings, and verify recovered tax deductions.</p>
+
+      <div id="customerBlockers" class="blockers-alert" hidden></div>
+
+      <div class="row customer-grid">
+        <div class="customer-col">
+          <h3>1. Setup & Integrations</h3>
+          <div id="customerSetupForm">
+            <label class="muted" for="agencyName">Agency / Studio Name</label>
+            <input id="agencyName" placeholder="e.g. Apex Digital Creative" />
+            <label class="muted" for="fiverrUsername">Fiverr Username</label>
+            <input id="fiverrUsername" placeholder="e.g. apexdigital" />
+            <label class="muted" for="monthlyVolume">Est. Monthly Volume ($)</label>
+            <input id="monthlyVolume" type="number" placeholder="e.g. 5000" />
+            <button id="saveCustomerConfig" class="primary">Save configuration</button>
+          </div>
+          <div class="integrations-list" id="integrationsList"></div>
+        </div>
+
+        <div class="customer-col">
+          <h3>2. Value & Billing Basis</h3>
+          <div class="value-card">
+            <div class="muted">Estimated annual value (unverified)</div>
+            <div id="estimatedSavings" class="value-amount-est">$0.00 / yr</div>
+          </div>
+          <div class="value-card verified-card">
+            <div class="muted">Verified recovered value (cryptographically audited)</div>
+            <div id="verifiedSavings" class="value-amount-ver">$0.00</div>
+            <div id="verifiedEvidenceRef" class="muted evidence-ref">Evidence: none yet</div>
+          </div>
+          <div class="billing-card">
+            <strong>Billing Basis:</strong>
+            <div id="billingBasisDetails">Loading billing terms…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="customer-section-margin" id="quickReconcileSection">
+        <h3>3. Run Reconciliation Batch</h3>
+        <p class="muted">Run a sample transaction batch to match Fiverr gross earnings against actual bank deposit.</p>
+        <button id="runCustomerBatch" class="primary">Run statement reconciliation batch</button>
+        <div id="customerBatchResult"></div>
+      </div>
+
+      <div class="customer-section-margin">
+        <h3>Recent outcomes & verified evidence</h3>
+        <div id="customerHistory"><p class="muted">No reconciliation outcomes yet.</p></div>
+      </div>
+    </section>
+
     <section class="card brain">
       <div class="row"><h2 class="row-heading">Brain</h2><span id="brainStatus" class="panel-status" aria-live="polite">Loading…</span><button class="primary" id="runBrain">Run brain once</button></div>
       <div id="brainState"><p class="muted">Loading brain state…</p></div>

@@ -464,6 +464,145 @@ export async function syncGitHubWork({
   };
 }
 
+/**
+ * Atomically claims the highest priority eligible work item from the queue with a lease.
+ */
+export async function claimActionableWorkItem({
+  repo = 'joyelgeorge/Taskman',
+  claimedBy = 'taskman-execute-worker',
+  leaseDurationMs = 15 * 60 * 1000,
+  now = new Date()
+} = {}) {
+  const currentTime = new Date(now);
+  const leaseExpiresAt = new Date(currentTime.getTime() + leaseDurationMs);
+
+  if (!databaseEnabled) {
+    const repoMap = memoryStore.get(repo);
+    if (!repoMap) return null;
+    const candidates = Array.from(repoMap.values())
+      .filter(item => (item.eligibilityStatus === WORK_ELIGIBILITY.READY || item.eligibilityStatus === WORK_ELIGIBILITY.NEEDS_PR_FIX))
+      .filter(item => !item.leaseExpiresAt || new Date(item.leaseExpiresAt).getTime() <= currentTime.getTime())
+      .sort((a, b) => {
+        if (b.effectivePriority !== a.effectivePriority) return b.effectivePriority - a.effectivePriority;
+        return a.issueNumber - b.issueNumber;
+      });
+
+    if (candidates.length === 0) return null;
+    const item = candidates[0];
+    item.claimedBy = claimedBy;
+    item.claimedAt = currentTime.toISOString();
+    item.leaseExpiresAt = leaseExpiresAt.toISOString();
+    return { ...item };
+  }
+
+  return withTransaction(async client => {
+    const selectSql = `
+      SELECT * FROM github_work_items
+      WHERE repo = $1
+        AND eligibility_status IN ('READY', 'NEEDS_PR_FIX')
+        AND (lease_expires_at IS NULL OR lease_expires_at <= $2)
+      ORDER BY effective_priority DESC, issue_number ASC
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED
+    `;
+    const res = await client.query(selectSql, [repo, currentTime.toISOString()]);
+    if (res.rows.length === 0) return null;
+
+    const row = res.rows[0];
+    const updateSql = `
+      UPDATE github_work_items
+      SET claimed_by = $1,
+          claimed_at = $2,
+          lease_expires_at = $3,
+          synced_at = now()
+      WHERE id = $4
+      RETURNING *
+    `;
+    const updateRes = await client.query(updateSql, [
+      claimedBy,
+      currentTime.toISOString(),
+      leaseExpiresAt.toISOString(),
+      row.id
+    ]);
+
+    const updated = updateRes.rows[0];
+    return {
+      id: updated.id,
+      repo: updated.repo,
+      issueNumber: updated.issue_number,
+      title: updated.title,
+      state: updated.state,
+      labels: updated.labels,
+      basePriority: updated.base_priority,
+      effectivePriority: updated.effective_priority,
+      blockerIssueNumbers: updated.blocker_issue_numbers,
+      blockingIssueNumbers: updated.blocking_issue_numbers,
+      activePr: updated.active_pr,
+      eligibilityStatus: updated.eligibility_status,
+      eligibilityReason: updated.eligibility_reason,
+      claimedBy: updated.claimed_by,
+      claimedAt: updated.claimed_at,
+      leaseExpiresAt: updated.lease_expires_at,
+      githubUpdatedAt: updated.github_updated_at,
+      syncedAt: updated.synced_at
+    };
+  });
+}
+
+/**
+ * Releases or updates a claimed work item after execution.
+ */
+export async function releaseActionableWorkItem({
+  repo = 'joyelgeorge/Taskman',
+  issueNumber,
+  claimedBy,
+  eligibilityStatus,
+  eligibilityReason,
+  activePr = null
+} = {}) {
+  if (!databaseEnabled) {
+    const repoMap = memoryStore.get(repo);
+    if (!repoMap) return null;
+    const item = repoMap.get(issueNumber);
+    if (!item) return null;
+    item.claimedBy = null;
+    item.claimedAt = null;
+    item.leaseExpiresAt = null;
+    if (eligibilityStatus) item.eligibilityStatus = eligibilityStatus;
+    if (eligibilityReason) item.eligibilityReason = eligibilityReason;
+    if (activePr) item.activePr = activePr;
+    return { ...item };
+  }
+
+  let updateSql = `
+    UPDATE github_work_items
+    SET claimed_by = NULL,
+        claimed_at = NULL,
+        lease_expires_at = NULL,
+        synced_at = now()
+  `;
+  const params = [repo, issueNumber];
+  let paramIdx = 3;
+
+  if (eligibilityStatus) {
+    updateSql += `, eligibility_status = $${paramIdx++}`;
+    params.push(eligibilityStatus);
+  }
+  if (eligibilityReason) {
+    updateSql += `, eligibility_reason = $${paramIdx++}`;
+    params.push(eligibilityReason);
+  }
+  if (activePr) {
+    updateSql += `, active_pr = $${paramIdx++}::jsonb`;
+    params.push(JSON.stringify(activePr));
+  }
+
+  updateSql += ` WHERE repo = $1 AND issue_number = $2 RETURNING *`;
+  const result = await query(updateSql, params);
+  return result.rows[0] || null;
+}
+
 export function resetIntakeMemory() {
   memoryStore.clear();
 }
+

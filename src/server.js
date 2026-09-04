@@ -28,7 +28,8 @@ import {
   BILLABLE_METRICS, initializeMetering, requireEntitlement, recordMeterEvent,
   accountUsageSummary, checkEntitlement, billingExportStatus
 } from './metering.js';
-import { syncGitHubWork, getActionableWorkQueue } from './github-intake.js';
+import { syncGitHubWork, getActionableWorkQueue, claimActionableWorkItem, releaseActionableWorkItem, WORK_ELIGIBILITY } from './github-intake.js';
+import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-agent-adapter.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -477,6 +478,37 @@ const server = http.createServer(async (req, res) => {
       const repo = body.repo || url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
       const result = await syncGitHubWork({ repo, token: process.env.GITHUB_TOKEN });
       return json(res, 200, result);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/work/executions') {
+      const repo = url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const issueNumber = url.searchParams.get('issue') ? parseInt(url.searchParams.get('issue'), 10) : null;
+      return json(res, 200, {
+        repo,
+        runs: await listExecutionRuns({ repo, issueNumber })
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/work/dispatch') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const repo = body.repo || url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const claimedWork = await claimActionableWorkItem({ repo, claimedBy: 'api-work-dispatch' });
+      if (!claimedWork) {
+        return json(res, 200, { ok: false, status: 'NO_ELIGIBLE_WORK', message: 'No eligible unleased work available' });
+      }
+      // If no backend configured, release and return SETUP_REQUIRED
+      await releaseActionableWorkItem({
+        repo,
+        issueNumber: claimedWork.issueNumber,
+        claimedBy: 'api-work-dispatch',
+        eligibilityStatus: WORK_ELIGIBILITY.READY,
+        eligibilityReason: 'Coding agent backend not configured (SETUP_REQUIRED)'
+      });
+      return json(res, 200, {
+        ok: false,
+        status: 'SETUP_REQUIRED',
+        issueNumber: claimedWork.issueNumber,
+        title: claimedWork.title,
+        message: 'No coding agent backend configured to execute work package'
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

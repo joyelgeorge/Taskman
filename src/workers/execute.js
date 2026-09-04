@@ -53,6 +53,8 @@ import {
 } from '../learning-inference.js';
 import { addTraceEvent, recordStageResult, withTelemetrySpan } from '../observability.js';
 import { logRestrictedError, stableErrorCode } from '../errors.js';
+import { claimActionableWorkItem, releaseActionableWorkItem, WORK_ELIGIBILITY } from '../github-intake.js';
+import { dispatchCodingAgentWork } from '../adapters/coding-agent-adapter.js';
 
 async function runExecuteWorkerImpl({
   limit = 10,
@@ -62,6 +64,9 @@ async function runExecuteWorkerImpl({
   capabilityOptions = {},
   rail = 'default',
   attemptCostCents = 0,
+  repo = process.env.TASKMAN_REPO || 'joyelgeorge/Taskman',
+  codingAgentBackend = null,
+  executeRepoWork = false,
   signal
 } = {}) {
   signal?.throwIfAborted();
@@ -262,6 +267,74 @@ async function runExecuteWorkerImpl({
     }, { now: new Date(startedAt) });
   }
 
+  // 6. Optional or scheduled execution of eligible GitHub repo work (#122)
+  let repoExecution = null;
+  if (executeRepoWork || process.env.TASKMAN_EXECUTE_REPO_WORK === 'true') {
+    const claimedWork = await claimActionableWorkItem({ repo, claimedBy });
+    if (claimedWork) {
+      if (!codingAgentBackend) {
+        // Missing backend credentials/capability produces SETUP_REQUIRED, not fake completion
+        await releaseActionableWorkItem({
+          repo,
+          issueNumber: claimedWork.issueNumber,
+          claimedBy,
+          eligibilityStatus: WORK_ELIGIBILITY.READY,
+          eligibilityReason: 'Coding agent backend not configured (SETUP_REQUIRED)'
+        });
+        repoExecution = {
+          issueNumber: claimedWork.issueNumber,
+          status: 'SETUP_REQUIRED',
+          reason: 'No coding agent backend configured'
+        };
+      } else {
+        const dispatchResult = await dispatchCodingAgentWork({
+          workPackage: {
+            repo: claimedWork.repo,
+            issueNumber: claimedWork.issueNumber,
+            title: claimedWork.title,
+            body: claimedWork.rawPayload?.body || ''
+          },
+          backend: codingAgentBackend
+        });
+
+        if (dispatchResult.ok) {
+          // Success: Suppress duplicate dispatch by marking IN_FLIGHT_PR with active PR details
+          await releaseActionableWorkItem({
+            repo,
+            issueNumber: claimedWork.issueNumber,
+            claimedBy,
+            eligibilityStatus: WORK_ELIGIBILITY.IN_FLIGHT_PR,
+            eligibilityReason: `Active PR #${dispatchResult.prNumber} opened`,
+            activePr: {
+              number: dispatchResult.prNumber,
+              url: dispatchResult.prUrl,
+              headRef: dispatchResult.branch,
+              headSha: dispatchResult.headSha
+            }
+          });
+        } else if (dispatchResult.status === 'FAILED_TESTS') {
+          // Tests failed: release back to queue as NEEDS_PR_FIX or READY for retry
+          await releaseActionableWorkItem({
+            repo,
+            issueNumber: claimedWork.issueNumber,
+            claimedBy,
+            eligibilityStatus: WORK_ELIGIBILITY.READY,
+            eligibilityReason: `Implementation tests failed: ${dispatchResult.reason}`
+          });
+        } else {
+          await releaseActionableWorkItem({
+            repo,
+            issueNumber: claimedWork.issueNumber,
+            claimedBy,
+            eligibilityStatus: WORK_ELIGIBILITY.READY,
+            eligibilityReason: `Dispatch failed: ${dispatchResult.reason}`
+          });
+        }
+        repoExecution = dispatchResult;
+      }
+    }
+  }
+
   // evaluateRailViability is the legacy two-verdict check, kept for callers that
   // only need CONTINUE/DISABLE. enforceRailGovernor is the phase-4 state machine
   // (docs/TARGET_DESIGN.md §8) and is the one that actually writes rail_state.state.
@@ -275,6 +348,7 @@ async function runExecuteWorkerImpl({
     claimedCount: claimed.length,
     outcomesCount: outcomes.length,
     outcomes,
+    repoExecution,
     viability,
     governor,
     timestamp: startedAt

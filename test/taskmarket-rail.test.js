@@ -11,7 +11,7 @@ import { TASKMARKET_ORIGIN, TASKMARKET_TASKS_PATH, TaskmarketRailAdapter,
 const OBSERVED = '2026-09-01T12:00:00.000Z';
 function task(overrides = {}) {
   return { id: 'task_1', description: 'Build a bounded artifact', reward: '24200000', status: 'open', mode: 'bounty',
-    createdAt: '2026-09-01T10:00:00Z', expiryTime: '2026-09-02T10:00:00Z', submissionCount: 68,
+    createdAt: '2026-09-01T10:00:00Z', expiryTime: '2099-01-01T00:00:00Z', submissionCount: 68,
     platformFeeBps: 500, submissionFeeUsd: 0, artifactCostUsd: 0.05, ...overrides };
 }
 function response(payload, { status = 200, length } = {}) {

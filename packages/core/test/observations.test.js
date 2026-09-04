@@ -212,7 +212,8 @@ test('a cross rate with a zero or missing leg is null, not a wrong number', () =
 
 test('a full run collects, rolls up, prunes, and seeds the declared source once', async () => {
   reset();
-  const result = await runDataCollection({ fetchImpl: stubFetch(ECB_XML) });
+  const testNow = new Date('2026-09-03T12:00:00Z');
+  const result = await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
 
   assert.equal(result.collected, DEFAULT_SOURCES.length);
   assert.equal(result.ok, 1);
@@ -224,8 +225,9 @@ test('a full run collects, rolls up, prunes, and seeds the declared source once'
 
 test('a source is not collected again before its interval has elapsed', async () => {
   reset();
-  await runDataCollection({ fetchImpl: stubFetch(ECB_XML) });
-  const second = await runDataCollection({ fetchImpl: stubFetch(ECB_XML) });
+  const testNow = new Date('2026-09-03T12:00:00Z');
+  await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
+  const second = await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
   assert.equal(second.collected, 0, 'daily source, same run — nothing is due');
-  assert.equal((await dueSources({})).length, 0);
+  assert.equal((await dueSources({ now: testNow })).length, 0);
 });

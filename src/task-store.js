@@ -13,6 +13,7 @@ function rowToTask(row) {
   const interval = normalizeStoredIntervalSeconds(row.interval_seconds);
   return {
     id: row.id,
+    accountId: row.account_id || 'local-default',
     scenarioId: row.scenario_id,
     title: row.title,
     prompt: row.source_prompt || row.objective,
@@ -26,7 +27,7 @@ function rowToTask(row) {
   };
 }
 
-export async function createTaskRecord({ id, scenarioId, title, prompt, intervalMinutes }) {
+export async function createTaskRecord({ id, accountId = 'local-default', scenarioId, title, prompt, intervalMinutes }) {
   const interval = normalizeIntervalMinutes(intervalMinutes);
   if (!interval.valid) {
     const error = new Error(interval.error);
@@ -37,16 +38,16 @@ export async function createTaskRecord({ id, scenarioId, title, prompt, interval
   const canonicalInterval = interval.value;
 
   if (!databaseEnabled) {
-    const task = { id, scenarioId, title, prompt, intervalMinutes: canonicalInterval, status: 'active', createdAt: new Date().toISOString() };
+    const task = { id, accountId, scenarioId, title, prompt, intervalMinutes: canonicalInterval, status: 'active', createdAt: new Date().toISOString() };
     memory.tasks.unshift(task);
     return task;
   }
 
   return withTransaction(async client => {
     const taskResult = await client.query(
-      `INSERT INTO tasks (id, scenario_id, title, objective, status, current_version)
-       VALUES ($1,$2,$3,$4,'active',1) RETURNING *`,
-      [id, scenarioId || null, title, prompt]
+      `INSERT INTO tasks (id, account_id, scenario_id, title, objective, status, current_version)
+       VALUES ($1,$2,$3,$4,$5,'active',1) RETURNING *`,
+      [id, accountId, scenarioId || null, title, prompt]
     );
 
     await client.query(

@@ -59,6 +59,7 @@ import {
   getCustomerInstance,
   listCustomerInstances
 } from './customer-template.js';
+import { parseFiverrActivityCsv, parseBankDepositsCsv } from './fiverr-csv-parser.js';
 import {
   PRIMARY_ACQUISITION_CHANNEL,
   recordProspect,
@@ -626,6 +627,26 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 200, executeCustomerReconciliation(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/upload/fiverr') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        const parsed = parseFiverrActivityCsv(body.csv || '');
+        setCustomerIntegration({ integration: 'fiverrStatements', connected: true });
+        return json(res, 200, parsed);
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/customer/workflow/upload/bank') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        const parsed = parseBankDepositsCsv(body.csv || '');
+        setCustomerIntegration({ integration: 'bankDeposits', connected: true });
+        return json(res, 200, parsed);
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

@@ -48,6 +48,16 @@ import {
   getAccountBillableEvents,
   BILLING_RULES
 } from './value-billing.js';
+import {
+  REUSABLE_CUSTOMER_TEMPLATE_SPEC,
+  instantiateCustomerTemplate,
+  verifyInstanceReadiness,
+  setInstanceIntegration,
+  setInstanceActive,
+  executeInstanceReconciliation,
+  getCustomerInstance,
+  listCustomerInstances
+} from './customer-template.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -632,6 +642,20 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req).catch(() => ({}));
       try {
         return json(res, 200, transitionInvoiceCommercialState(body));
+      } catch (err) {
+        return json(res, 400, { error: err.message });
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/template') {
+      return json(res, 200, REUSABLE_CUSTOMER_TEMPLATE_SPEC);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/commercial/template/instances') {
+      return json(res, 200, listCustomerInstances());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/template/instances') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        return json(res, 201, instantiateCustomerTemplate(body));
       } catch (err) {
         return json(res, 400, { error: err.message });
       }

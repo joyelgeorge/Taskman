@@ -8,18 +8,36 @@ Taskman has transitioned beyond early discovery/scheduling experiments into a ha
 
 ## Authoritative Execution Sequence
 ```text
-P0-1  #154  Economic truth + first real customer cash proof (COMPLETED & MERGED)
+P0-1  #154  Economic truth + first real customer cash proof (COMPLETED & MERGED, PR #161)
           ↓
-P0-2  #155  Durable self-serve customer product & official CSV parsers (COMPLETED & MERGED)
+P0-2  #155  Durable self-serve customer product & official CSV parsers (COMPLETED & MERGED, PR #162)
           ↓
-P0-3  #156  First-10-customer acquisition/activation engine (COMPLETED & MERGED)
+P0-3  #156  First-10-customer acquisition/activation engine (COMPLETED & MERGED, PR #163)
           ↓
-P0-4  #158  Authorized real external action + settlement proof (COMPLETED & MERGED)
+P0-4  #158  Authorized real external action + settlement proof (COMPLETED & MERGED, PR #164)
           ↓
-P1-5  #157  Generalize successful payout-leakage rail
+P1-5  #157  Generalize successful payout-leakage rail (COMPLETED & MERGED, PR #173)
           ↓
-P1-6  #159  API / accounting-firm / white-label scale
+P1-6  #159  API / accounting-firm / white-label scale (COMPLETED & MERGED, PR #174)
 ```
+
+## Secondary Track Deliverables (All Completed & Merged)
+- **#123 (PR #166)**: Instant read-only audit preview and time-to-value tracking (`src/instant-activation.js`).
+- **#118 (PR #167)**: Benchmarked specialist and local worker models evaluation harness (`src/specialist-workers.js`).
+- **#124 (PR #168)**: Versioned Taskman Skill Packs for narrow domains (`src/skill-packs.js`).
+- **#125 (PR #169)**: Multi-actor contribution records and shareable verified outcome pages (`src/contribution-proof.js`).
+- **#130 (PR #170)**: Leads & campaigns schema with probation budgets and epoch windowing (`packages/core/marketing/store.js`).
+- **#131 (PR #171)**: Outreach-draft transform with deterministic safety gates (`src/transforms/outreach-draft.js`).
+- **#137 (PR #172)**: FX-aware settlement conversion in finance report (`packages/core/finance/report.js`).
+- **#85 (PR #175)**: Deployment compatibility, release schema manifest, and rollback safety (`src/deployment-compatibility.js`).
+
+## Next Sprint Execution Priorities (P2 Enhancements)
+1. **#139**: Replace hand-set signal thresholds with measured base rates across data collection series.
+2. **#138**: Cold archive to Git — automated compaction and export of rolled-up observation data to Git repository storage.
+3. **#134**: Finance report snapshot cron for historical trend analysis and dashboard charting (`finance_report_history`).
+4. **#133**: Human-gated outreach review and send-tracking dashboard for reviewable drafts.
+5. **#132**: Lead drones connecting public data collectors to `leads` table.
+6. **#126**: Embed Taskman actions into native workflow tools (Slack, GitHub Actions, email triggers).
 
 ## Strategic Guardrails (What is Frozen)
 Freeze unless new customer cash evidence dictates otherwise:

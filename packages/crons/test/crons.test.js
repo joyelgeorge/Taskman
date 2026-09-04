@@ -6,7 +6,7 @@ import { cronNames, getJob } from '../registry.js';
 import { CRON_DEFINITIONS, cronStatuses, listCronRuns, resetCronMemory, resetAlertMemory, listAlerts,
          registerCron, resetDroneMemory, resetSignalMemory, resetScanMemory, DEFAULT_TARGETS } from '@taskman/core';
 
-function reset() { resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory(); resetScanMemory(); }
+async function reset() { await resetCronMemory(); await resetAlertMemory(); await resetDroneMemory(); await resetSignalMemory(); await resetScanMemory(); }
 
 test('slot length is derived from the cron expression', () => {
   assert.equal(slotSeconds('*/15 * * * *'), 900);
@@ -34,7 +34,7 @@ test('every declared cron has a registered job and a watchdog threshold', () => 
 });
 
 test('a cron run is recorded, and the same slot will not run twice', async () => {
-  reset();
+  await reset();
   const definition = { cronName: 'demo', schedule: '*/15 * * * *', maxSilenceSeconds: 3600 };
   const now = new Date('2026-09-02T10:00:00Z');
   let calls = 0;
@@ -49,7 +49,7 @@ test('a cron run is recorded, and the same slot will not run twice', async () =>
 });
 
 test('--force runs regardless of slot', async () => {
-  reset();
+  await reset();
   const definition = { cronName: 'demo', schedule: '*/15 * * * *', maxSilenceSeconds: 3600 };
   const now = new Date('2026-09-02T10:00:00Z');
   await runCron(definition, async () => ({}), { now });
@@ -58,7 +58,7 @@ test('--force runs regardless of slot', async () => {
 });
 
 test('a throwing handler is recorded as FAILED rather than lost', async () => {
-  reset();
+  await reset();
   const definition = { cronName: 'boomer', schedule: '0 * * * *', maxSilenceSeconds: 7200 };
   const outcome = await runCron(definition, async () => { throw new Error('upstream exploded'); });
 
@@ -70,7 +70,7 @@ test('a throwing handler is recorded as FAILED rather than lost', async () => {
 });
 
 test('the watchdog opens an alert for a silent cron and clears it on recovery', async () => {
-  reset();
+  await reset();
   const monitor = getJob('cron-monitor');
   await registerCron({ cronName: 'ghost', schedule: '*/15 * * * *', maxSilenceSeconds: 900 });
 
@@ -86,14 +86,14 @@ test('the watchdog opens an alert for a silent cron and clears it on recovery', 
 });
 
 test('drone-dispatch seeds the default fleet on an empty install', async () => {
-  reset();
+  await reset();
   const job = getJob('drone-dispatch');
   const result = await job.handler({ fetchImpl: async () => ({ ok: true, status: 200, text: async () => '{"hits":[]}' }) });
   assert.ok(result.dispatched >= 3, 'the default fleet should be registered and flown');
 });
 
 test('satellite-scan seeds the three hand-checked venues on an empty install and scans each once', async () => {
-  reset();
+  await reset();
   const job = getJob('satellite-scan');
   const result = await job.handler({
     fetchImpl: async () => ({ ok: true, status: 200, text: async () => `<title>x</title>${'x'.repeat(500)}` })

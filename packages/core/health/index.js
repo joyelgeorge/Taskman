@@ -1,4 +1,4 @@
-import { databaseEnabled, query, healthCheck as dbHealth } from '@taskman/db';
+import { databaseEnabled, query, healthCheck as dbHealth, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 import { listDrones } from '../drones/store.js';
 import { cronStatuses } from '../observability/cron-store.js';
@@ -129,4 +129,7 @@ export async function runHealthChecks({ endpoints = {}, fetchImpl } = {}) {
   };
 }
 
-export function resetHealthMemory() { mem.health.clear(); }
+export async function resetHealthMemory() {
+  mem.health.clear();
+  await truncateForTesting(['component_health']);
+}

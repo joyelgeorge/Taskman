@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 import { railEconomics, railWindow, railProbationWindow, getRailState, setRailState } from './money-ledger.js';
 
 /**
@@ -177,6 +177,7 @@ export async function enforceRailGovernor(options) {
   return verdict;
 }
 
-export function resetGovernorMemory() {
+export async function resetGovernorMemory() {
   memoryBudget.monthlyCapCents = Number(process.env.GLOBAL_MONTHLY_BUDGET_CENTS || 50_000);
+  await truncateForTesting(['global_budget']);
 }

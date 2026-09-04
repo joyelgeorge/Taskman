@@ -14,6 +14,12 @@ function task(overrides = {}) {
     createdAt: '2026-09-01T10:00:00Z', expiryTime: '2099-01-01T00:00:00Z', submissionCount: 68,
     platformFeeBps: 500, submissionFeeUsd: 0, artifactCostUsd: 0.05, ...overrides };
 }
+// discover() and refresh() stamp observedAt from the wall clock, so a fixture with
+// a fixed expiryTime rots: these two tests passed until 2026-09-02 and then began
+// filtering every task as expired. Anything that goes through the live clock must
+// use an expiry relative to now.
+const live = overrides => task({ expiryTime: new Date(Date.now() + 86_400_000).toISOString(), ...overrides });
+
 function response(payload, { status = 200, length } = {}) {
   const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
   return { ok: status >= 200 && status < 300, status,
@@ -78,8 +84,8 @@ test('read-only discovery paginates, deduplicates, and uses bounded public GETs'
   const calls = [];
   const rail = new TaskmarketRailAdapter({ enabled: true, fetchImpl: async (url, options) => {
     calls.push({ url, options });
-    return response(calls.length === 1 ? { tasks: [task()], hasMore: true, nextCursor: 'next' }
-      : { tasks: [task(), task({ id: 'task_2' })], hasMore: false });
+    return response(calls.length === 1 ? { tasks: [live()], hasMore: true, nextCursor: 'next' }
+      : { tasks: [live(), live({ id: 'task_2' })], hasMore: false });
   } });
   const result = await rail.discover();
   assert.deepEqual(result.tasks.map(value => value.candidateId), ['taskmarket:task_1', 'taskmarket:task_2']);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from '../server.js';
 import {
   resetCronMemory, resetAlertMemory, resetDroneMemory, resetSignalMemory, registerDrone,
-  resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory
+  resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory, registerCron
 } from '@taskman/core';
 
 async function withServer(fn) {
@@ -18,13 +18,13 @@ const get = async (base, path) => {
   return { status: response.status, body: await response.json() };
 };
 
-function reset() {
-  resetCronMemory(); resetAlertMemory(); resetDroneMemory(); resetSignalMemory();
-  resetScanMemory(); resetFinanceMemory(); resetLedgerMemory(); resetGovernorMemory();
+async function reset() {
+  await resetCronMemory(); await resetAlertMemory(); await resetDroneMemory(); await resetSignalMemory();
+  await resetScanMemory(); await resetFinanceMemory(); await resetLedgerMemory(); await resetGovernorMemory();
 }
 
 test('status summarises every subsystem', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'd1', kind: 'rss', name: 'feed', targetUrl: 'https://x/feed' });
 
   await withServer(async base => {
@@ -38,9 +38,14 @@ test('status summarises every subsystem', async () => {
 });
 
 test('health answers 503 when the system is degraded', async () => {
-  reset();
+  await reset();
+  // Drive the degradation instead of relying on the environment. This test used
+  // to assume DATABASE_URL was unset, so it asserted 503 only because the db
+  // check failed — which made it pass in memory mode and fail against a healthy
+  // PostgreSQL. A registered cron that has never run reads OVERDUE, which is DOWN
+  // in either storage mode.
+  await registerCron({ cronName: 'never-ran', schedule: '*/5 * * * *', maxSilenceSeconds: 60 });
   await withServer(async base => {
-    // No DATABASE_URL in tests, so db is not ok and the verdict must not be OK.
     const { status, body } = await get(base, '/api/health');
     assert.equal(status, 503);
     assert.notEqual(body.status, 'OK');
@@ -55,7 +60,7 @@ test('unknown routes 404 rather than 500', async () => {
 });
 
 test('drone registration validates the kind', async () => {
-  reset();
+  await reset();
   await withServer(async base => {
     const response = await fetch(`${base}/api/drones`, {
       method: 'POST',
@@ -70,7 +75,7 @@ test('drone registration validates the kind', async () => {
 });
 
 test('mutations require the token when one is configured', async () => {
-  reset();
+  await reset();
   process.env.TASKMAN_API_TOKEN = 'secret-token';
   try {
     await withServer(async base => {
@@ -105,7 +110,7 @@ test('cross-origin preflight is allowed so the UI can live elsewhere', async () 
 });
 
 test('money/economics reports rail state and the global budget together', async () => {
-  reset();
+  await reset();
   const { recordAttempt } = await import('@taskman/core');
   await recordAttempt({ rail: 'r', costCents: 100 });
 
@@ -120,7 +125,7 @@ test('money/economics reports rail state and the global budget together', async 
 });
 
 test('the governor endpoint previews without writing, and enforcing it does', async () => {
-  reset();
+  await reset();
   const { setRailState, getRailState } = await import('@taskman/core');
   await setRailState('doomed', 'PROBATION');
 
@@ -135,7 +140,7 @@ test('the governor endpoint previews without writing, and enforcing it does', as
 });
 
 test('re-enabling a disabled rail requires the token when one is configured', async () => {
-  reset();
+  await reset();
   const { setRailState } = await import('@taskman/core');
   await setRailState('offline', 'DISABLED', 'no settlements');
 
@@ -158,7 +163,7 @@ test('re-enabling a disabled rail requires the token when one is configured', as
 });
 
 test('scans/targets requires the token to add a target, but reads stay open', async () => {
-  reset();
+  await reset();
   process.env.TASKMAN_API_TOKEN = 'secret-token';
   try {
     await withServer(async base => {
@@ -183,7 +188,7 @@ test('scans/targets requires the token to add a target, but reads stay open', as
 });
 
 test('POST /api/scans/run scans every registered target and the result shows up in GET /api/scans', async () => {
-  reset();
+  await reset();
   // The route calls the job handler with no fetchImpl — correctly: an HTTP
   // caller must never be able to inject its own fetch implementation into a
   // server-side prober. That means this test's only offline option is stubbing
@@ -212,7 +217,7 @@ test('POST /api/scans/run scans every registered target and the result shows up 
 });
 
 test('finance/report is reachable with no auth and reports a real, empty-safe shape', async () => {
-  reset();
+  await reset();
   await withServer(async base => {
     const { status, body } = await get(base, '/api/finance/report');
     assert.equal(status, 200);
@@ -223,7 +228,7 @@ test('finance/report is reachable with no auth and reports a real, empty-safe sh
 });
 
 test('recording an expense requires the token when one is configured, and rejects a bad category', async () => {
-  reset();
+  await reset();
   process.env.TASKMAN_API_TOKEN = 'secret-token';
   try {
     await withServer(async base => {

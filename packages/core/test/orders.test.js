@@ -7,17 +7,17 @@ import {
 import { getRailState, resetLedgerMemory, resetGovernorMemory, SETTLEMENT_STATUS } from '../ledger.js';
 
 const RAIL = 'fiverr-bookkeeping';
-function reset() { resetLedgerMemory(); resetGovernorMemory(); }
+async function reset() { await resetLedgerMemory(); await resetGovernorMemory(); }
 
 test('registering a gig rail puts it on probation so the governor tracks it', async () => {
-  reset();
+  await reset();
   await registerServiceRail(RAIL);
   const state = await getRailState(RAIL);
   assert.equal(state.state, 'PROBATION');
 });
 
 test('an order without measured time is rejected outright', async () => {
-  reset();
+  await reset();
   await assert.rejects(
     () => recordOrder({ rail: RAIL, orderId: 'FO123', priceCents: 1500 }),
     /minutesSpent is required/
@@ -25,7 +25,7 @@ test('an order without measured time is rejected outright', async () => {
 });
 
 test('an order without an order id is rejected — it is the payout reference later', async () => {
-  reset();
+  await reset();
   await assert.rejects(
     () => recordOrder({ rail: RAIL, priceCents: 1500, minutesSpent: 30 }),
     /orderId is required/
@@ -33,7 +33,7 @@ test('an order without an order id is rejected — it is the payout reference la
 });
 
 test('a recorded order shows up with its detail and no payout yet', async () => {
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'FO123', priceCents: 1500, minutesSpent: 45, costCents: 20, notes: 'Shopify reconcile' });
 
   const [order] = await listOrders({ rail: RAIL });
@@ -46,7 +46,7 @@ test('a recorded order shows up with its detail and no payout yet', async () => 
 });
 
 test('the buyer price is never treated as revenue until a payout clears', async () => {
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'FO123', priceCents: 5000, minutesSpent: 60 });
 
   const economics = await orderEconomics({ rail: RAIL });
@@ -56,7 +56,7 @@ test('the buyer price is never treated as revenue until a payout clears', async 
 });
 
 test('a cleared payout produces a real effective hourly rate', async () => {
-  reset();
+  await reset();
   // One order: $20 gross, $4 platform fee, 30 minutes of work, $1 of API cost.
   await recordOrder({ rail: RAIL, orderId: 'FO200', priceCents: 2000, minutesSpent: 30, costCents: 100 });
   await recordOrderPayout({ rail: RAIL, orderId: 'FO200', grossCents: 2000, feeCents: 400, status: SETTLEMENT_STATUS.CLEARED });
@@ -71,12 +71,12 @@ test('a cleared payout produces a real effective hourly rate', async () => {
 });
 
 test('a slow job and a fast job at the same price produce very different hourly rates', async () => {
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'FAST', priceCents: 2000, minutesSpent: 20 });
   await recordOrderPayout({ rail: RAIL, orderId: 'FAST', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
   const fast = await orderEconomics({ rail: RAIL });
 
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'SLOW', priceCents: 2000, minutesSpent: 180 });
   await recordOrderPayout({ rail: RAIL, orderId: 'SLOW', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
   const slow = await orderEconomics({ rail: RAIL });
@@ -88,7 +88,7 @@ test('a slow job and a fast job at the same price produce very different hourly 
 });
 
 test('a paid order reads as PAID, and the order id is the settlement reference', async () => {
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'FO300', priceCents: 1000, minutesSpent: 15 });
   await recordOrderPayout({ rail: RAIL, orderId: 'FO300', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
 
@@ -99,7 +99,7 @@ test('a paid order reads as PAID, and the order id is the settlement reference',
 });
 
 test('a payout defaults to manual_receipt and rejects an unverifiable source', async () => {
-  reset();
+  await reset();
   await recordOrder({ rail: RAIL, orderId: 'FO400', priceCents: 1000, minutesSpent: 10 });
   await assert.rejects(
     () => recordOrderPayout({ rail: RAIL, orderId: 'FO400', grossCents: 1000, source: 'vibes' }),
@@ -108,7 +108,7 @@ test('a payout defaults to manual_receipt and rejects an unverifiable source', a
 });
 
 test('marking an order delivered can correct the time it actually took', async () => {
-  reset();
+  await reset();
   const attempt = await recordOrder({ rail: RAIL, orderId: 'FO500', priceCents: 1000, minutesSpent: 15 });
   await markOrderDelivered(attempt.id, { minutesSpent: 90, notes: 'took far longer than quoted' });
 

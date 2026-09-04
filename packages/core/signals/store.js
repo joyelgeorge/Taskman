@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 import { scanSignal } from '../drones/injection.js';
 
@@ -121,4 +121,7 @@ export async function signalStats() {
   return { total: Object.values(byStatus).reduce((a, b) => a + b, 0), byStatus };
 }
 
-export function resetSignalMemory() { mem.signals.clear(); }
+export async function resetSignalMemory() {
+  mem.signals.clear();
+  await truncateForTesting(['signals']);
+}

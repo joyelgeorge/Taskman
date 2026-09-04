@@ -7,22 +7,22 @@ import {
   SETTLEMENT_STATUS
 } from '../ledger.js';
 
-function reset() { resetFinanceMemory(); resetLedgerMemory(); resetGovernorMemory(); }
+async function reset() { await resetFinanceMemory(); await resetLedgerMemory(); await resetGovernorMemory(); }
 
 // ---- store -------------------------------------------------------------------
 
 test('an unknown expense category is rejected', async () => {
-  reset();
+  await reset();
   await assert.rejects(() => recordExpense({ category: 'yacht', amountCents: 100 }), /category must be one of/);
 });
 
 test('a non-positive expense amount is rejected', async () => {
-  reset();
+  await reset();
   await assert.rejects(() => recordExpense({ category: 'infra', amountCents: 0 }), /positive amount/);
 });
 
 test('expenses can be filtered by category and campaign', async () => {
-  reset();
+  await reset();
   await recordExpense({ category: 'infra', amountCents: 500 });
   await recordExpense({ category: 'marketing', amountCents: 300, campaignKey: 'unclaimed-funds' });
   await recordExpense({ category: 'marketing', amountCents: 200, campaignKey: 'other-campaign' });
@@ -35,7 +35,7 @@ test('expenses can be filtered by category and campaign', async () => {
 // ---- report: no data at all --------------------------------------------------
 
 test('a completely empty ledger produces a report that says so, not an error', async () => {
-  reset();
+  await reset();
   const report = await financeReport({});
   assert.equal(report.lifetime.netCents, 0);
   assert.equal(report.lifetime.marginPct, null, 'margin is undefined, not zero, when there is no revenue to divide by');
@@ -47,7 +47,7 @@ test('a completely empty ledger produces a report that says so, not an error', a
 // ---- report: real numbers ----------------------------------------------------
 
 test('lifetime net position combines rail spend, expenses, and cleared settlements correctly', async () => {
-  reset();
+  await reset();
   await recordAttempt({ rail: 'r', costCents: 1000 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 200, status: SETTLEMENT_STATUS.CLEARED });
   await recordExpense({ category: 'infra', amountCents: 800 });
@@ -61,7 +61,7 @@ test('lifetime net position combines rail spend, expenses, and cleared settlemen
 });
 
 test('pending settlements never enter the finance report as earned', async () => {
-  reset();
+  await reset();
   await recordAttempt({ rail: 'r', costCents: 100 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_pending', grossCents: 99999 });
 
@@ -71,7 +71,7 @@ test('pending settlements never enter the finance report as earned', async () =>
 });
 
 test('burn rate and runway are computed from the trailing window against the global cap', async () => {
-  reset();
+  await reset();
   await setGlobalMonthlyBudget(10000);
   await recordAttempt({ rail: 'r', costCents: 3000 });
 
@@ -83,7 +83,7 @@ test('burn rate and runway are computed from the trailing window against the glo
 });
 
 test('marketing expenses tagged to a campaign roll into the same report as rail spend', async () => {
-  reset();
+  await reset();
   await recordAttempt({ rail: 'r', costCents: 500 });
   await recordExpense({ category: 'marketing', amountCents: 250, campaignKey: 'unclaimed-funds' });
 
@@ -94,7 +94,7 @@ test('marketing expenses tagged to a campaign roll into the same report as rail 
 });
 
 test('per-rail margin and cleared-per-attempt are reported alongside the raw ledger numbers', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 4; i += 1) await recordAttempt({ rail: 'r', costCents: 250 });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
 
@@ -106,7 +106,7 @@ test('per-rail margin and cleared-per-attempt are reported alongside the raw led
 });
 
 test('the projection is explicitly labeled as a naive extrapolation, never presented as a forecast', async () => {
-  reset();
+  await reset();
   const report = await financeReport({});
   assert.match(report.projection.method, /not a forecast/);
 });

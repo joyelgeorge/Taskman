@@ -11,7 +11,7 @@ const html = (title, body) => `<!doctype html><html><head><title>${title}</title
 const stub = (body, { status = 200, ok = status >= 200 && status < 300 } = {}) =>
   async () => ({ status, ok, text: async () => body });
 
-function reset() { resetScanMemory(); }
+async function reset() { await resetScanMemory(); }
 
 // ---- signature detection, against the exact pages hit by hand -------------
 
@@ -101,7 +101,7 @@ test('a near-empty JS-shell response is reported as undetermined, not guessed', 
 // ---- store -------------------------------------------------------------------
 
 test('registering a target twice upserts rather than duplicating', async () => {
-  reset();
+  await reset();
   await registerTarget({ targetKey: 't1', targetUrl: 'https://a.example' });
   await registerTarget({ targetKey: 't1', targetUrl: 'https://b.example' });
   const targets = await listTargets();
@@ -110,7 +110,10 @@ test('registering a target twice upserts rather than duplicating', async () => {
 });
 
 test('scans are append-only; latestScans reports only the most recent per target', async () => {
-  reset();
+  await reset();
+  // satellite_scans.target_key is a foreign key; the runner always registers the
+  // target before it scans it.
+  await registerTarget({ targetKey: 't1', targetUrl: 'https://a.example' });
   await recordScan({ targetKey: 't1', targetUrl: 'https://a.example', reachable: true, verdict: 'first', scannedAt: '2026-01-01T00:00:00.000Z' });
   await recordScan({ targetKey: 't1', targetUrl: 'https://a.example', reachable: true, verdict: 'second', scannedAt: '2026-01-02T00:00:00.000Z' });
 
@@ -123,7 +126,7 @@ test('scans are append-only; latestScans reports only the most recent per target
 });
 
 test('a disabled target is skipped by the next run', async () => {
-  reset();
+  await reset();
   await registerTarget({ targetKey: 't1', targetUrl: 'https://a.example' });
   await setTargetEnabled('t1', false);
   const enabled = await listTargets({ enabledOnly: true });
@@ -133,7 +136,7 @@ test('a disabled target is skipped by the next run', async () => {
 // ---- runner / cron -------------------------------------------------------------
 
 test('runSatelliteScan seeds the three hand-checked venues on a fresh install', async () => {
-  reset();
+  await reset();
   const result = await runSatelliteScan({ fetchImpl: stub(html('x', 'x'.repeat(500))) });
   assert.equal(result.scanned, DEFAULT_TARGETS.length);
   const targets = await listTargets();
@@ -141,7 +144,7 @@ test('runSatelliteScan seeds the three hand-checked venues on a fresh install', 
 });
 
 test('runSatelliteScan does not re-seed once targets already exist', async () => {
-  reset();
+  await reset();
   await registerTarget({ targetKey: 'only-one', targetUrl: 'https://a.example' });
   const result = await runSatelliteScan({ fetchImpl: stub(html('x', 'x'.repeat(500))) });
   assert.equal(result.scanned, 1);

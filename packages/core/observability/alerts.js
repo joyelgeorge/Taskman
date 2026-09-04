@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 const mem = { alerts: new MemoryTable() };
@@ -68,4 +68,7 @@ export async function listAlerts({ open = true, limit = 100 } = {}) {
   return result.rows.map(normalize);
 }
 
-export function resetAlertMemory() { mem.alerts.clear(); }
+export async function resetAlertMemory() {
+  mem.alerts.clear();
+  await truncateForTesting(['alerts']);
+}

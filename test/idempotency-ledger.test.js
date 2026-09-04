@@ -12,7 +12,7 @@ import {
 import { databaseEnabled, migrate, query } from '../src/db.js';
 
 test.before(async () => {
-  resetMemoryIdempotencyLedger();
+  await resetMemoryIdempotencyLedger();
   if (databaseEnabled) await migrate();
 });
 

@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable } from '../memory-table.js';
 
 const mem = { expenses: new MemoryTable() };
@@ -55,5 +55,8 @@ export async function listExpenses({ since = null, category = null, campaignKey 
   return result.rows.map(normalize);
 }
 
-export function resetFinanceMemory() { mem.expenses.clear(); }
+export async function resetFinanceMemory() {
+  mem.expenses.clear();
+  await truncateForTesting(['expenses']);
+}
 export { CATEGORIES as EXPENSE_CATEGORIES };

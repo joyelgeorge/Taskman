@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 const mem = {
@@ -85,7 +85,7 @@ export async function dueSources({ now = new Date() } = {}) {
   }
   const result = await query(`
     SELECT * FROM observation_sources
-    WHERE enabled AND (last_run_at IS NULL OR last_run_at <= $1 - (interval_seconds * INTERVAL '1 second'))
+    WHERE enabled AND (last_run_at IS NULL OR last_run_at <= $1::timestamptz - (interval_seconds * INTERVAL '1 second'))
     ORDER BY last_run_at ASC NULLS FIRST
   `, [now]);
   return result.rows.map(normalizeSource);
@@ -280,6 +280,7 @@ export async function storageStats() {
   };
 }
 
-export function resetObservationMemory() {
+export async function resetObservationMemory() {
   mem.sources.clear(); mem.observations.clear(); mem.rollups.clear();
+  await truncateForTesting(['observation_rollups', 'observations', 'observation_sources']);
 }

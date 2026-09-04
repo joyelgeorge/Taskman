@@ -10,7 +10,16 @@ const runtimeConfig = getRuntimeConfig();
 
 const { Pool } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationsDir = join(__dirname, '..', 'db', 'migrations');
+// Both migration directories, in the same order packages/db/migrate.js uses.
+// They share one schema_migrations table, so a runner that reads only db/migrations/
+// sees the six packages/db rows as applied-but-missing and throws
+// "Applied migration is missing from source: 007_drones_signals.sql" — which is
+// exactly what a deploy hits after `npm run migrate:all`. Filenames are globally
+// ordered across both directories, so the combined sequence is unambiguous.
+const MIGRATION_DIRS = [
+  join(__dirname, '..', 'db', 'migrations'),
+  join(__dirname, '..', 'packages', 'db', 'migrations')
+];
 
 export const MIGRATION_ADVISORY_LOCK_ID = 847291048291;
 
@@ -73,12 +82,23 @@ export async function migrate({ lockTimeoutMs = 15_000 } = {}) {
     `);
     await client.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT');
 
-    const filenames = (await readdir(migrationsDir)).filter(file => file.endsWith('.sql')).sort();
     const migrations = new Map();
-    for (const filename of filenames) {
-      const sql = await readFile(join(migrationsDir, filename), 'utf8');
-      migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+    for (const dir of MIGRATION_DIRS) {
+      let names = [];
+      try {
+        names = await readdir(dir);
+      } catch {
+        continue;
+      }
+      for (const filename of names.filter(file => file.endsWith('.sql'))) {
+        if (migrations.has(filename)) {
+          throw new Error(`Duplicate migration filename across directories: ${filename}`);
+        }
+        const sql = await readFile(join(dir, filename), 'utf8');
+        migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+      }
     }
+    const filenames = [...migrations.keys()].sort();
 
     const existingResult = await client.query('SELECT filename, checksum FROM schema_migrations');
     const existing = new Map(existingResult.rows.map(row => [row.filename, row.checksum]));
@@ -134,4 +154,20 @@ export async function healthCheck() {
   } catch {
     return { enabled: true, ok: false, reasonCode: 'DATABASE_UNAVAILABLE', retryable: true };
   }
+}
+
+/**
+ * Test-only table reset for the legacy src/ client. Mirrors
+ * packages/db/index.js's truncateForTesting; src/ and packages/ hold separate
+ * pools, so each needs its own. See that copy for why this exists.
+ */
+export async function truncateForTesting(tables = []) {
+  if (!databaseEnabled || tables.length === 0) return;
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error(
+      'truncateForTesting refuses to run with NODE_ENV=' + (process.env.NODE_ENV || 'unset')
+      + '. It empties real tables and is only ever safe from the test suite; set NODE_ENV=test.'
+    );
+  }
+  await query(`TRUNCATE TABLE ${tables.join(', ')} RESTART IDENTITY CASCADE`);
 }

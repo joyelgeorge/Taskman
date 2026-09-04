@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 const mem = {
@@ -148,4 +148,7 @@ export async function cronStatuses({ now = new Date() } = {}) {
   });
 }
 
-export function resetCronMemory() { mem.runs.clear(); mem.expectations.clear(); }
+export async function resetCronMemory() {
+  mem.runs.clear(); mem.expectations.clear();
+  await truncateForTesting(['cron_runs', 'cron_expectations']);
+}

@@ -5,7 +5,15 @@ import { insertSignals, resetSignalMemory, listSignals, signalStats } from '../s
 import { registerDrone, resetDroneMemory } from '../drones/store.js';
 
 const fresh = () => new Date().toISOString();
-function reset() { resetSignalMemory(); resetDroneMemory(); }
+async function reset() { await resetSignalMemory(); await resetDroneMemory(); }
+
+// signals.drone_id is a real foreign key. Production only ever inserts a signal
+// that a registered drone collected; the memory store enforces nothing, so a
+// test that skipped this passed there and failed against PostgreSQL.
+async function resetWithDrone(droneId = 'src') {
+  await reset();
+  await registerDrone({ id: droneId, kind: 'rss', name: droneId, targetUrl: `https://${droneId}.example/feed` });
+}
 
 test('an excluded term rejects a signal outright', () => {
   const verdict = scoreSignal({ title: 'Ask HN: what editor', observedAt: fresh() }, { exclude: ['ask hn'] });
@@ -36,7 +44,7 @@ test('a value below the configured minimum is rejected', () => {
 });
 
 test('processing marks, scores and promotes only what passes', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'src', kind: 'http_json', name: 'src', targetUrl: 'https://x/a', config: {} });
   await insertSignals('src', [
     { fingerprint: 'f1', kind: 'story', title: 'Company is hiring engineers', payload: {}, observedAt: fresh() },
@@ -60,7 +68,7 @@ test('processing marks, scores and promotes only what passes', async () => {
 });
 
 test('a failed promotion does not lose the scoring already committed', async () => {
-  reset();
+  await resetWithDrone('src');
   await insertSignals('src', [{ fingerprint: 'f1', kind: 'story', title: 'hiring', payload: {}, observedAt: fresh() }]);
 
   const result = await processSignals({
@@ -74,7 +82,7 @@ test('a failed promotion does not lose the scoring already committed', async () 
 });
 
 test('the same observation is never ingested twice', async () => {
-  reset();
+  await resetWithDrone('src');
   const signal = { fingerprint: 'same', kind: 'story', title: 'One', payload: {}, observedAt: fresh() };
   const first = await insertSignals('src', [signal]);
   const second = await insertSignals('src', [signal]);

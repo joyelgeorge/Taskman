@@ -45,7 +45,10 @@ jobs:
           node-version-file: '.node-version'
           cache: npm
       - run: npm ci
+      # migrate:all, not migrate — the legacy runner reads db/migrations/ only,
+      # so it applies 8 of 14 and the suite then fails on relation "drones"
+      # does not exist. packages/db/migrate.js collects both directories.
       - name: Apply every migration from an empty database
-        run: npm run migrate
+        run: npm run migrate:all
       - name: Run the complete PostgreSQL suite serially
         run: npm test -- --test-concurrency=1

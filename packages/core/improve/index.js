@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 import { listDrones, droneRunHistory } from '../drones/store.js';
 import { cronStatuses } from '../observability/cron-store.js';
@@ -189,4 +189,7 @@ export async function researchImprovements({ railEconomics = async () => [], now
   };
 }
 
-export function resetImprovementMemory() { mem.improvements.clear(); }
+export async function resetImprovementMemory() {
+  mem.improvements.clear();
+  await truncateForTesting(['improvements']);
+}

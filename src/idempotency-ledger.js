@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 
 const memoryLedger = new Map();
 const MIN_KEY_LENGTH = 8;
@@ -135,6 +135,7 @@ export async function failIdempotentMutation(key, {
   `, [errorCode, scope, route, keyHash, operationId]);
 }
 
-export function resetMemoryIdempotencyLedger() {
+export async function resetMemoryIdempotencyLedger() {
   memoryLedger.clear();
+  await truncateForTesting(['mutation_ledger']);
 }

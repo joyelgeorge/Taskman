@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 
 /**
  * Settlement-verified money ledger.
@@ -531,8 +531,9 @@ export async function enforceRailViability(options) {
 
 export function ledgerStorageMode() { return databaseEnabled ? 'postgres' : 'memory'; }
 
-export function resetLedgerMemory() {
+export async function resetLedgerMemory() {
   memory.rails.clear();
   memory.attempts.length = 0;
   memory.settlements.length = 0;
+  await truncateForTesting(['settlements', 'rail_attempts', 'rail_state']);
 }

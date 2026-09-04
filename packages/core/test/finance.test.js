@@ -112,9 +112,18 @@ test('the projection is explicitly labeled as a naive extrapolation, never prese
 });
 
 test('financeReport converts cleared USD settlements to INR at historical observed ECB cross rate', async () => {
-  reset();
-  const { recordObservations, rollupDay, resetObservationMemory } = await import('../observations/store.js');
-  resetObservationMemory();
+  await reset();
+  const { recordObservations, rollupDay, resetObservationMemory, registerSource } = await import('../observations/store.js');
+  await resetObservationMemory();
+  // observations.source_key is a foreign key; the collector always registers the
+  // source before it records a point against it.
+  await registerSource({
+    sourceKey: 'ecb-euro-reference-rates',
+    url: 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',
+    kind: 'http_xml',
+    licence: 'ECB reference rates, free reuse with attribution',
+    decision: 'FX cross rates for settlement conversion'
+  });
 
   // Record observations for 2026-09-01
   await recordObservations('ecb-euro-reference-rates', [

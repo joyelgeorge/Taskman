@@ -1,4 +1,4 @@
-import { databaseEnabled, query, withTransaction } from './db.js';
+import { databaseEnabled, query, withTransaction, truncateForTesting } from './db.js';
 
 const memoryStore = new Map(); // repo -> Map(issueNumber -> item)
 
@@ -373,7 +373,10 @@ export async function persistWorkItems(items, repo) {
       item.eligibilityStatus,
       item.eligibilityReason,
       JSON.stringify(item.rawPayload),
-      item.githubUpdatedAt
+      // github_updated_at is NOT NULL. The intake path already defaults this,
+      // but a direct persistWorkItems() call did not, which wrote NULL and
+      // failed the insert; default at the store boundary so both paths agree.
+      item.githubUpdatedAt || new Date().toISOString()
     ]);
   }
   return items;
@@ -602,7 +605,8 @@ export async function releaseActionableWorkItem({
   return result.rows[0] || null;
 }
 
-export function resetIntakeMemory() {
+export async function resetIntakeMemory() {
   memoryStore.clear();
+  await truncateForTesting(['repo_execution_runs', 'github_work_items']);
 }
 

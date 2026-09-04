@@ -14,8 +14,8 @@ import {
   PRIORITY_WEIGHTS
 } from '../src/github-intake.js';
 
-beforeEach(() => {
-  resetIntakeMemory();
+beforeEach(async () => {
+  await resetIntakeMemory();
 });
 
 test('parseIssueDependencies extracts blockers from keywords and markdown sections', () => {

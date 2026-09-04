@@ -28,6 +28,7 @@ import {
   BILLABLE_METRICS, initializeMetering, requireEntitlement, recordMeterEvent,
   accountUsageSummary, checkEntitlement, billingExportStatus
 } from './metering.js';
+import { syncGitHubWork, getActionableWorkQueue } from './github-intake.js';
 import { applySecurityHeaders } from './http-security.js';
 import {
   getObservabilitySnapshot,
@@ -462,6 +463,20 @@ const server = http.createServer(async (req, res) => {
         }
         throw error;
       }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/work/queue') {
+      const repo = url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const status = url.searchParams.get('status') || null;
+      return json(res, 200, {
+        repo,
+        queue: await getActionableWorkQueue({ repo, eligibilityStatus: status })
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/work/sync') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const repo = body.repo || url.searchParams.get('repo') || process.env.TASKMAN_REPO || 'joyelgeorge/Taskman';
+      const result = await syncGitHubWork({ repo, token: process.env.GITHUB_TOKEN });
+      return json(res, 200, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));

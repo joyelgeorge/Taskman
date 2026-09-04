@@ -3,7 +3,8 @@ export const CANONICAL_QUEUES = Object.freeze({
   validation: 'validation_queue',
   execution: 'execution_queue',
   outcomes: 'economic_outcomes',
-  inference: 'learning_inference'
+  inference: 'learning_inference',
+  actionable_work: 'actionable_work'
 });
 
 export const LEGACY_QUEUE_ALIASES = Object.freeze({

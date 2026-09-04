@@ -18,14 +18,16 @@ export const FUNNEL_STAGES = Object.freeze([
   'PROSPECT_SOURCED',
   'CONTACTED',
   'QUALIFIED',
-  'DEMO_SESSION',
-  'TRIAL_SETUP',
+  'DEMO_TRIAL',
   'VALUE_PROVEN',
-  'PAID'
+  'PAID',
+  'RETAINED',
+  'REFERRAL'
 ]);
 
 // In-memory prospect ledger
 const prospectStore = new Map(); // prospectId -> prospectRecord
+const channelExperiments = new Map(); // experimentId -> experimentRecord
 
 /**
  * Creates or updates a prospect in the acquisition funnel.
@@ -34,10 +36,12 @@ export function recordProspect({
   prospectId,
   name,
   channel = PRIMARY_ACQUISITION_CHANNEL.channelId,
+  messageVersion = 'v1_direct_outreach',
   platform = 'Fiverr',
   monthlyVolumeCents = 350000,
   manualHoursMonthly = 5,
   sourceUrl = '',
+  referredBy = null,
   notes = ''
 } = {}) {
   if (!prospectId || typeof prospectId !== 'string') {
@@ -55,10 +59,12 @@ export function recordProspect({
     prospectId,
     name: name || prospectId,
     channel,
+    messageVersion,
     platform,
     monthlyVolumeCents,
     manualHoursMonthly,
     sourceUrl,
+    referredBy: referredBy || null,
     stage: qualification.qualified ? 'QUALIFIED' : 'PROSPECT_SOURCED',
     qualification,
     objections: [],
@@ -71,7 +77,10 @@ export function recordProspect({
     ],
     timeSpentMinutes: 0,
     acquisitionCostCents: 0,
-    convertedAt: null
+    trialCompletedAt: null,
+    valueProvenAt: null,
+    convertedAt: null,
+    firstMonthRevenueCents: 0
   };
 
   prospectStore.set(prospectId, prospect);
@@ -87,6 +96,7 @@ export function advanceProspectStage({
   objection = null,
   timeSpentMinutes = 0,
   acquisitionCostCents = 0,
+  revenueCollectedCents = 0,
   note = ''
 } = {}) {
   const prospect = prospectStore.get(prospectId);
@@ -100,16 +110,21 @@ export function advanceProspectStage({
   prospect.timeSpentMinutes += Math.max(0, Number(timeSpentMinutes) || 0);
   prospect.acquisitionCostCents += Math.max(0, Number(acquisitionCostCents) || 0);
 
+  if (toStage === 'DEMO_TRIAL') {
+    prospect.trialCompletedAt = new Date().toISOString();
+  } else if (toStage === 'VALUE_PROVEN') {
+    prospect.valueProvenAt = new Date().toISOString();
+  } else if (toStage === 'PAID') {
+    prospect.convertedAt = new Date().toISOString();
+    prospect.firstMonthRevenueCents += Math.max(0, Number(revenueCollectedCents) || 1900);
+  }
+
   if (objection && typeof objection === 'string') {
     prospect.objections.push({
       stage: toStage,
       objection,
       recordedAt: new Date().toISOString()
     });
-  }
-
-  if (toStage === 'PAID') {
-    prospect.convertedAt = new Date().toISOString();
   }
 
   prospect.history.push({
@@ -122,7 +137,7 @@ export function advanceProspectStage({
 }
 
 /**
- * Returns metrics and conversion summary across the acquisition funnel.
+ * Returns metrics, CAC, payback, and conversion summary across the acquisition engine.
  */
 export function getFunnelMetrics() {
   const total = prospectStore.size;
@@ -130,28 +145,53 @@ export function getFunnelMetrics() {
   let totalTimeSpentMinutes = 0;
   let totalCostCents = 0;
   let paidCount = 0;
+  let trialCount = 0;
+  let valueProvenCount = 0;
+  let referralCount = 0;
+  let totalRevenueCents = 0;
   const recordedObjections = [];
 
   for (const p of prospectStore.values()) {
     if (stageCounts[p.stage] !== undefined) stageCounts[p.stage] += 1;
     totalTimeSpentMinutes += p.timeSpentMinutes;
     totalCostCents += p.acquisitionCostCents;
-    if (p.stage === 'PAID') paidCount += 1;
+    totalRevenueCents += p.firstMonthRevenueCents;
+
+    if (p.trialCompletedAt || p.stage === 'DEMO_TRIAL') trialCount += 1;
+    if (p.valueProvenAt || p.stage === 'VALUE_PROVEN') valueProvenCount += 1;
+    if (p.convertedAt || p.stage === 'PAID') paidCount += 1;
+    if (p.referredBy) referralCount += 1;
+
     for (const obj of p.objections) {
-      recordedObjections.push({ prospectId: p.prospectId, ...obj });
+      recordedObjections.push({
+        prospectId: p.prospectId,
+        channel: p.channel,
+        messageVersion: p.messageVersion,
+        ...obj
+      });
     }
   }
 
   const conversionRate = total > 0 ? ((paidCount / total) * 100).toFixed(1) + '%' : '0.0%';
+  const cacCents = paidCount > 0 ? Math.round(totalCostCents / paidCount) : totalCostCents;
+  const paybackMonths = paidCount > 0 && totalRevenueCents > 0
+    ? (totalCostCents / totalRevenueCents).toFixed(1)
+    : 'N/A';
 
   return {
     channel: PRIMARY_ACQUISITION_CHANNEL.name,
     totalProspects: total,
     stageCounts,
+    trialCount,
+    valueProvenCount,
     paidCount,
+    referralCount,
     conversionRate,
+    cacCents,
+    paybackMonths,
     totalTimeSpentMinutes,
     totalCostCents,
+    totalRevenueCents,
     recordedObjections
   };
 }
@@ -161,4 +201,5 @@ export function getFunnelMetrics() {
  */
 export function _resetAcquisitionFunnelState() {
   prospectStore.clear();
+  channelExperiments.clear();
 }

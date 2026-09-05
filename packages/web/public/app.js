@@ -1,5 +1,6 @@
 /* Taskman control UI. Static, stateless, and hosted apart from the API it reads. */
 
+const DEFAULT_API = 'http://127.0.0.1:3100';
 const $ = id => document.getElementById(id);
 const store = {
   get base() { try { return localStorage.getItem('taskman.api') || ''; } catch { return ''; } },
@@ -29,21 +30,34 @@ function duration(seconds) {
 
 const CRON_TONE = { OK: 'ok', DISABLED: 'off', FAILING: 'warn', OVERDUE: 'bad', STUCK: 'bad' };
 
+function connectBase() {
+  const typed = ($('api-base')?.value || '').trim();
+  const base = (typed || store.base || DEFAULT_API).replace(/\/$/, '');
+  store.base = base;
+  if ($('api-base')) $('api-base').value = base;
+  store.token = ($('api-token')?.value || '').trim();
+  return base;
+}
+
 async function api(path, { method = 'GET', body } = {}) {
-  const base = store.base.replace(/\/$/, '');
+  const base = (store.base || DEFAULT_API).replace(/\/$/, '');
   if (!base) throw new Error('No API base URL set.');
-  const headers = {};
+  const headers = { 'x-taskman-base': base };
   if (body) headers['content-type'] = 'application/json';
   if (store.token) headers.authorization = `Bearer ${store.token}`;
 
-  const response = await fetch(`${base}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const response = await fetch(`/__proxy${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const text = await response.text();
   let payload;
   try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
 
+  if (response.status === 502 && payload?.error === 'proxy_failed') {
+    throw new Error(`${payload.message || 'proxy failed'} — is ${base} running? Start packages/api with npm run api (:3100) or src/server.js (:3000).`);
+  }
+
   // /api/health answers 503 when degraded; that is a valid reading, not a failure.
   if (!response.ok && response.status !== 503) {
-    throw new Error(payload?.error || `HTTP ${response.status} from ${path}`);
+    throw new Error(payload?.error || payload?.message || `HTTP ${response.status} from ${path}`);
   }
   return payload;
 }
@@ -88,6 +102,7 @@ function renderGlobalBudget(budget) {
 
 async function load() {
   $('error').hidden = true;
+  connectBase();
   try {
     const [status, crons, drones, alerts, money_, improvements, signals, scans, finance, orders] = await Promise.all([
       api('/api/status'), api('/api/crons'), api('/api/drones'), api('/api/alerts'),
@@ -218,7 +233,7 @@ async function load() {
     $('foot').textContent = `Updated ${new Date().toLocaleTimeString()} — ${store.base}`;
   } catch (error) {
     $('error').hidden = false;
-    $('error').textContent = `${error.message}  ·  Check the API base URL, that the service is awake, and that CORS_ORIGIN allows this page.`;
+    $('error').textContent = `${error.message}  ·  Start the API (${store.base || DEFAULT_API}) then press Connect. packages/api is npm run api on :3100.` ;
   }
 }
 
@@ -240,8 +255,6 @@ document.addEventListener('click', async event => {
       await api(`/api/improvements/${encodeURIComponent(target.dataset.improve)}/decision`,
         { method: 'POST', body: { status: target.dataset.decision } });
     } else if (target.dataset.orderPayout) {
-      // What Fiverr actually deposits after its cut — never the buyer's price,
-      // which is why this asks rather than assuming the price cleared.
       const gross = prompt(`Gross payout for order ${target.dataset.orderPayout}, in dollars (before Fiverr's fee):`);
       if (gross == null) return;
       const fee = prompt('Fiverr fee, in dollars (0 if already net):', '0');
@@ -251,8 +264,6 @@ document.addEventListener('click', async event => {
         body: { grossCents: Math.round(Number(gross) * 100), feeCents: Math.round(Number(fee) * 100) }
       });
     } else if (target.dataset.railReenable) {
-      // Manual only, by design — see docs/TARGET_DESIGN.md §8. The system never
-      // argues its own way out of a market that did not pay it.
       if (!confirm(`Re-enable rail "${target.dataset.railReenable}"? It gets a fresh probation budget.`)) return;
       await api(`/api/money/rails/${encodeURIComponent(target.dataset.railReenable)}/reenable`, { method: 'POST' });
     } else {
@@ -267,8 +278,7 @@ document.addEventListener('click', async event => {
 });
 
 $('save').addEventListener('click', () => {
-  store.base = $('api-base').value.trim();
-  store.token = $('api-token').value.trim();
+  connectBase();
   load();
 });
 $('refresh').addEventListener('click', load);
@@ -319,7 +329,8 @@ $('scan-run').addEventListener('click', async () => {
   }
 });
 
-$('api-base').value = store.base;
+$('api-base').value = store.base || DEFAULT_API;
 $('api-token').value = store.token;
-if (store.base) load();
+connectBase();
+load();
 setInterval(() => { if (store.base && !document.hidden) load(); }, 30_000);

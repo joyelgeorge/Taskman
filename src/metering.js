@@ -69,22 +69,12 @@ function activeMemoryAssignment(accountId, at) {
     .sort((a, b) => b.effectiveFrom - a.effectiveFrom)[0] || null;
 }
 
-export async function resetMeteringForTesting({ seedDevelopment = false } = {}) {
+export function resetMeteringForTesting({ seedDevelopment = false } = {}) {
   memory.accounts.clear();
   memory.assignments.length = 0;
   memory.entitlements.clear();
   memory.events.clear();
   memory.exports.clear();
-  if (databaseEnabled) {
-    await query(`
-      DELETE FROM billing_export_receipts;
-      DELETE FROM meter_events;
-      DELETE FROM account_plan_assignments WHERE account_id != 'local-default';
-      DELETE FROM plan_entitlements WHERE plan_id != 'development';
-      DELETE FROM billing_plans WHERE plan_id != 'development';
-      DELETE FROM billing_accounts WHERE id != 'local-default';
-    `);
-  }
   if (seedDevelopment) seedDevelopmentPlan();
 }
 
@@ -102,19 +92,17 @@ export function seedDevelopmentPlan() {
   }
 }
 
-export async function configureMemoryAccountPlan({
+export function configureMemoryAccountPlan({
   accountId, planId = 'test', planVersion = 1, effectiveFrom = new Date(0), effectiveUntil = null, entitlements = []
 }) {
+  if (databaseEnabled) throw new Error('Memory plan configuration is unavailable in PostgreSQL mode');
   const id = requireText(accountId, 'accountId');
   const plan = requireText(planId, 'planId');
-  const from = requireDate(effectiveFrom, 'effectiveFrom');
-  const until = effectiveUntil ? requireDate(effectiveUntil, 'effectiveUntil') : null;
-
   memory.accounts.set(id, { id, status: 'active' });
   memory.assignments.push({
     accountId: id, planId: plan, planVersion,
-    effectiveFrom: from,
-    effectiveUntil: until
+    effectiveFrom: requireDate(effectiveFrom, 'effectiveFrom'),
+    effectiveUntil: effectiveUntil ? requireDate(effectiveUntil, 'effectiveUntil') : null
   });
   for (const entry of entitlements) {
     const metric = normalizeMetric(entry.metricId, entry.metricVersion);
@@ -122,28 +110,6 @@ export async function configureMemoryAccountPlan({
       hardLimit: entry.hardLimit == null ? null : Number(entry.hardLimit),
       softLimit: entry.softLimit == null ? null : Number(entry.softLimit)
     });
-  }
-
-  if (databaseEnabled) {
-    await query(`INSERT INTO billing_accounts(id, status) VALUES($1, 'active') ON CONFLICT (id) DO UPDATE SET status='active'`, [id]);
-    await query(`
-      INSERT INTO billing_plans(plan_id, version, effective_from, effective_until)
-      VALUES($1, $2, $3, $4)
-      ON CONFLICT (plan_id, version) DO UPDATE SET effective_from=$3, effective_until=$4
-    `, [plan, planVersion, from, until]);
-    await query(`
-      INSERT INTO account_plan_assignments(account_id, plan_id, plan_version, effective_from, effective_until)
-      VALUES($1, $2, $3, $4, $5)
-    `, [id, plan, planVersion, from, until]);
-    for (const entry of entitlements) {
-      const metric = normalizeMetric(entry.metricId, entry.metricVersion);
-      await query(`
-        INSERT INTO plan_entitlements(plan_id, plan_version, metric_id, metric_version, hard_limit, soft_limit)
-        VALUES($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (plan_id, plan_version, metric_id, metric_version) DO UPDATE
-        SET hard_limit=$5, soft_limit=$6
-      `, [plan, planVersion, metric.id, metric.version, entry.hardLimit == null ? null : Number(entry.hardLimit), entry.softLimit == null ? null : Number(entry.softLimit)]);
-    }
   }
 }
 

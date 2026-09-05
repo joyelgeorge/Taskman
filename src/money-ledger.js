@@ -537,11 +537,3 @@ export async function resetLedgerMemory() {
   memory.settlements.length = 0;
   await truncateForTesting(['settlements', 'rail_attempts', 'rail_state']);
 }
-
-export async function resetLedgerStore() {
-  resetLedgerMemory();
-  if (databaseEnabled) {
-    await query('TRUNCATE rail_attempts, settlements, rail_state CASCADE');
-  }
-}
-

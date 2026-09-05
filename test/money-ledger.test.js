@@ -12,7 +12,6 @@ import {
   setRailEnabled,
   isRailEnabled,
   resetLedgerMemory,
-  resetLedgerStore,
   SETTLEMENT_STATUS,
   ATTEMPT_STATUS
 } from '../src/money-ledger.js';
@@ -25,11 +24,6 @@ import {
 import { upsertRevenueRecord } from '../src/revenue-store.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
 import { CANONICAL_QUEUES } from '../src/orchestration-profiles.js';
-
-test.beforeEach(async () => {
-  await resetLedgerStore();
-});
-
 
 test('a settlement from an unverifiable source is rejected', async () => {
   await resetLedgerMemory();
@@ -207,8 +201,3 @@ test('an executor returning a cleared settlement produces a money event', async 
   assert.equal(outcome.payload.attributableValue, 291);
   assert.equal(result.viability.proven, true);
 });
-
-test.after(async () => {
-  await resetLedgerStore();
-});
-

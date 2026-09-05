@@ -23,7 +23,6 @@ export {
   isRailEnabled,
   ledgerStorageMode,
   resetLedgerMemory,
-  resetLedgerStore,
   ATTEMPT_STATUS,
   SETTLEMENT_STATUS,
   VERIFIED_SOURCES,
@@ -43,7 +42,5 @@ export {
   enforceRailGovernor,
   globalBudgetStatus,
   setGlobalMonthlyBudget,
-  resetGovernorMemory,
-  resetGovernorStore
+  resetGovernorMemory
 } from '../../src/rail-governor.js';
-

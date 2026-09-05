@@ -46,7 +46,35 @@ export function parseRobots(text, userAgent = USER_AGENT) {
   return (specific || wildcard || { rules: [] }).rules;
 }
 
-/** Longest matching rule wins; Allow beats Disallow at equal length (per spec). */
+/**
+ * Compiles one robots rule path into a matcher, per RFC 9309 §2.2.2.
+ *
+ * `*` matches any run of characters anywhere in the pattern, and a trailing `$`
+ * anchors the match to the end of the path. Everything else is literal, so the
+ * common no-wildcard rule stays an ordinary prefix match.
+ *
+ * Getting this wrong is not a harmless conservatism. Hacker News publishes:
+ *
+ *     User-agent: *
+ *     Allow: /*.json$
+ *     Disallow: /
+ *
+ * which explicitly permits exactly the endpoints its API documents. Treating
+ * `/*.json$` as a literal prefix makes it match nothing, `Disallow: /` then wins,
+ * and the collector refuses a source the publisher went out of its way to allow.
+ */
+function compileRule(path) {
+  const anchored = path.endsWith('$');
+  const body = anchored ? path.slice(0, -1) : path;
+  const escaped = body.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}${anchored ? '$' : ''}`);
+}
+
+/**
+ * Longest matching rule wins; Allow beats Disallow at equal length (per spec).
+ * Specificity is the length of the rule as written, which is what the standard
+ * compares — not the length of whatever the wildcard happened to consume.
+ */
 export function isAllowedByRules(rules, pathname) {
   let decision = true;
   let matchedLength = -1;
@@ -57,10 +85,16 @@ export function isAllowedByRules(rules, pathname) {
       if (rule.type === 'disallow' && matchedLength < 0) decision = true;
       continue;
     }
-    const pattern = rule.path.replace(/\*+$/, '');
-    if (!pathname.startsWith(pattern)) continue;
-    if (pattern.length > matchedLength || (pattern.length === matchedLength && rule.type === 'allow')) {
-      matchedLength = pattern.length;
+    let matcher;
+    try {
+      matcher = compileRule(rule.path);
+    } catch {
+      continue; // an unparseable pattern is ignored, not treated as a blanket ban
+    }
+    if (!matcher.test(pathname)) continue;
+    const length = rule.path.length;
+    if (length > matchedLength || (length === matchedLength && rule.type === 'allow')) {
+      matchedLength = length;
       decision = rule.type === 'allow';
     }
   }
@@ -73,7 +107,7 @@ export async function isAllowed(url, { fetchImpl = fetch, now = Date.now() } = {
 
   const cached = cache.get(robotsUrl);
   if (cached && now - cached.at < CACHE_TTL_MS) {
-    return { allowed: isAllowedByRules(cached.rules, parsed.pathname), robotsUrl, cached: true };
+    return { allowed: isAllowedByRules(cached.rules, parsed.pathname + parsed.search), robotsUrl, cached: true };
   }
 
   let rules = [];
@@ -92,7 +126,7 @@ export async function isAllowed(url, { fetchImpl = fetch, now = Date.now() } = {
   }
 
   cache.set(robotsUrl, { rules, at: now });
-  return { allowed: isAllowedByRules(rules, parsed.pathname), robotsUrl, cached: false };
+  return { allowed: isAllowedByRules(rules, parsed.pathname + parsed.search), robotsUrl, cached: false };
 }
 
 export function resetRobotsCache() { cache.clear(); }

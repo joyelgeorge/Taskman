@@ -21,7 +21,12 @@ const normalizeSource = (row = {}) => ({
   lastRunAt: row.lastRunAt ?? row.last_run_at ?? null,
   lastOkAt: row.lastOkAt ?? row.last_ok_at ?? null,
   lastError: row.lastError ?? row.last_error ?? null,
-  consecutiveFailures: Number(row.consecutiveFailures ?? row.consecutive_failures ?? 0)
+  consecutiveFailures: Number(row.consecutiveFailures ?? row.consecutive_failures ?? 0),
+  // Whether the publisher archives this series too. The single fact that decides
+  // if keeping it builds an asset or just a hosting bill — see
+  // packages/core/income/data-products.js.
+  reconstructible: row.reconstructible ?? null,
+  reconstructibleNote: row.reconstructibleNote ?? row.reconstructible_note ?? null
 });
 
 const normalizeObservation = (row = {}) => ({
@@ -41,28 +46,37 @@ const normalizeObservation = (row = {}) => ({
  * steps (docs/DATA_ECOSYSTEM.md §5).
  */
 export async function registerSource({
-  sourceKey, kind, url, config = {}, licence, decision, enabled = true, intervalSeconds = 86400
+  sourceKey, kind, url, config = {}, licence, decision, enabled = true, intervalSeconds = 86400,
+  reconstructible = null, reconstructibleNote = null
 }) {
   if (!sourceKey || !kind || !url) throw new Error('sourceKey, kind and url are required');
   if (!licence) throw new Error('licence is required — a series whose licence is unknown is not collected');
   if (!decision) throw new Error('decision is required — name the decision this series changes before adding it');
 
-  const row = normalizeSource({ sourceKey, kind, url, config, licence, decision, enabled, intervalSeconds });
+  const row = normalizeSource({
+    sourceKey, kind, url, config, licence, decision, enabled, intervalSeconds,
+    reconstructible, reconstructibleNote
+  });
 
   if (!databaseEnabled) {
-    mem.sources.upsert(row, { kind, url, config, licence, decision, enabled, intervalSeconds });
+    mem.sources.upsert(row, {
+      kind, url, config, licence, decision, enabled, intervalSeconds, reconstructible, reconstructibleNote
+    });
     return mem.sources.find(s => s.sourceKey === sourceKey);
   }
 
   const result = await query(`
-    INSERT INTO observation_sources(source_key, kind, url, config, licence, decision, enabled, interval_seconds)
-    VALUES($1,$2,$3,$4::jsonb,$5,$6,$7,$8)
+    INSERT INTO observation_sources(source_key, kind, url, config, licence, decision, enabled,
+      interval_seconds, reconstructible, reconstructible_note)
+    VALUES($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10)
     ON CONFLICT (source_key) DO UPDATE SET
       kind=EXCLUDED.kind, url=EXCLUDED.url, config=EXCLUDED.config,
       licence=EXCLUDED.licence, decision=EXCLUDED.decision,
-      enabled=EXCLUDED.enabled, interval_seconds=EXCLUDED.interval_seconds
+      enabled=EXCLUDED.enabled, interval_seconds=EXCLUDED.interval_seconds,
+      reconstructible=EXCLUDED.reconstructible, reconstructible_note=EXCLUDED.reconstructible_note
     RETURNING *
-  `, [sourceKey, kind, url, JSON.stringify(config), licence, decision, enabled, intervalSeconds]);
+  `, [sourceKey, kind, url, JSON.stringify(config), licence, decision, enabled, intervalSeconds,
+      reconstructible, reconstructibleNote]);
   return normalizeSource(result.rows[0]);
 }
 

@@ -4,10 +4,19 @@ import { isAllowed } from './robots.js';
 /**
  * Fetches one observation source and normalizes it into series points.
  *
- * Two kinds only, both against official published feeds: `http_json` and
- * `http_xml`. There is deliberately no HTML-scraping kind — every source in
- * this store is something a publisher intended to be consumed, which is what
- * keeps the licence question answerable and the legal exposure at zero.
+ * Three kinds, all against official published feeds: `http_json`, `http_xml`
+ * and `http_json_ranked`. There is deliberately no HTML-scraping kind — every
+ * source in this store is something a publisher intended to be consumed, which
+ * is what keeps the licence question answerable and the legal exposure at zero.
+ *
+ * `http_json_ranked` exists for the only data this system can turn into an
+ * asset on its own: ordering. A published statistical series is worthless to
+ * keep, because the publisher archives it too — our ECB source can be backfilled
+ * in one request from eurofxref-hist.xml. A *ranking* is not archived by anyone:
+ * what sat at position 3 at 14:00 today is unrecoverable tomorrow, at any price.
+ * So this kind reads a list endpoint, then the items it points at, and records
+ * one bounded series per slot rather than per item — 30 slots stay 30 series
+ * forever, while per-item keys would grow without limit and roll up to nothing.
  *
  * robots.txt is checked before every fetch and a disallowed path returns a
  * refusal rather than an error to retry. Same posture as the satellite
@@ -88,6 +97,10 @@ export async function collectSource(source, { fetchImpl, now = new Date() } = {}
     : null) || dayStart(now);
 
   try {
+    if (source.kind === 'http_json_ranked') {
+      const points = await pointsFromRankedJson(response.text, config, observedAt, { fetchImpl, source, now });
+      return { status: 'OK', points, latencyMs: response.latencyMs };
+    }
     const points = source.kind === 'http_xml'
       ? pointsFromXml(response.text, config, observedAt)
       : pointsFromJson(response.text, config, observedAt);
@@ -95,6 +108,68 @@ export async function collectSource(source, { fetchImpl, now = new Date() } = {}
   } catch (error) {
     return { status: 'FAILED', points: [], reason: String(error.message || error).slice(0, 300) };
   }
+}
+
+/** Hard ceiling on item fetches per run, so a source cannot become a crawler. */
+const MAX_RANKED_SLOTS = 30;
+
+/**
+ * Reads a ranking, then the items it references, as one bounded series per slot.
+ *
+ * Slot-keyed rather than item-keyed on purpose: `hn.slot.01.score` answers "what
+ * does it take to hold the top spot" for as long as the series runs, and stays a
+ * single row per day. Item-keyed series would be unbounded, would each hold one
+ * day of data, and would roll up into nothing worth selling.
+ *
+ * Every item fetch is same-origin with the list URL — checked, not assumed — so
+ * the one robots.txt decision already made for the source governs all of them.
+ */
+async function pointsFromRankedJson(text, config, observedAt, { fetchImpl, source, now }) {
+  const list = JSON.parse(text);
+  if (!Array.isArray(list)) throw new Error('a ranked source must return a JSON array of item ids');
+
+  const slots = Math.min(Number(config.slots) || 10, MAX_RANKED_SLOTS);
+  const template = config.itemUrlTemplate;
+  if (!template || !template.includes('{id}')) {
+    throw new Error('itemUrlTemplate with an {id} placeholder is required for a ranked source');
+  }
+  const listOrigin = new URL(source.url).origin;
+  const points = [];
+
+  for (let index = 0; index < Math.min(slots, list.length); index += 1) {
+    const itemUrl = template.replace('{id}', encodeURIComponent(String(list[index])));
+    if (new URL(itemUrl).origin !== listOrigin) {
+      throw new Error(`itemUrlTemplate points off-origin (${new URL(itemUrl).origin}); refusing to follow`);
+    }
+    let item;
+    try {
+      const itemResponse = await guardedGet(itemUrl, { fetchImpl, accept: 'application/json' });
+      item = JSON.parse(itemResponse.text);
+    } catch {
+      continue; // one unreadable item is a gap in the series, never a failed run
+    }
+    if (!item || typeof item !== 'object') continue;
+
+    const slot = String(index + 1).padStart(2, '0');
+    for (const [suffix, field] of Object.entries(config.slotFields || {})) {
+      const value = Number(item[field]);
+      if (!Number.isFinite(value)) continue;
+      points.push(point(
+        { ...config, seriesPrefix: `${config.seriesPrefix}.slot.${slot}` },
+        suffix, value, observedAt, { id: list[index], [field]: item[field] }
+      ));
+    }
+    // Age at the moment it held this rank — recoverable from nothing later.
+    if (config.ageSeriesKey && Number.isFinite(Number(item.time))) {
+      points.push(point(
+        { ...config, seriesPrefix: `${config.seriesPrefix}.slot.${slot}` },
+        config.ageSeriesKey,
+        Math.max(0, Math.round((now.getTime() / 1000 - Number(item.time)) / 60)),
+        observedAt, { id: list[index] }
+      ));
+    }
+  }
+  return points;
 }
 
 function dayStart(now) {

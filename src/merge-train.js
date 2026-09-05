@@ -1,4 +1,4 @@
-import { databaseEnabled, query, withTransaction } from './db.js';
+import { databaseEnabled, query, withTransaction, truncateForTesting } from './db.js';
 import { scrubSecrets } from './adapters/coding-agent-adapter.js';
 
 const mergeTrainMemoryStore = new Map(); // id -> record
@@ -334,6 +334,7 @@ export async function processMergeTrainStep({
   };
 }
 
-export function resetMergeTrainMemory() {
+export async function resetMergeTrainMemory() {
   mergeTrainMemoryStore.clear();
+  await truncateForTesting(['merge_train_records']);
 }

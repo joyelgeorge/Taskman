@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '../db.js';
+import { databaseEnabled, query, truncateForTesting } from '../db.js';
 import { stableErrorCode } from '../errors.js';
 
 const runsMemoryStore = new Map(); // id -> run
@@ -244,6 +244,7 @@ export async function listExecutionRuns({ repo = 'joyelgeorge/Taskman', issueNum
   }));
 }
 
-export function resetExecutionRunsMemory() {
+export async function resetExecutionRunsMemory() {
   runsMemoryStore.clear();
+  await truncateForTesting(['repo_execution_runs']);
 }

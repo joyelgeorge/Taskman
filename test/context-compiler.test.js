@@ -9,7 +9,7 @@ import {
 } from '../src/context-compiler.js';
 
 test('ContextCompiler excludes unrelated facts and keeps relevant candidate context', async () => {
-  resetContextCompilerMemory();
+  await resetContextCompilerMemory();
 
   // Seed 500 unrelated background facts
   const unrelatedBackground = [];
@@ -53,7 +53,7 @@ test('ContextCompiler excludes unrelated facts and keeps relevant candidate cont
 });
 
 test('ContextCompiler preserves mandatory policy and candidate facts under tight token budget', async () => {
-  resetContextCompilerMemory();
+  await resetContextCompilerMemory();
 
   const candidate = {
     candidateId: 'cand-tight-budget',
@@ -84,7 +84,7 @@ test('ContextCompiler preserves mandatory policy and candidate facts under tight
 });
 
 test('ContextCompiler generates and persists auditable SHA-256 digest', async () => {
-  resetContextCompilerMemory();
+  await resetContextCompilerMemory();
 
   const candidate = {
     candidateId: 'cand-digest-1',

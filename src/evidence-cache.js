@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 
 const cacheMemoryStore = new Map(); // claimKey -> record
 
@@ -204,6 +204,7 @@ export async function invalidateCachedEvidence({ claimKey, reason = 'Contradicti
   return res.rowCount > 0;
 }
 
-export function resetEvidenceCacheMemory() {
+export async function resetEvidenceCacheMemory() {
   cacheMemoryStore.clear();
+  await truncateForTesting(['evidence_cache_entries']);
 }

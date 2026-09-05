@@ -52,9 +52,15 @@ export const DEFAULT_SOURCES = [
      * The official Firebase API is public, unauthenticated, documented for reuse
      * at github.com/HackerNews/API, and carries no rate limit. No scraping.
      */
+    // Marked unreconstructible because the publisher exposes only the current
+    // ranking — but the stronger claim, that no third party keeps one either, is
+    // NOT verified and should not be relied on. Algolia's HN API serves points
+    // and timestamps for every story, from which rank can be approximated for
+    // free, and rank-tracking side projects are a long-running genre. Confirm
+    // before treating elapsed time here as a moat worth waiting a year for.
     reconstructible: false,
-    reconstructibleNote: 'Only the current ranking is exposed; no historical rank archive exists '
-      + 'from the publisher or any third party. Verified 2026-09-05.',
+    reconstructibleNote: 'Publisher exposes current ranking only. Third-party archives NOT ruled out: '
+      + 'Algolia HN API allows approximate reconstruction from points and timestamps. Unverified.',
     sourceKey: 'hn-frontpage-ranking',
     kind: 'http_json_ranked',
     url: 'https://hacker-news.firebaseio.com/v0/topstories.json',
@@ -62,8 +68,11 @@ export const DEFAULT_SOURCES = [
       + '(https://github.com/HackerNews/API). Facts about ranking, not article content.',
     decision: 'What score and story age it takes to hold each front-page position, and how that '
       + 'moves over months — which decides when a launch or post is worth timing.',
-    // Four times a day: enough to see intraday churn, far below anything that
-    // could burden the endpoint.
+    // Six-hourly. The workflow previously ran once a day while this declared
+    // 21600s, so the series was collected once daily whatever this said — and a
+    // single 17:00 snapshot cannot answer the intraday question the product
+    // claims to answer. GitHub delivers scheduled runs roughly every 2.5h at
+    // best (measured), so this asks for four and will often get fewer.
     intervalSeconds: 21600,
     config: {
       seriesPrefix: 'hn.frontpage',

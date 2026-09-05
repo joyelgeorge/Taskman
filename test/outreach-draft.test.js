@@ -6,6 +6,26 @@ import {
   OUTREACH_DRAFT_STATUS,
   resetOutreachDraftsMemory
 } from '../src/transforms/outreach-draft.js';
+import { databaseEnabled } from '../src/db.js';
+import { upsertCampaign, createLead, resetMarketingMemory } from '@taskman/core/marketing/store.js';
+
+/**
+ * outreach_drafts.lead_id is a real foreign key to leads(id), a UUID. Production
+ * only ever drafts for a lead a campaign actually produced; the memory store
+ * enforced nothing, so a literal 'l1' passed there and failed against PostgreSQL.
+ */
+async function realLead(name) {
+  if (!databaseEnabled) return { id: 'l1', rawRecord: { name } };
+  await resetMarketingMemory();
+  const campaign = await upsertCampaign({
+    campaignKey: 'c1', name: 'Escrow Audit', lane: 'audit',
+    valueProposition: 'Reconcile payouts against deposits'
+  });
+  const lead = await createLead({
+    campaignKey: campaign.campaignKey, source: 'manual', rawRecord: { name }
+  });
+  return { id: lead.id, rawRecord: { name } };
+}
 
 test('validateOutreachDraftPostCondition rejects fabricated dollar figures', () => {
   const lead = { id: 'l1', rawRecord: { name: 'Acme LLC' } };
@@ -41,9 +61,9 @@ test('validateOutreachDraftPostCondition rejects false relationship claims and m
 });
 
 test('runOutreachDraftTransform discards invalid drafts and stores valid drafts in READY_FOR_REVIEW', async () => {
-  resetOutreachDraftsMemory();
+  await resetOutreachDraftsMemory();
 
-  const lead = { id: 'l1', rawRecord: { name: 'Beta Corp' } };
+  const lead = await realLead('Beta Corp');
   const campaign = { campaignKey: 'c1', name: 'Escrow Audit', evidence: { amount: '$1,200' } };
 
   // 1. Invalid draft -> discarded

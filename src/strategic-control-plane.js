@@ -1,4 +1,4 @@
-import { databaseEnabled, query, withTransaction } from './db.js';
+import { databaseEnabled, query, withTransaction, truncateForTesting } from './db.js';
 import { railEconomics } from './money-ledger.js';
 
 const objectivesMemoryStore = new Map(); // id -> objective
@@ -240,7 +240,8 @@ export async function generateStrategicBrief({ objectiveId = null } = {}) {
   return brief;
 }
 
-export function resetStrategicMemory() {
+export async function resetStrategicMemory() {
   objectivesMemoryStore.clear();
   directivesMemoryStore.clear();
+  await truncateForTesting(['strategic_directives', 'strategic_objectives']);
 }

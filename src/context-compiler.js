@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 
 const manifestMemoryStore = new Map(); // id -> manifest
 
@@ -253,6 +253,7 @@ export async function listContextManifests({ stage, limit = 50 } = {}) {
   }));
 }
 
-export function resetContextCompilerMemory() {
+export async function resetContextCompilerMemory() {
   manifestMemoryStore.clear();
+  await truncateForTesting(['compiled_context_manifests']);
 }

@@ -10,7 +10,7 @@ import {
 } from '../src/evidence-cache.js';
 
 test('setCachedEvidence and getCachedEvidence round-trip and increment reuse count', async () => {
-  resetEvidenceCacheMemory();
+  await resetEvidenceCacheMemory();
   const now = new Date('2026-09-04T12:00:00.000Z');
 
   await setCachedEvidence({
@@ -40,7 +40,7 @@ test('setCachedEvidence and getCachedEvidence round-trip and increment reuse cou
 });
 
 test('expired cache entry returns null and forces refresh', async () => {
-  resetEvidenceCacheMemory();
+  await resetEvidenceCacheMemory();
   const base = new Date('2026-09-04T12:00:00.000Z');
 
   await setCachedEvidence({
@@ -60,7 +60,7 @@ test('expired cache entry returns null and forces refresh', async () => {
 });
 
 test('EXECUTION_CRITICAL freshness class always bypasses cache', async () => {
-  resetEvidenceCacheMemory();
+  await resetEvidenceCacheMemory();
   const now = new Date();
 
   await setCachedEvidence({
@@ -81,7 +81,7 @@ test('EXECUTION_CRITICAL freshness class always bypasses cache', async () => {
 });
 
 test('contradiction invalidates cached claim', async () => {
-  resetEvidenceCacheMemory();
+  await resetEvidenceCacheMemory();
   await setCachedEvidence({
     claimKey: 'issue_state:55',
     normalizedStatement: 'Issue 55 is open',
@@ -101,7 +101,7 @@ test('contradiction invalidates cached claim', async () => {
 });
 
 test('schema revision mismatch invalidates cached claim', async () => {
-  resetEvidenceCacheMemory();
+  await resetEvidenceCacheMemory();
   await setCachedEvidence({
     claimKey: 'schema_fact:v1',
     normalizedStatement: 'Schema v1 format',

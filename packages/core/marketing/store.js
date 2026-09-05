@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 export const CAMPAIGN_STATUS = Object.freeze({
@@ -248,7 +248,8 @@ export async function listLeads({ campaignKey = null, status = null } = {}) {
   return result.rows.map(normalizeLead);
 }
 
-export function resetMarketingMemory() {
+export async function resetMarketingMemory() {
   mem.campaigns.clear();
   mem.leads.clear();
+  await truncateForTesting(['leads', 'campaigns']);
 }

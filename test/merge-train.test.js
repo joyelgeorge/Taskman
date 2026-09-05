@@ -88,7 +88,7 @@ test('evaluateMergeGates enforces high risk integration requirement', async () =
 });
 
 test('processMergeTrainStep merges top candidate serially and verifies canary', async () => {
-  resetMergeTrainMemory();
+  await resetMergeTrainMemory();
   const repo = 'test/repo';
   const prs = [
     {
@@ -137,7 +137,7 @@ test('processMergeTrainStep merges top candidate serially and verifies canary', 
 });
 
 test('processMergeTrainStep triggers rollback when canary fails post-merge', async () => {
-  resetMergeTrainMemory();
+  await resetMergeTrainMemory();
   const repo = 'test/repo';
   const prs = [
     {

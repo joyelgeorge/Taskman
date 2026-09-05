@@ -65,7 +65,7 @@ test('evaluateEscalation denies escalation when job cost ceiling would be violat
 });
 
 test('recordRoutingDecision persists audit trail', async () => {
-  resetModelRouterMemory();
+  await resetModelRouterMemory();
   const rec = await recordRoutingDecision({
     taskClass: 'extraction',
     selectedTier: MODEL_TIERS.TIER_1,

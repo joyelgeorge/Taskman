@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { databaseEnabled, query } from '../db.js';
+import { databaseEnabled, query, truncateForTesting } from '../db.js';
 
 // In-memory table for outreach drafts when database is disabled
 const memoryOutreachDrafts = new Map();
@@ -132,19 +132,18 @@ export async function runOutreachDraftTransform({
     return { ok: true, draft: draftRecord };
   }
 
-  // Insert into DB if enabled
-  try {
-    const res = await query(`
-      INSERT INTO outreach_drafts (id, lead_id, campaign_key, subject, draft_text, status, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, now())
-      RETURNING *
-    `, [draftRecord.id, draftRecord.leadId, draftRecord.campaignKey, draftRecord.subject, draftRecord.draftText, draftRecord.status]);
-    return { ok: true, draft: res.rows[0] };
-  } catch (err) {
-    // If DB table not migrated yet, fallback to memory
-    memoryOutreachDrafts.set(id, draftRecord);
-    return { ok: true, draft: draftRecord };
-  }
+  // A failed write fails. This used to catch the error, put the draft in an
+  // in-process Map and still return ok:true — and because no migration ever
+  // created outreach_drafts, that catch fired on every single call in
+  // PostgreSQL mode. Every draft was discarded when the process exited and
+  // reported as saved. Storage that silently forgets while reporting success is
+  // the exact failure this system exists to eliminate.
+  const res = await query(`
+    INSERT INTO outreach_drafts (id, lead_id, campaign_key, subject, draft_text, status, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, now())
+    RETURNING *
+  `, [draftRecord.id, draftRecord.leadId, draftRecord.campaignKey, draftRecord.subject, draftRecord.draftText, draftRecord.status]);
+  return { ok: true, draft: res.rows[0] };
 }
 
 export function getOutreachDraft(id) {
@@ -159,6 +158,7 @@ export function listOutreachDrafts({ campaignKey = null, status = null } = {}) {
   });
 }
 
-export function resetOutreachDraftsMemory() {
+export async function resetOutreachDraftsMemory() {
   memoryOutreachDrafts.clear();
+  await truncateForTesting(['outreach_drafts']);
 }

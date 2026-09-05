@@ -54,6 +54,12 @@
   .stats div b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
   .error { color: var(--flag); }
   footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .87rem; }
+  .offer {
+    margin-top: 1.8rem; padding: 1rem 1.1rem; border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 6px; background: var(--card);
+  }
+  .offer p { margin: .4rem 0 0; font-size: .93rem; }
+  .offer a { color: var(--accent); }
   code { background: var(--card); border: 1px solid var(--line); padding: .05rem .3rem; border-radius: 3px; font-size: .88em; }
 </style>
 
@@ -99,6 +105,24 @@
 
 <script type="module">
   import { instantAudit } from './instant-audit.js';
+
+  /**
+   * The offer. Set CONTACT before publishing this page.
+   *
+   * Left unset deliberately: filling in a real address would publish the owner's
+   * personal email on a public page, which is not a decision this file should
+   * make on their behalf. Until it is set, the page shows the offer and says the
+   * contact is not configured rather than rendering a dead link.
+   *
+   * This block exists because the page previously ended at the finding and asked
+   * for nothing. A free diagnostic with no next step cannot convert, however good
+   * the finding is.
+   */
+  const OFFER = {
+    contact: '',                 // e.g. 'you@example.com'
+    price: '$20',
+    scope: 'your last 12 months, every order and every deposit'
+  };
 
   const $ = id => document.getElementById(id);
   const usd = cents => `$${(cents / 100).toFixed(2)}`;
@@ -154,6 +178,14 @@
       </table>
       <p class="caveat">Check each of these against your bank for the period around the earned
       date. If one is genuinely absent, that is the question to take to your platform.</p>` : ''}
+      <div class="offer">
+        <strong>Want ${esc(OFFER.scope)} checked?</strong>
+        <p>This compared what you pasted. The full check covers every order and deposit,
+        reconciles the fee lines, and comes back as a list you can act on — ${esc(OFFER.price)}.</p>
+        ${OFFER.contact
+          ? `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`
+          : '<p class="caveat">Contact not configured yet — set OFFER.contact in this page before publishing.</p>'}
+      </div>
     `;
   });
 </script>

@@ -11,7 +11,7 @@ import {
 } from '../src/strategic-control-plane.js';
 
 test('createStrategicObjective persists objective with budget and boundaries', async () => {
-  resetStrategicMemory();
+  await resetStrategicMemory();
   const obj = await createStrategicObjective({
     id: 'obj-1',
     title: 'Grow ARR to $10k',
@@ -34,7 +34,7 @@ test('createStrategicObjective persists objective with budget and boundaries', a
 });
 
 test('addStrategicDirective appends versioned guidance without erasing prior state', async () => {
-  resetStrategicMemory();
+  await resetStrategicMemory();
   await createStrategicObjective({
     id: 'obj-2',
     title: 'Scale Fiverr Bookkeeping Wedge',
@@ -71,7 +71,7 @@ test('addStrategicDirective appends versioned guidance without erasing prior sta
 });
 
 test('generateStrategicBrief produces bounded summary with verified economics and blockers', async () => {
-  resetStrategicMemory();
+  await resetStrategicMemory();
   await createStrategicObjective({
     id: 'obj-3',
     title: 'Autonomous Software Maintenance',

@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 
 const decisionsMemoryStore = new Map(); // id -> record
 
@@ -214,6 +214,7 @@ export async function listRoutingDecisions({ limit = 50 } = {}) {
   }));
 }
 
-export function resetModelRouterMemory() {
+export async function resetModelRouterMemory() {
   decisionsMemoryStore.clear();
+  await truncateForTesting(['model_routing_decisions']);
 }

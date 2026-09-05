@@ -15,7 +15,7 @@ import {
 } from '../packages/core/marketing/store.js';
 
 test('upsertCampaign registers and updates campaigns with epoch and budget windowing', async () => {
-  resetMarketingMemory();
+  await resetMarketingMemory();
 
   const campaign = await upsertCampaign({
     campaignKey: 'unclaimed-property-ca',
@@ -51,7 +51,7 @@ test('upsertCampaign registers and updates campaigns with epoch and budget windo
 });
 
 test('createLead stores candidate buyer records and supports status lifecycle', async () => {
-  resetMarketingMemory();
+  await resetMarketingMemory();
 
   await upsertCampaign({
     campaignKey: 'fiverr-leakage',

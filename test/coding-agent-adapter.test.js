@@ -33,7 +33,7 @@ test('getIssueBranchName produces valid canonical branch slug', () => {
 });
 
 test('dispatchCodingAgentWork returns SETUP_REQUIRED when backend is missing', async () => {
-  resetExecutionRunsMemory();
+  await resetExecutionRunsMemory();
   const res = await dispatchCodingAgentWork({
     workPackage: { repo: 'test/repo', issueNumber: 122, title: 'Test issue' },
     backend: null
@@ -43,7 +43,7 @@ test('dispatchCodingAgentWork returns SETUP_REQUIRED when backend is missing', a
 });
 
 test('dispatchCodingAgentWork fails closed if tests fail before PR creation', async () => {
-  resetExecutionRunsMemory();
+  await resetExecutionRunsMemory();
   let prCreated = false;
   const mockFailingBackend = {
     provider: 'mock-ai',
@@ -76,7 +76,7 @@ test('dispatchCodingAgentWork fails closed if tests fail before PR creation', as
 });
 
 test('dispatchCodingAgentWork creates PR when tests pass and records metadata', async () => {
-  resetExecutionRunsMemory();
+  await resetExecutionRunsMemory();
   const mockPassingBackend = {
     provider: 'mock-ai',
     model: 'mock-model-v2',

@@ -1,0 +1,159 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payout audit — check what you were actually paid</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1c1a17; --muted: #6b6560; --line: #e3ded7;
+    --card: #ffffff; --accent: #7a4d1d; --flag: #8a2f22; --ok: #245c3d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16150f; --fg: #ece7de; --muted: #9d968b; --line: #322e26;
+      --card: #1e1c15; --accent: #d9a05b; --flag: #e0836f; --ok: #7cc79c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 1.9rem; line-height: 1.25; margin: 0 0 .6rem; letter-spacing: -.02em; }
+  .lede { color: var(--muted); margin: 0 0 2rem; font-size: 1.05rem; }
+  .privacy {
+    border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    background: var(--card); padding: .85rem 1rem; border-radius: 6px;
+    font-size: .92rem; margin-bottom: 2rem;
+  }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem 1.2rem; margin: 0 0 1rem; background: var(--card); }
+  legend { font-weight: 600; padding: 0 .4rem; font-size: .95rem; }
+  .hint { color: var(--muted); font-size: .87rem; margin: .1rem 0 .7rem; }
+  textarea {
+    width: 100%; min-height: 7rem; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: .6rem; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--fg); resize: vertical;
+  }
+  input[type=file] { font-size: .9rem; margin-bottom: .5rem; display: block; }
+  button {
+    font: inherit; font-weight: 600; padding: .7rem 1.4rem; border-radius: 6px;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .result { margin-top: 2rem; }
+  .headline { font-size: 1.2rem; font-weight: 650; margin: 0 0 .4rem; }
+  .headline.flag { color: var(--flag); }
+  .headline.ok { color: var(--ok); }
+  .caveat { color: var(--muted); font-size: .9rem; margin: .3rem 0 1.2rem; }
+  table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .stats { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: 1rem 0; font-size: .9rem; }
+  .stats div span { display: block; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+  .stats div b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+  .error { color: var(--flag); }
+  footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .87rem; }
+  code { background: var(--card); border: 1px solid var(--line); padding: .05rem .3rem; border-radius: 3px; font-size: .88em; }
+</style>
+
+<main>
+  <h1>Were you actually paid for every order?</h1>
+  <p class="lede">
+    Compare your platform earnings against your bank deposits. If a payout was earned
+    and never arrived, this names the order.
+  </p>
+
+  <p class="privacy">
+    <strong>Your files never leave this page.</strong> The comparison runs entirely in your
+    browser — nothing is uploaded, nothing is stored, and there is no account. You can
+    disconnect from the internet before pasting and it will still work.
+  </p>
+
+  <form id="form">
+    <fieldset>
+      <legend>1 — Platform earnings</legend>
+      <p class="hint">Your Fiverr earnings/activity CSV export. Needs a date column and a gross/amount column.</p>
+      <input type="file" accept=".csv,text/csv" data-target="platform">
+      <textarea id="platform" placeholder="…or paste the CSV here" spellcheck="false"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>2 — Bank deposits</legend>
+      <p class="hint">Your bank statement CSV. Needs a date column and an amount/deposit/credit column.</p>
+      <input type="file" accept=".csv,text/csv" data-target="bank">
+      <textarea id="bank" placeholder="…or paste the CSV here" spellcheck="false"></textarea>
+    </fieldset>
+
+    <button id="run" type="submit">Run the comparison</button>
+  </form>
+
+  <section class="result" id="result" hidden></section>
+
+  <footer>
+    This compares two files and nothing else. A gap is a question worth asking your
+    platform — most often a payout falling outside the dates you exported — not proof
+    that anything was taken.
+  </footer>
+</main>
+
+<script type="module">
+  import { instantAudit } from './instant-audit.js';
+
+  const $ = id => document.getElementById(id);
+  const usd = cents => `$${(cents / 100).toFixed(2)}`;
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  for (const input of document.querySelectorAll('input[type=file]')) {
+    input.addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (file) $(event.target.dataset.target).value = await file.text();
+    });
+  }
+
+  $('form').addEventListener('submit', event => {
+    event.preventDefault();
+    const out = $('result');
+    out.hidden = false;
+
+    let audit;
+    try {
+      audit = instantAudit({ platformCsv: $('platform').value, bankCsv: $('bank').value });
+    } catch (error) {
+      out.innerHTML = `<p class="headline error">${esc(error.message)}</p>`;
+      return;
+    }
+
+    if (!audit.ok) {
+      const which = audit.stage === 'platform_csv' ? 'platform earnings' : 'bank deposits';
+      out.innerHTML = `<p class="headline error">Could not read the ${which} file</p>
+        <p class="caveat">${esc(audit.error)}</p>`;
+      return;
+    }
+
+    const s = audit.summary;
+    const missing = audit.findings.earningsWithNoDeposit;
+    const rows = missing.map(m => `<tr>
+        <td>${esc(m.orderId ?? '—')}</td>
+        <td>${esc(m.earnedOn ?? '—')}</td>
+        <td class="num">${usd(m.netCents)}</td>
+      </tr>`).join('');
+
+    out.innerHTML = `
+      <p class="headline ${missing.length ? 'flag' : 'ok'}">${esc(audit.headline)}</p>
+      ${audit.caveat ? `<p class="caveat">${esc(audit.caveat)}</p>` : ''}
+      <div class="stats">
+        <div><span>Orders read</span><b>${s.ordersRead}</b></div>
+        <div><span>Deposits read</span><b>${s.depositsRead}</b></div>
+        <div><span>Matched</span><b>${s.matchedCount}</b></div>
+        <div><span>Unmatched</span><b>${usd(s.unmatchedEarningsCents)}</b></div>
+      </div>
+      ${missing.length ? `<table>
+        <thead><tr><th>Order</th><th>Earned</th><th class="num">Net</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="caveat">Check each of these against your bank for the period around the earned
+      date. If one is genuinely absent, that is the question to take to your platform.</p>` : ''}
+    `;
+  });
+</script>

@@ -1,5 +1,6 @@
 import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { databaseEnabled } from '../src/db.js';
 import {
   BILLABLE_METRICS,
   resetMeteringForTesting,
@@ -14,14 +15,21 @@ import {
   createBillingExportAdapter
 } from '../src/metering.js';
 
+// configureMemoryAccountPlan() refuses to run in PostgreSQL mode by design, so
+// every test here is memory-only as written. Skipping is honest; asserting these
+// pass against a database would be a lie. The PostgreSQL metering path has no
+// coverage — tracked separately.
+const memoryOnly = { skip: databaseEnabled ? 'metering tests configure memory plans, which PostgreSQL mode refuses' : false };
+
 const originalNodeEnv = process.env.NODE_ENV;
 const originalExportFlag = process.env.TASKMAN_BILLING_EXPORT_ENABLED;
 
-beforeEach(async () => {
+beforeEach(() => {
+  if (databaseEnabled) return;
   process.env.NODE_ENV = 'test';
   delete process.env.TASKMAN_BILLING_EXPORT_ENABLED;
-  await resetMeteringForTesting();
-  await configureMemoryAccountPlan({
+  resetMeteringForTesting();
+  configureMemoryAccountPlan({
     accountId: 'acct-test',
     entitlements: [
       { metricId: 'ai_tokens', hardLimit: 100, softLimit: 80 },
@@ -30,16 +38,14 @@ beforeEach(async () => {
   });
 });
 
-afterEach(async () => {
+afterEach(() => {
   if (originalNodeEnv == null) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = originalNodeEnv;
   if (originalExportFlag == null) delete process.env.TASKMAN_BILLING_EXPORT_ENABLED;
   else process.env.TASKMAN_BILLING_EXPORT_ENABLED = originalExportFlag;
-  await resetMeteringForTesting();
 });
 
-
-test('unknown and exhausted entitlements fail closed before spend', async () => {
+test('unknown and exhausted entitlements fail closed before spend', memoryOnly, async () => {
   assert.deepEqual(
     await checkEntitlement({ accountId: 'missing', metricId: 'ai_tokens', proposedQuantity: 1 }),
     { allowed: false, code: 'ENTITLEMENT_UNKNOWN' }
@@ -59,7 +65,7 @@ test('unknown and exhausted entitlements fail closed before spend', async () => 
   );
 });
 
-test('concurrent replay of one source creates one immutable meter event', async () => {
+test('concurrent replay of one source creates one immutable meter event', memoryOnly, async () => {
   const input = {
     accountId: 'acct-test', metricId: 'successful_runs', metricVersion: 1,
     quantity: 1, unit: 'run', sourceId: 'run-42:successful_run',
@@ -77,7 +83,7 @@ test('concurrent replay of one source creates one immutable meter event', async 
   assert.equal(summary.totals['successful_runs:1'], 1);
 });
 
-test('corrections compensate without mutating original evidence', async () => {
+test('corrections compensate without mutating original evidence', memoryOnly, async () => {
   const original = await recordMeterEvent({
     accountId: 'acct-test', metricId: 'ai_tokens', quantity: 25, unit: 'token',
     sourceId: 'run-2:tokens', occurredAt: '2026-08-30T11:00:00Z'
@@ -98,7 +104,7 @@ test('corrections compensate without mutating original evidence', async () => {
   assert.equal(summary.totals['ai_tokens:1'], 0);
 });
 
-test('account summaries require an explicit UTC window and paginate with opaque cursors', async () => {
+test('account summaries require an explicit UTC window and paginate with opaque cursors', memoryOnly, async () => {
   for (let index = 0; index < 3; index += 1) {
     await recordMeterEvent({
       accountId: 'acct-test', ...{
@@ -132,18 +138,17 @@ test('account summaries require an explicit UTC window and paginate with opaque 
   );
 });
 
-test('development plan and live billing export both remain fail closed in production', async () => {
-  await resetMeteringForTesting();
+test('development plan and live billing export both remain fail closed in production', memoryOnly, async () => {
+  resetMeteringForTesting();
   seedDevelopmentPlan();
   process.env.NODE_ENV = 'production';
-
   const decision = await checkEntitlement({ accountId: 'local-default', metricId: 'ai_tokens', proposedQuantity: 1 });
   assert.equal(decision.allowed, false);
   assert.equal(decision.code, 'DEVELOPMENT_PLAN_FORBIDDEN');
   assert.deepEqual(billingExportStatus(), { enabled: false, mode: 'adapter-only', performsCharges: false });
 });
 
-test('billing export adapter is disabled by default and idempotent when explicitly enabled', async () => {
+test('billing export adapter is disabled by default and idempotent when explicitly enabled', memoryOnly, async () => {
   const meter = await recordMeterEvent({
     accountId: 'acct-test', metricId: 'successful_runs', quantity: 1, unit: 'run',
     sourceId: 'run-export:successful', occurredAt: '2026-08-30T13:00:00Z'

@@ -12,8 +12,7 @@ import {
   claimActionableWorkItem,
   releaseActionableWorkItem,
   persistWorkItems,
-  resetIntakeMemory,
-  resetIntakeStore
+  resetIntakeMemory
 } from '../src/github-intake.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
 
@@ -112,7 +111,7 @@ test('dispatchCodingAgentWork creates PR when tests pass and records metadata', 
 });
 
 test('a mocked GitHub issue is leased exactly once and suppressed from duplicate dispatch', async () => {
-  await resetIntakeStore();
+  await resetIntakeMemory();
   const repo = 'test/repo';
   await persistWorkItems([
     {

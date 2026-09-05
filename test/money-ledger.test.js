@@ -32,7 +32,7 @@ test.beforeEach(async () => {
 
 
 test('a settlement from an unverifiable source is rejected', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await assert.rejects(
     () => recordSettlement({ rail: 'r', source: 'vibes', externalRef: 'x1', grossCents: 5000 }),
     /self-reported revenue is not accepted/
@@ -40,7 +40,7 @@ test('a settlement from an unverifiable source is rejected', async () => {
 });
 
 test('a settlement with no external reference is rejected', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await assert.rejects(
     () => recordSettlement({ rail: 'r', source: 'stripe', externalRef: '  ', grossCents: 5000 }),
     /externalRef is required/
@@ -48,7 +48,7 @@ test('a settlement with no external reference is rejected', async () => {
 });
 
 test('the same processor reference cannot be counted twice', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   const first = await recordSettlement({
     rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 175,
     status: SETTLEMENT_STATUS.CLEARED
@@ -65,7 +65,7 @@ test('the same processor reference cannot be counted twice', async () => {
 });
 
 test('economics net spend against cleared settlements only', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   const a1 = await recordAttempt({ rail: 'r', costCents: 120 });
   await finishAttempt(a1.id, { status: ATTEMPT_STATUS.DELIVERED });
   await recordAttempt({ rail: 'r', costCents: 80 });
@@ -82,7 +82,7 @@ test('economics net spend against cleared settlements only', async () => {
 });
 
 test('a rail that spends its probation budget without settling is disabled', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   for (let i = 0; i < 5; i += 1) {
     await recordAttempt({ rail: 'deadrail', costCents: 400 });
   }
@@ -92,7 +92,7 @@ test('a rail that spends its probation budget without settling is disabled', asy
 });
 
 test('a rail that exhausts its attempt allowance without settling is disabled', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   for (let i = 0; i < 4; i += 1) {
     await recordAttempt({ rail: 'deadrail', costCents: 0 });
   }
@@ -102,7 +102,7 @@ test('a rail that exhausts its attempt allowance without settling is disabled', 
 });
 
 test('a rail with a verified settlement keeps running', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   for (let i = 0; i < 40; i += 1) await recordAttempt({ rail: 'live', costCents: 100 });
   await recordSettlement({ rail: 'live', source: 'stripe', externalRef: 'txn_live', grossCents: 25000, status: SETTLEMENT_STATUS.CLEARED });
 
@@ -112,7 +112,7 @@ test('a rail with a verified settlement keeps running', async () => {
 });
 
 test('enforcing viability actually switches the rail off', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await recordAttempt({ rail: 'doomed', costCents: 9000 });
   const verdict = await enforceRailViability({ rail: 'doomed', probationBudgetCents: 5000 });
   assert.equal(verdict.verdict, 'DISABLE');
@@ -129,7 +129,7 @@ test('a pending stripe transaction is not counted as earned', () => {
 });
 
 test('stripe sync records balance transactions and skips refunds', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   const fetchImpl = async () => ({
     ok: true,
     status: 200,
@@ -152,7 +152,7 @@ test('stripe sync records balance transactions and skips refunds', async () => {
 });
 
 test('the execute worker refuses to claim work for a disabled rail', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await setRailEnabled('offrail', false, 'no verified settlements');
   const result = await runExecuteWorker({ rail: 'offrail' });
   assert.equal(result.status, 'RAIL_DISABLED');
@@ -160,7 +160,7 @@ test('the execute worker refuses to claim work for a disabled rail', async () =>
 });
 
 test('an executor that claims revenue without a settlement earns zero', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
     noveltyKey: 'unbacked-claim',
@@ -179,7 +179,7 @@ test('an executor that claims revenue without a settlement earns zero', async ()
 });
 
 test('an executor returning a cleared settlement produces a money event', async () => {
-  resetLedgerMemory();
+  await resetLedgerMemory();
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,
     noveltyKey: 'real-payday',

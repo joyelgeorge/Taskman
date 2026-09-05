@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 const mem = {
@@ -80,7 +80,7 @@ export async function dueDrones({ now = new Date(), limit = 25 } = {}) {
     SELECT * FROM drones
     WHERE enabled
       AND (quarantined_until IS NULL OR quarantined_until <= $1)
-      AND (last_run_at IS NULL OR last_run_at <= $1 - (interval_seconds * INTERVAL '1 second'))
+      AND (last_run_at IS NULL OR last_run_at <= $1::timestamptz - (interval_seconds * INTERVAL '1 second'))
     ORDER BY last_run_at ASC NULLS FIRST
     LIMIT $2
   `, [now, limit]);
@@ -165,4 +165,7 @@ export async function droneRunHistory(droneId, limit = 20) {
   return result.rows;
 }
 
-export function resetDroneMemory() { mem.drones.clear(); mem.runs.clear(); }
+export async function resetDroneMemory() {
+  mem.drones.clear(); mem.runs.clear();
+  await truncateForTesting(['drone_runs', 'drones']);
+}

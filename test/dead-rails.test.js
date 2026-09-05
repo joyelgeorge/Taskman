@@ -1,20 +1,12 @@
-import test, { beforeEach } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { seedDeadRails, DEAD_RAILS } from '../src/rails/dead-rails.js';
 import { discoverRail, railStatus, enableRailExecution } from '../src/rails/index.js';
-import { isRailEnabled, getRailState, setRailEnabled, resetLedgerStore } from '../src/money-ledger.js';
+import { isRailEnabled, getRailState, setRailEnabled, resetLedgerMemory } from '../src/money-ledger.js';
 import { discoverFromRealSources } from '../src/workers/discover.js';
 
-beforeEach(async () => {
-  await resetLedgerStore();
-});
-
-test.after(async () => {
-  await resetLedgerStore();
-});
-
 test('both dead rails are disabled with a recorded, evidence-bearing reason', async () => {
-  await resetLedgerStore();
+  await resetLedgerMemory();
   const seeded = await seedDeadRails();
   assert.deepEqual(seeded.sort(), ['moltjobs', 'taskforce']);
 
@@ -26,7 +18,7 @@ test('both dead rails are disabled with a recorded, evidence-bearing reason', as
 });
 
 test('seeding never overwrites a rail a human already re-enabled', async () => {
-  await resetLedgerStore();
+  await resetLedgerMemory();
   await setRailEnabled('taskforce', true);
   const seeded = await seedDeadRails();
 
@@ -35,7 +27,7 @@ test('seeding never overwrites a rail a human already re-enabled', async () => {
 });
 
 test('discoverRail refuses a disabled rail without throwing', async () => {
-  await resetLedgerStore();
+  await resetLedgerMemory();
   await seedDeadRails();
   const result = await discoverRail('taskforce');
   assert.equal(result.ok, false);
@@ -44,7 +36,7 @@ test('discoverRail refuses a disabled rail without throwing', async () => {
 });
 
 test('enableRailExecution refuses a disabled rail even with a valid gate', async () => {
-  await resetLedgerStore();
+  await resetLedgerMemory();
   await seedDeadRails();
   await assert.rejects(
     () => enableRailExecution('taskforce', {
@@ -63,7 +55,7 @@ test('railStatus stays a plain adapter passthrough; ledger state is read separat
   // remap the shape. Ledger-derived state (whether a rail is actually allowed to
   // spend) lives in getRailState()/railEconomics() instead — see
   // src/rails/index.js's top comment.
-  await resetLedgerStore();
+  await resetLedgerMemory();
   const status = await railStatus();
   const taskforce = status.find(r => r.name === 'taskforce');
   assert.ok(taskforce);
@@ -76,7 +68,7 @@ test('railStatus stays a plain adapter passthrough; ledger state is read separat
 });
 
 test('the bounty discovery path is a silent no-op while the rail is disabled', async () => {
-  await resetLedgerStore();
+  await resetLedgerMemory();
   await seedDeadRails();
   const discovered = await discoverFromRealSources({ sources: ['bounty'], sampleCandidates: [] });
   assert.deepEqual(discovered, []);

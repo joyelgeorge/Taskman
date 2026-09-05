@@ -19,6 +19,7 @@ export async function runDataCollection({ fetchImpl, now = new Date(), seed = tr
 
   const sources = await dueSources({ now });
   const results = [];
+  const buckets = new Set([now.toISOString().slice(0, 10)]);
 
   for (const source of sources) {
     const outcome = await collectSource(source, { fetchImpl, now });
@@ -27,6 +28,15 @@ export async function runDataCollection({ fetchImpl, now = new Date(), seed = tr
 
     if (outcome.status === 'OK') {
       ({ inserted, duplicates } = await recordObservations(source.sourceKey, outcome.points));
+      // Roll up the days the data is actually stamped with, not the day we happen
+      // to be running. A feed almost always publishes for an earlier date — ECB's
+      // reference rates for 2026-09-03 are what a 2026-09-04 run collects — so
+      // rolling only `now` silently rolled zero series and left the raw rows to be
+      // pruned at 90 days with nothing durable behind them.
+      for (const point of outcome.points) {
+        const bucket = String(point.observedAt || '').slice(0, 10);
+        if (bucket) buckets.add(bucket);
+      }
     }
 
     await recordSourceRun({
@@ -45,7 +55,13 @@ export async function runDataCollection({ fetchImpl, now = new Date(), seed = tr
     });
   }
 
-  const rollup = await rollupDay({ date: now.toISOString() });
+  const rolled = [];
+  for (const bucket of [...buckets].sort()) rolled.push(await rollupDay({ date: bucket }));
+  const rollup = {
+    buckets: rolled.map(r => r.bucketDate),
+    seriesRolled: rolled.reduce((sum, r) => sum + r.seriesRolled, 0),
+    perBucket: rolled
+  };
   const prune = await pruneRawObservations({ now });
 
   return {

@@ -54,3 +54,26 @@ export async function healthCheck() {
 export async function closePool() {
   if (pool) await pool.end();
 }
+
+/**
+ * Empties the named tables so a test starts from the same blank slate the
+ * in-memory path gets for free.
+ *
+ * Every store used to reset only its Map, which made each reset*Memory() a
+ * silent no-op whenever DATABASE_URL was set. The suite therefore only ever
+ * verified the memory path, while production runs the PostgreSQL one; rows
+ * leaked between tests and 59 of them failed for that reason alone.
+ *
+ * Refuses to run unless NODE_ENV === 'test'. TRUNCATE against a real database
+ * is unrecoverable, and this function exists solely to be called from tests.
+ */
+export async function truncateForTesting(tables = []) {
+  if (!databaseEnabled || tables.length === 0) return;
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error(
+      'truncateForTesting refuses to run with NODE_ENV=' + (process.env.NODE_ENV || 'unset')
+      + '. It empties real tables and is only ever safe from the test suite; set NODE_ENV=test.'
+    );
+  }
+  await query(`TRUNCATE TABLE ${tables.join(', ')} RESTART IDENTITY CASCADE`);
+}

@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 const mem = {
@@ -124,4 +124,7 @@ export async function scanHistory(targetKey, limit = 20) {
   return result.rows.map(normalizeScan);
 }
 
-export function resetScanMemory() { mem.targets.clear(); mem.scans.clear(); }
+export async function resetScanMemory() {
+  mem.targets.clear(); mem.scans.clear();
+  await truncateForTesting(['satellite_scans', 'satellite_targets']);
+}

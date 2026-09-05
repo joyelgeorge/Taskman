@@ -10,17 +10,12 @@ import {
   persistWorkItems,
   getActionableWorkQueue,
   resetIntakeMemory,
-  resetIntakeStore,
   WORK_ELIGIBILITY,
   PRIORITY_WEIGHTS
 } from '../src/github-intake.js';
 
 beforeEach(async () => {
-  await resetIntakeStore();
-});
-
-test.after(async () => {
-  await resetIntakeStore();
+  await resetIntakeMemory();
 });
 
 test('parseIssueDependencies extracts blockers from keywords and markdown sections', () => {

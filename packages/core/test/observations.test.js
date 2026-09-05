@@ -26,12 +26,12 @@ const stubFetch = (body, { status = 200, robots = '' } = {}) => async url => {
   return { ok: status >= 200 && status < 300, status, text: async () => body };
 };
 
-function reset() { resetObservationMemory(); resetRobotsCache(); }
+async function reset() { await resetObservationMemory(); resetRobotsCache(); }
 
 // ---- robots.txt --------------------------------------------------------------
 
 test('a disallowed path is refused, not worked around', async () => {
-  reset();
+  await reset();
   await registerSource({
     sourceKey: 's', kind: 'http_xml', url: 'https://example.com/private/feed.xml',
     licence: 'test', decision: 'test',
@@ -47,7 +47,7 @@ test('a disallowed path is refused, not worked around', async () => {
 });
 
 test('an allowed path collects normally', async () => {
-  reset();
+  await reset();
   await registerSource({
     sourceKey: 's', kind: 'http_xml', url: 'https://example.com/public/feed.xml',
     licence: 'test', decision: 'test',
@@ -89,7 +89,7 @@ test('XML attributes are extracted into series points, filtered to declared keys
 });
 
 test('a point is dated by when the value was true, not when we fetched it', async () => {
-  reset();
+  await reset();
   await registerSource({
     sourceKey: 'ecb', kind: 'http_xml', url: 'https://example.com/feed.xml',
     licence: 'test', decision: 'test',
@@ -107,7 +107,7 @@ test('a point is dated by when the value was true, not when we fetched it', asyn
 });
 
 test('a network failure is recorded as a finding, never thrown', async () => {
-  reset();
+  await reset();
   await registerSource({
     sourceKey: 's', kind: 'http_json', url: 'https://example.com/x.json',
     licence: 'test', decision: 'test', config: {}
@@ -126,7 +126,7 @@ test('a network failure is recorded as a finding, never thrown', async () => {
 // ---- the store: licence and decision are mandatory ---------------------------
 
 test('a source without a licence is rejected', async () => {
-  reset();
+  await reset();
   await assert.rejects(
     () => registerSource({ sourceKey: 's', kind: 'http_json', url: 'https://x', decision: 'why' }),
     /licence is required/
@@ -134,7 +134,7 @@ test('a source without a licence is rejected', async () => {
 });
 
 test('a source that names no decision is rejected', async () => {
-  reset();
+  await reset();
   await assert.rejects(
     () => registerSource({ sourceKey: 's', kind: 'http_json', url: 'https://x', licence: 'MIT' }),
     /decision is required/
@@ -144,7 +144,7 @@ test('a source that names no decision is rejected', async () => {
 // ---- idempotency, rollup, retention ------------------------------------------
 
 test('re-collecting the same point is a no-op, so a double run cannot corrupt a series', async () => {
-  reset();
+  await reset();
   await registerSource({ sourceKey: 's', kind: 'http_json', url: 'https://x', licence: 'x', decision: 'x' });
   const point = { seriesKey: 'fx.eur.usd', valueNum: 1.085, payload: {}, observedAt: '2026-09-03T00:00:00.000Z' };
 
@@ -156,7 +156,7 @@ test('re-collecting the same point is a no-op, so a double run cannot corrupt a 
 });
 
 test('a day rolls up into one row per series with min, max, avg and last', async () => {
-  reset();
+  await reset();
   await registerSource({ sourceKey: 's', kind: 'http_json', url: 'https://x', licence: 'x', decision: 'x' });
   await recordObservations('s', [
     { seriesKey: 'fx.eur.usd', valueNum: 1.08, payload: {}, observedAt: '2026-09-03T01:00:00.000Z' },
@@ -173,7 +173,7 @@ test('a day rolls up into one row per series with min, max, avg and last', async
 });
 
 test('pruning removes raw rows past retention but never touches the rollup', async () => {
-  reset();
+  await reset();
   await registerSource({ sourceKey: 's', kind: 'http_json', url: 'https://x', licence: 'x', decision: 'x' });
   const old = new Date(Date.now() - 200 * 86_400_000).toISOString();
   const recent = new Date().toISOString();
@@ -190,7 +190,7 @@ test('pruning removes raw rows past retention but never touches the rollup', asy
 });
 
 test('storage stats expose growth before it becomes a problem', async () => {
-  reset();
+  await reset();
   const stats = await storageStats();
   assert.equal(stats.rawObservations, 0);
   assert.equal(stats.retentionDays, 90);
@@ -211,7 +211,7 @@ test('a cross rate with a zero or missing leg is null, not a wrong number', () =
 // ---- the runner --------------------------------------------------------------
 
 test('a full run collects, rolls up, prunes, and seeds the declared source once', async () => {
-  reset();
+  await reset();
   const testNow = new Date('2026-09-03T12:00:00Z');
   const result = await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
 
@@ -224,7 +224,7 @@ test('a full run collects, rolls up, prunes, and seeds the declared source once'
 });
 
 test('a source is not collected again before its interval has elapsed', async () => {
-  reset();
+  await reset();
   const testNow = new Date('2026-09-03T12:00:00Z');
   await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
   const second = await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });

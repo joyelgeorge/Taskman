@@ -7,12 +7,12 @@ import { openAlert, resolveAlert, listAlerts, resetAlertMemory } from '../observ
 import { runHealthChecks, resetHealthMemory } from '../health/index.js';
 import { resetDroneMemory, registerDrone } from '../drones/store.js';
 
-function reset() { resetCronMemory(); resetAlertMemory(); resetHealthMemory(); resetDroneMemory(); }
+async function reset() { await resetCronMemory(); await resetAlertMemory(); await resetHealthMemory(); await resetDroneMemory(); }
 
 const definition = { cronName: 'demo', schedule: '*/15 * * * *', maxSilenceSeconds: 3600 };
 
 test('the same slot cannot run twice', async () => {
-  reset();
+  await reset();
   await registerCron(definition);
   const first = await startCronRun({ cronName: 'demo', runKey: 'slot-1' });
   const second = await startCronRun({ cronName: 'demo', runKey: 'slot-1' });
@@ -22,7 +22,7 @@ test('the same slot cannot run twice', async () => {
 });
 
 test('a cron that has never run reads as OVERDUE', async () => {
-  reset();
+  await reset();
   await registerCron(definition);
   const [status] = await cronStatuses();
   assert.equal(status.status, 'OVERDUE');
@@ -30,7 +30,7 @@ test('a cron that has never run reads as OVERDUE', async () => {
 });
 
 test('silence beyond the tolerance is detected', async () => {
-  reset();
+  await reset();
   await registerCron(definition);
   const { run } = await startCronRun({ cronName: 'demo', runKey: 'slot-1' });
   await finishCronRun(run.id, { status: 'COMPLETED', durationMs: 10 });
@@ -44,7 +44,7 @@ test('silence beyond the tolerance is detected', async () => {
 });
 
 test('a failed run surfaces as FAILING with its error', async () => {
-  reset();
+  await reset();
   await registerCron(definition);
   const { run } = await startCronRun({ cronName: 'demo', runKey: 'slot-2' });
   await finishCronRun(run.id, { status: 'FAILED', error: 'boom', durationMs: 5 });
@@ -56,7 +56,7 @@ test('a failed run surfaces as FAILING with its error', async () => {
 });
 
 test('an alert opens once and resolves when the component recovers', async () => {
-  reset();
+  await reset();
   const first = await openAlert({ kind: 'component_down', component: 'db', message: 'db is DOWN' });
   const second = await openAlert({ kind: 'component_down', component: 'db', message: 'db is DOWN again' });
   assert.equal(first.created, true);
@@ -68,7 +68,7 @@ test('an alert opens once and resolves when the component recovers', async () =>
 });
 
 test('health checks cover db, drones and crons, and reconcile alerts', async () => {
-  reset();
+  await reset();
   await registerCron(definition);
   await registerDrone({ id: 'd1', kind: 'rss', name: 'feed', targetUrl: 'https://x/feed' });
 

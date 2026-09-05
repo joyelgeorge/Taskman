@@ -12,10 +12,10 @@ import { resetSignalMemory, listSignals } from '../signals/store.js';
 const stubFetch = (body, { ok = true, status = 200 } = {}) =>
   async () => ({ ok, status, text: async () => body });
 
-function reset() { resetDroneMemory(); resetSignalMemory(); }
+async function reset() { await resetDroneMemory(); await resetSignalMemory(); }
 
 test('http_json drone extracts items from a nested path', async () => {
-  reset();
+  await reset();
   const drone = {
     id: 'd1', kind: 'http_json', name: 'test', targetUrl: 'https://example.com/api',
     config: { itemsPath: 'data.items', idField: 'id', titleField: 'name', urlField: 'link' }
@@ -59,7 +59,7 @@ test('rss drone parses RSS items and Atom entries alike', async () => {
 });
 
 test('page_watch emits a new signal only when the content changes', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'w', kind: 'page_watch', name: 'watch', targetUrl: 'https://x/page', intervalSeconds: 0 });
 
   const first = await runDrone(await getDrone('w'), { fetchImpl: stubFetch('<html><body><p>version one</p></body></html>') });
@@ -84,7 +84,7 @@ test('injection patterns are detected in signal text', () => {
 });
 
 test('signals carrying agent-directed text are quarantined, not stored as work', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'hostile', kind: 'http_json', name: 'hostile', targetUrl: 'https://x/api', intervalSeconds: 0,
     config: { itemsPath: 'items', idField: 'id', titleField: 'title' } });
 
@@ -102,7 +102,7 @@ test('signals carrying agent-directed text are quarantined, not stored as work',
 });
 
 test('a failing drone is quarantined only after repeated failures', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'flaky', kind: 'http_json', name: 'flaky', targetUrl: 'https://x/api', intervalSeconds: 0, config: {} });
   const failing = async () => { throw new Error('connection refused'); };
 
@@ -121,7 +121,7 @@ test('a failing drone is quarantined only after repeated failures', async () => 
 });
 
 test('dispatch flies every due drone and reports an aggregate', async () => {
-  reset();
+  await reset();
   await registerDrone({ id: 'a', kind: 'http_json', name: 'a', targetUrl: 'https://x/a', intervalSeconds: 0,
     config: { itemsPath: 'items', idField: 'id' } });
   await registerDrone({ id: 'b', kind: 'http_json', name: 'b', targetUrl: 'https://x/b', intervalSeconds: 0, config: { itemsPath: 'nope' } });

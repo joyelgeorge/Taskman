@@ -2,16 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   recordAttempt, recordSettlement, setRailEnabled, setRailState, getRailState, railEconomics,
-  isRailEnabled, resetLedgerMemory, resetLedgerStore, SETTLEMENT_STATUS
+  isRailEnabled, resetLedgerMemory, SETTLEMENT_STATUS
 } from '../src/money-ledger.js';
 import {
-  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory, resetGovernorStore
+  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory
 } from '../src/rail-governor.js';
 
-async function reset() {
-  await resetLedgerStore();
-  await resetGovernorStore();
-}
+async function reset() { await resetLedgerMemory(); await resetGovernorMemory(); }
 
 test('a freshly registered rail starts in PROBATION', async () => {
   await reset();
@@ -187,8 +184,3 @@ test('two writes landing in the same instant still land in different probation w
   const verdict = await evaluateRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
   assert.equal(verdict.nextState, 'PROBATION');
 });
-
-test.after(async () => {
-  await reset();
-});
-

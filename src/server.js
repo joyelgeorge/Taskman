@@ -104,7 +104,7 @@ import {
 import { getRuntimeConfig } from './config.js';
 import { handleEconomicSelectorRequest } from './economic-selector.js';
 import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
-import { cronStatuses, listCronRuns } from '@taskman/core';
+import { cronStatuses, listCronRuns, listStreams, incomeReport } from '@taskman/core';
 
 // Money-ledger routes (/api/money/*) live on the separate packages/api service
 // now — see docs/AUTONOMOUS_SYSTEM.md — rather than duplicated onto this legacy
@@ -803,6 +803,14 @@ const server = http.createServer(async (req, res) => {
       const crons = await cronStatuses();
       const recentRuns = await listCronRuns({ limit: 20 });
       return json(res, 200, { crons, recentRuns });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/money/opportunities') {
+      const [report, streams, tasks] = await Promise.all([
+        incomeReport(),
+        listStreams({}),
+        listTaskRecords()
+      ]);
+      return json(res, 200, { ...report, streams, tasks });
     }
     const cronRunsMatch = url.pathname.match(/^\/api\/crons\/([^/]+)\/runs$/);
     if (req.method === 'GET' && cronRunsMatch) {

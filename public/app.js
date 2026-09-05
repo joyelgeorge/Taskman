@@ -134,6 +134,45 @@ function renderPanel(name, data) {
       `;
     }).join('');
   }
+  if (name === 'opportunities') {
+    const streams = data?.streams || [];
+    const dataProducts = data?.dataProducts || [];
+    const actionable = data?.actionable || [];
+    const human = data?.waitingOnHuman || [];
+    $('#opportunitiesCount').textContent = `${streams.length} streams · ${dataProducts.length} data products`;
+    const summaryEl = $('#opportunitiesSummary');
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="row" style="margin-bottom:8px;">
+          <span class="pill">Actionable by machine: ${actionable.length}</span>
+          <span class="pill">Waiting on human: ${human.length}</span>
+          <span class="pill score">${esc(data?.verdict || '')}</span>
+        </div>
+        ${data?.nextAction ? `<div class="muted"><strong>Strategy Next Action:</strong> ${esc(data.nextAction)}</div>` : ''}
+      `;
+    }
+    const listEl = $('#opportunitiesList');
+    if (listEl) {
+      listEl.innerHTML = streams.map(s => {
+        const proof = s.proofCents != null ? `$${(s.proofCents / 100).toFixed(2)}` : '—';
+        const cost = s.testCostHours != null ? `${s.testCostHours}h` : '0h';
+        return `
+          <div class="task">
+            <div class="row">
+              <strong>${esc(s.title || s.streamKey)}</strong>
+              <span class="pill">${esc(s.state)}</span>
+              <span class="pill score">Proof: ${proof}</span>
+              <span class="muted">Test cost: ${cost}</span>
+              <span class="muted">Unblocked by: ${esc(s.unblockedBy || 'machine')}</span>
+            </div>
+            <div class="muted">${esc(s.mechanism || '')}</div>
+            ${s.requires ? `<div class="muted" style="margin-top:4px;"><strong>Requires:</strong> ${esc(s.requires)}</div>` : ''}
+            ${s.nextAction ? `<div class="brain-gap" style="margin-top:4px;"><strong>Next action:</strong> ${esc(s.nextAction)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+  }
 }
 
 function renderCustomerWorkflow(data) {
@@ -252,7 +291,8 @@ const refreshController = createDashboardRefreshController({
     tasks: '/api/tasks',
     runs: '/api/runs',
     brain: '/api/brain',
-    scenarios: '/api/scenarios'
+    scenarios: '/api/scenarios',
+    opportunities: '/api/money/opportunities'
   },
   fetchPanel: (_name, path, { signal }) => requestJson(path, { signal }),
   onPanelState(name, state) {

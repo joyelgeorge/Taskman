@@ -13,7 +13,8 @@ import {
   financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES,
   listFinanceReportHistory,
   recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics,
-  listSources, registerSource, listObservations, listRollups, storageStats
+  listSources, registerSource, listObservations, listRollups, storageStats,
+  listStreams, incomeReport
 } from '@taskman/core';
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
@@ -390,6 +391,21 @@ export async function route(req, url, readBody) {
     } catch (error) {
       return { status: 400, body: { error: String(error.message || error) } };
     }
+  }
+
+  // ---- money-making opportunities & streams ---------------------------------
+  if (method === 'GET' && pathname === '/api/money/opportunities') {
+    const [report, streams] = await Promise.all([
+      incomeReport(),
+      listStreams({})
+    ]);
+    return {
+      status: 200,
+      body: {
+        ...report,
+        streams
+      }
+    };
   }
 
   return notFound;

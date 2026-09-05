@@ -5,6 +5,179 @@ document.addEventListener("DOMContentLoaded", function() {
     input.value = defaultApi;
   }
 
+  var currentView = window.location.hash === '#/opportunities' ? 'opportunities' : 'overview';
+
+  function updateNav() {
+    var navLinks = document.querySelectorAll('nav[aria-label="Primary"] a');
+    var hash = window.location.hash || '#/overview';
+    navLinks.forEach(function(a) {
+      var href = a.getAttribute('href');
+      var isMatch = (href === hash) || (hash === '#/' && href === '#/overview');
+      if (isMatch) {
+        a.className = "flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150 bg-raised text-ink outline-1 outline-accent/40";
+      } else {
+        a.className = "flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150 text-muted hover:bg-raised hover:text-ink";
+      }
+    });
+
+    var pageTitle = document.querySelector('.op-top h1');
+    if (pageTitle) {
+      pageTitle.textContent = (currentView === 'opportunities') ? 'Money-Making Opportunities' : 'Overview';
+    }
+  }
+
+  window.addEventListener('hashchange', function() {
+    currentView = window.location.hash === '#/opportunities' ? 'opportunities' : 'overview';
+    updateNav();
+    load();
+  });
+
+  function renderOpportunities(data) {
+    var main = document.getElementById("main");
+    if (!main) return;
+
+    var streams = (data && data.streams) || [];
+    var dataProducts = (data && data.dataProducts) || [];
+    var tasks = (data && data.tasks) || [];
+    var verdict = (data && data.verdict) || "Every number in this system is preparation until settlement.";
+    var nextAction = (data && data.nextAction) || "Keep automation running to accumulate data.";
+
+    var actionableCount = (data && data.actionable) ? data.actionable.length : streams.filter(function(s) { return s.unblockedBy === 'machine' && s.state !== 'DISPROVEN'; }).length;
+    var humanCount = (data && data.waitingOnHuman) ? data.waitingOnHuman.length : streams.filter(function(s) { return s.unblockedBy === 'human'; }).length;
+    var totalProofCents = streams.reduce(function(acc, s) { return acc + (s.proofCents || 0); }, 0);
+
+    var streamsHtml = streams.map(function(s) {
+      var stateBg = s.state === 'TESTING' ? 'rgba(59,130,246,0.15)' : (s.state === 'BLOCKED' ? 'rgba(234,179,8,0.15)' : (s.state === 'DISPROVEN' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'));
+      var stateColor = s.state === 'TESTING' ? '#60a5fa' : (s.state === 'BLOCKED' ? '#facc15' : (s.state === 'DISPROVEN' ? '#f87171' : '#4ade80'));
+      var proof = s.proofCents != null ? '$' + (s.proofCents / 100).toFixed(2) : '—';
+      var testHours = s.testCostHours != null ? s.testCostHours + 'h' : '0h';
+
+      return '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:700;color:#e1e7de;">' + (s.title || s.streamKey) + '</div>' +
+            '<div style="font-family:monospace;font-size:11px;color:#858f82;margin-top:2px;">Key: ' + s.streamKey + ' · Unblocked by: <strong style="color:#e1e7de;">' + (s.unblockedBy || 'machine') + '</strong></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;align-items:center;">' +
+            '<span style="background:' + stateBg + ';color:' + stateColor + ';padding:4px 8px;border-radius:6px;font-weight:700;font-size:11px;letter-spacing:0.5px;">' + s.state + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:13px;color:#cbd5e1;line-height:1.4;">' + (s.mechanism || '') + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;background:#0d110d;padding:10px;border-radius:8px;border:1px solid #1c211b;font-size:12px;">' +
+          '<div><span style="color:#858f82;">Target Proof:</span> <strong style="color:#4ade80;">' + proof + '</strong></div>' +
+          '<div><span style="color:#858f82;">Test Cost:</span> <strong style="color:#e1e7de;">' + testHours + '</strong></div>' +
+          '<div><span style="color:#858f82;">Origin:</span> <strong style="color:#e1e7de;">' + (s.origin || 'seed') + '</strong></div>' +
+        '</div>' +
+        (s.requires ? '<div style="font-size:12px;color:#94a3b8;"><strong style="color:#cbd5e1;">Requirements:</strong> ' + s.requires + '</div>' : '') +
+        (s.stateReason ? '<div style="font-size:12px;color:#94a3b8;"><strong style="color:#cbd5e1;">State Reason:</strong> ' + s.stateReason + '</div>' : '') +
+        (s.nextAction ? '<div style="font-size:12px;color:#facc15;background:rgba(234,179,8,0.08);padding:8px 10px;border-radius:6px;border:1px solid rgba(234,179,8,0.2);"><strong style="color:#fde047;">Next Action:</strong> ' + s.nextAction + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    var productsHtml = dataProducts.map(function(p) {
+      var sellableBadge = p.sellable ? '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px;">SELLABLE</span>' : '<span style="background:rgba(234,179,8,0.15);color:#facc15;padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px;">ACCRUING</span>';
+      var blockers = (p.blockers && p.blockers.length) ? p.blockers.map(function(b) { return '<li>' + b + '</li>'; }).join('') : 'None';
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + p.productKey + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + p.observationDays + 'd</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + p.rowCount + '</td>' +
+        '<td style="padding:10px 8px;">' + sellableBadge + '</td>' +
+        '<td style="padding:10px 8px;color:#94a3b8;font-size:11px;"><ul style="margin:0;padding-left:16px;">' + blockers + '</ul></td>' +
+      '</tr>';
+    }).join('');
+
+    var tasksHtml = (tasks && tasks.length) ? tasks.map(function(t) {
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + (t.title || t.id) + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (t.intervalMinutes ? t.intervalMinutes + 'm' : 'Manual') + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px;">' + (t.status || 'ACTIVE') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#94a3b8;font-size:12px;max-width:350px;">' + (t.prompt ? t.prompt.slice(0, 140) + '…' : '—') + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="4" style="padding:12px;color:#858f82;text-align:center;">No tasks loaded</td></tr>';
+
+    main.innerHTML =
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;margin-bottom:20px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+          '<div>' +
+            '<div style="font-size:18px;font-weight:700;color:#e1e7de;">Money-Making Candidates & Opportunity Pipeline</div>' +
+            '<div style="font-size:12px;color:#858f82;margin-top:4px;">Direct connection to db <code style="color:#a3e635;">income_streams</code>, <code style="color:#a3e635;">data_products</code>, and active <code style="color:#a3e635;">tasks</code>.</div>' +
+          '</div>' +
+          '<div style="font-family:monospace;font-size:12px;background:rgba(34,197,94,0.1);color:#4ade80;padding:6px 12px;border-radius:8px;border:1px solid rgba(34,197,94,0.2);">' +
+            'First Settlement Proof Potential: $' + (totalProofCents / 100).toFixed(2) +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:14px;padding:12px;background:#0d110d;border-radius:8px;border:1px solid #1c211b;font-size:13px;color:#cbd5e1;">' +
+          '<strong>System Verdict:</strong> ' + verdict + '<br/>' +
+          '<span style="color:#858f82;">System Strategy: ' + nextAction + '</span>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px;">' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">TOTAL STREAMS</div>' +
+          '<div style="font-size:26px;font-weight:700;color:#e1e7de;margin-top:4px;">' + streams.length + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Tracked income hypotheses</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">ACTIONABLE BY MACHINE</div>' +
+          '<div style="font-size:26px;font-weight:700;color:#60a5fa;margin-top:4px;">' + actionableCount + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Requires zero human KYC</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">WAITING ON HUMAN</div>' +
+          '<div style="font-size:26px;font-weight:700;color:#facc15;margin-top:4px;">' + humanCount + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Accounts / KYC / client trust</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">DATA PRODUCTS</div>' +
+          '<div style="font-size:26px;font-weight:700;color:#4ade80;margin-top:4px;">' + dataProducts.length + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Accruing observation history</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="margin-bottom:24px;">' +
+        '<div style="font-size:16px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Income Stream Candidates & Verification Metrics</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+          streamsHtml +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;margin-bottom:24px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Accruing Data Products (History Moats)</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead>' +
+              '<tr style="border-bottom:1px solid #262c24;color:#636d60;">' +
+                '<th style="padding:8px;">PRODUCT KEY</th>' +
+                '<th style="padding:8px;">OBSERVATION DAYS</th>' +
+                '<th style="padding:8px;">ROW COUNT</th>' +
+                '<th style="padding:8px;">STATUS</th>' +
+                '<th style="padding:8px;">COMMERCIAL BLOCKERS</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + productsHtml + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Connected Database Execution Tasks</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead>' +
+              '<tr style="border-bottom:1px solid #262c24;color:#636d60;">' +
+                '<th style="padding:8px;">TASK TITLE</th>' +
+                '<th style="padding:8px;">CADENCE</th>' +
+                '<th style="padding:8px;">STATUS</th>' +
+                '<th style="padding:8px;">OBJECTIVE / PROMPT</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + tasksHtml + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>';
+  }
+
   function render(data) {
     var main = document.getElementById("main");
     if (!main) return;
@@ -150,6 +323,28 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function load() {
     var base = (input && input.value ? input.value : defaultApi).replace(/\/$/, "");
+    if (currentView === 'opportunities') {
+      fetch(base + "/money/opportunities")
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data) {
+            fetch("./api/money/opportunities")
+              .then(function(r2) { return r2.ok ? r2.json() : null; })
+              .then(function(data2) { renderOpportunities(data2); })
+              .catch(function() { renderOpportunities(null); });
+          } else {
+            renderOpportunities(data);
+          }
+        })
+        .catch(function() {
+          fetch("./api/money/opportunities")
+            .then(function(r2) { return r2.ok ? r2.json() : null; })
+            .then(function(data2) { renderOpportunities(data2); })
+            .catch(function() { renderOpportunities(null); });
+        });
+      return;
+    }
+
     Promise.all([
       fetch(base + "/status").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch(base + "/health").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
@@ -161,6 +356,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  updateNav();
   load();
   var connectBtn = document.querySelector('button.bg-accent');
   if (connectBtn) connectBtn.addEventListener('click', load);

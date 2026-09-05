@@ -1,5 +1,5 @@
 import { railEconomics, railWindow, globalBudgetStatus, listSettlements } from '../ledger.js';
-import { listExpenses } from './store.js';
+import { listExpenses, recordFinanceReportSnapshot } from './store.js';
 import { resolveUsdInrRate } from './fx.js';
 
 /**
@@ -125,5 +125,20 @@ export async function financeReport({ trailingDays = 30, now = new Date() } = {}
       projectedNext30DaysNetCents: Math.round((trailingNetCents / trailingDays) * 30)
     },
     perRail
+  };
+}
+
+export async function snapshotFinanceReport({ now = new Date(), trailingDays = 30 } = {}) {
+  const report = await financeReport({ trailingDays, now });
+  const date = now instanceof Date ? now.toISOString().slice(0, 10) : String(now).slice(0, 10);
+  const snapshot = await recordFinanceReportSnapshot({ date, report });
+  return {
+    snapshotId: snapshot.id,
+    snapshotDate: snapshot.snapshotDate,
+    netCents: snapshot.netCents,
+    totalSpendCents: snapshot.totalSpendCents,
+    grossClearedCents: snapshot.grossClearedCents,
+    burnRateCentsPerDay: snapshot.burnRateCentsPerDay,
+    runwayDays: snapshot.runwayDays
   };
 }

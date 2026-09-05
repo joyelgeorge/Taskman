@@ -108,6 +108,12 @@ export const CRON_DEFINITIONS = [
     schedule: '0 8 * * *',
     maxSilenceSeconds: 115200,
     description: 'Reconnaissance of candidate money-flow venues — reachable? bot-defended? what shape? Once a day: venue structure does not change hour to hour, and infrequent, honest single GETs are the polite way to ask a third-party site whether it can be automated at all.'
+  },
+  {
+    cronName: 'finance-report',
+    schedule: '0 0 * * *',
+    maxSilenceSeconds: 115200,
+    description: 'Snapshots the finance report once a day to track net position, burn rate, and runway trends.'
   }
 ];
 

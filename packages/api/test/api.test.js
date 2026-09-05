@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createServer } from '../server.js';
 import {
   resetCronMemory, resetAlertMemory, resetDroneMemory, resetSignalMemory, registerDrone,
-  resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory, registerCron
+  resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory, registerCron,
+  recordFinanceReportSnapshot
 } from '@taskman/core';
 
 async function withServer(fn) {
@@ -224,6 +225,37 @@ test('finance/report is reachable with no auth and reports a real, empty-safe sh
     assert.equal(body.lifetime.netCents, 0);
     assert.ok(Array.isArray(body.perRail));
     assert.match(body.projection.method, /not a forecast/);
+  });
+});
+
+test('finance/report/history returns historical snapshots with since and limit filtering', async () => {
+  await reset();
+  await recordFinanceReportSnapshot({
+    date: '2026-09-01',
+    report: { lifetime: { netCents: 1000 }, trailing: { burnRateCentsPerDay: 50 }, runway: { runwayDays: 60 } }
+  });
+  await recordFinanceReportSnapshot({
+    date: '2026-09-02',
+    report: { lifetime: { netCents: 1500 }, trailing: { burnRateCentsPerDay: 40 }, runway: { runwayDays: 75 } }
+  });
+
+  await withServer(async base => {
+    const { status, body } = await get(base, '/api/finance/report/history');
+    assert.equal(status, 200);
+    assert.ok(Array.isArray(body.history));
+    assert.equal(body.history.length, 2);
+    assert.equal(body.history[0].snapshotDate, '2026-09-02');
+    assert.equal(body.history[0].netCents, 1500);
+
+    const filtered = await get(base, '/api/finance/report/history?since=2026-09-02');
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.history.length, 1);
+    assert.equal(filtered.body.history[0].snapshotDate, '2026-09-02');
+
+    const limited = await get(base, '/api/finance/report/history?limit=1');
+    assert.equal(limited.status, 200);
+    assert.equal(limited.body.history.length, 1);
+    assert.equal(limited.body.history[0].snapshotDate, '2026-09-02');
   });
 });
 

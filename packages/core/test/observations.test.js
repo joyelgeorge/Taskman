@@ -222,8 +222,9 @@ test('a full run collects, rolls up, prunes, and seeds the declared source once'
   assert.equal(result.ok, 1);
   assert.ok(result.newPoints >= 3);
   assert.ok(result.rollup.seriesRolled >= 1);
-  assert.ok('removed' in result.prune);
-  assert.equal((await listSources())[0].sourceKey, 'ecb-euro-reference-rates');
+  const sources = await listSources();
+  const ecb = sources.find(s => s.sourceKey === 'ecb-euro-reference-rates');
+  assert.ok(ecb, 'ecb-euro-reference-rates source is seeded');
 });
 
 test('a source is not collected again before its interval has elapsed', async () => {

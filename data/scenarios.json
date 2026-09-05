@@ -1,0 +1,61 @@
+{
+  "schema_version": 5,
+  "updated_at": "2026-08-29T12:50:49+05:30",
+  "decision_protocol": {
+    "discovery_floor": "Always return a best surviving hypothesis.",
+    "freeze_build_threshold": [
+      "huge existing money flow",
+      "recurring measurable leakage/unrealized value",
+      "independent machine-readable trigger",
+      "practical non-invasive permission",
+      "objectively measurable financial delta",
+      "credible tiny fee stronger than self-serve/flat-fee alternatives",
+      "no core transaction/request path ownership",
+      "no dominant/sufficiently-close incumbent or first-party feature"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "programmable-money-flow-search",
+      "name": "Programmable money-flow search",
+      "category": "revenue-research",
+      "status": "active",
+      "goal": "Find a programmable wedge on an existing money flow that can clear settlement.",
+      "evidence_strength": 0.7,
+      "acceptance_gates": [
+        "settlement-verified revenue only",
+        "no invented metrics",
+        "do not own the core transaction path"
+      ],
+      "scoring_rubric": {
+        "max_score": 60,
+        "pass_comment": "Leader survives until a better candidate beats it on evidence."
+      },
+      "current_best_path": "cloud-support-plan-right-sizing-engine",
+      "current_leader": {
+        "id": "cloud-support-plan-right-sizing-engine",
+        "name": "Cloud support-plan right-sizing engine",
+        "score": 46,
+        "max_score": 60,
+        "freeze_threshold_crossed": false
+      },
+      "current_ranked_candidates": [
+        { "rank": 1, "id": "cloud-support-plan-right-sizing-engine", "score": 46 },
+        { "rank": 2, "id": "merchant-card-network-behavior-fee-sentinel", "score": 45 },
+        { "rank": 3, "id": "merchant-settlement-acceleration-decision-engine", "score": 45 }
+      ],
+      "latest_research_run": {
+        "run_key": "2026-08-29T12:50:49+05:30",
+        "mode": "SEARCH",
+        "threshold_crossed": false
+      },
+      "decision": "keep-searching",
+      "rejection_reasons": [],
+      "observed_failures": [],
+      "next_gaps": [
+        "Quantify how often support-tier changes actually save money",
+        "Test whether telemetry changes the cheapest sufficient plan often enough to monitor"
+      ]
+    }
+  ]
+}

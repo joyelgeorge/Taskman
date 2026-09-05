@@ -256,3 +256,19 @@ test('a plain rule with no wildcard is still a prefix match', () => {
   assert.equal(isAllowedByRules(rules, '/private/x'), false);
   assert.equal(isAllowedByRules(rules, '/public/x'), true);
 });
+
+test('a newly declared source reaches an install that already has others', async () => {
+  await reset();
+  // Seeding only into an empty store meant adding a source to DEFAULT_SOURCES
+  // was a no-op everywhere it was already running — the exact way the ephemeral
+  // ranking series shipped and then silently collected nothing.
+  await registerSource({
+    sourceKey: 'pre-existing', kind: 'http_json', url: 'https://example.test/a.json',
+    licence: 'test', decision: 'test'
+  });
+  await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: new Date('2026-09-03T12:00:00Z') });
+  const keys = (await listSources()).map(s => s.sourceKey);
+  for (const declared of DEFAULT_SOURCES) {
+    assert.ok(keys.includes(declared.sourceKey), `${declared.sourceKey} should have been seeded alongside the existing source`);
+  }
+});

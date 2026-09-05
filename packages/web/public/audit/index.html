@@ -1,0 +1,63 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payout audit — check what you were actually paid</title>
+<meta name="description" content="Compare what a platform says it paid you against what reached your bank. Runs entirely in your browser — nothing is uploaded.">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  main { max-width: 44rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  .lede { color: var(--muted); margin: 0 0 2rem; }
+  .privacy { border: 1px solid var(--rule); border-left: 3px solid var(--accent); background: var(--surface); padding: .85rem 1rem; margin-bottom: 2rem; }
+  fieldset { border: 1px solid var(--rule); padding: 1rem; margin: 0 0 1rem; background: var(--surface); }
+  textarea { width: 100%; min-height: 7rem; font-family: var(--mono); font-size: 13px; padding: .6rem; background: var(--ground); color: var(--ink); border: 1px solid var(--rule); }
+  .headline.flag { color: var(--accent); } .headline.ok { color: var(--ok); }
+</style>
+<main>
+  <p><a href="../">Operator control</a></p>
+  <h1>Were you actually paid for every order?</h1>
+  <p class="lede">Compare what you were owed against what reached your bank. Files never leave this page.</p>
+  <p class="privacy"><strong>Nothing is uploaded.</strong> Disconnect the internet and it still works.</p>
+  <form id="form">
+    <fieldset>
+      <legend>1 — What you were owed</legend>
+      <input type="file" accept=".csv,text/csv" data-target="platform">
+      <textarea id="platform" placeholder="…or paste the CSV" spellcheck="false"></textarea>
+    </fieldset>
+    <fieldset>
+      <legend>2 — What actually arrived</legend>
+      <input type="file" accept=".csv,text/csv" data-target="bank">
+      <textarea id="bank" placeholder="…or paste the CSV" spellcheck="false"></textarea>
+    </fieldset>
+    <button id="run" class="primary" type="submit">Run the comparison</button>
+  </form>
+  <section id="result" hidden></section>
+</main>
+<script type="module">
+  import { instantAudit } from './instant-audit.js';
+  const $ = id => document.getElementById(id);
+  const usd = cents => `$${(cents / 100).toFixed(2)}`;
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  for (const input of document.querySelectorAll('input[type=file]')) {
+    input.addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (file) $(event.target.dataset.target).value = await file.text();
+    });
+  }
+  $('form').addEventListener('submit', event => {
+    event.preventDefault();
+    const out = $('result');
+    out.hidden = false;
+    let audit;
+    try { audit = instantAudit({ platformCsv: $('platform').value, bankCsv: $('bank').value }); }
+    catch (error) { out.innerHTML = `<p class="headline flag">${esc(error.message)}</p>`; return; }
+    if (!audit.ok) {
+      out.innerHTML = `<p class="headline flag">${esc(audit.error)}</p>`;
+      return;
+    }
+    const missing = audit.findings.earningsWithNoDeposit;
+    const s = audit.summary;
+    out.innerHTML = `<p class="headline ${missing.length ? 'flag' : 'ok'}">${esc(audit.headline)}</p>
+      <p>${s.ordersRead} orders · ${s.depositsRead} deposits · ${s.matchedCount} matched · ${usd(s.unmatchedEarningsCents)} unmatched</p>
+      ${missing.length ? `<table><thead><tr><th>Order</th><th>Earned</th><th class="n">Net</th></tr></thead><tbody>${missing.map(m => `<tr><td>${esc(m.orderId ?? '—')}</td><td>${esc(m.earnedOn ?? '—')}</td><td class="n">${usd(m.netCents)}</td></tr>`).join('')}</tbody></table>` : ''}`;
+  });
+</script>

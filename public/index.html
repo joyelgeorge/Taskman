@@ -12,6 +12,7 @@
   <header class="top">
     <h1>Taskman <span>/ operator</span></h1>
     <div class="controls">
+      <a href="/audit/">Payout audit</a>
       <input type="url" id="api-base" placeholder="API URL" aria-label="API base URL" autocomplete="off" spellcheck="false">
       <input type="password" id="api-token" placeholder="API token (optional)" aria-label="API token">
       <button id="save" type="button">Connect</button>
@@ -24,8 +25,10 @@
     <a href="#autonomy" data-nav="autonomy">Autonomy</a>
     <a href="#work" data-nav="work">Work</a>
     <a href="#growth" data-nav="growth">Growth</a>
+    <a href="/audit/">Audit</a>
   </nav>
   <div id="error" class="err" hidden></div>
+  <p class="empty">Ledger needs a public API. The payout audit does not — open <a href="/audit/">/audit/</a>.</p>
 
   <div data-screen="overview">
     <div class="tiles" id="tiles"></div>
@@ -110,17 +113,13 @@
         <thead><tr><th class="n">Score</th><th>Source</th><th>Proposal</th><th></th></tr></thead>
         <tbody id="improvements"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
       </table></div></section>
-    <section><div class="sec-head"><h2>Engine</h2></div>
-      <p class="empty">This page is served by <code>npm start</code> (<code>src/server.js</code>). Brain/tasks/runs are same-origin. Ledger/crons/drones need <code>packages/api</code> — set Connect to that public API if this host does not own those routes.</p>
-    </section>
   </div>
 
   <div data-screen="growth" hidden>
-    <section><div class="sec-head"><h2>Leads</h2></div><p class="empty">No leads API yet. Empty on purpose.</p></section>
-    <section><div class="sec-head"><h2>Campaigns</h2></div><p class="empty">No campaigns API yet.</p></section>
+    <section><div class="sec-head"><h2>Leads</h2></div><p class="empty">No leads API yet.</p></section>
   </div>
 
-  <p class="foot" id="foot">Served from public/ via npm start or Firebase hosting.</p>
+  <p class="foot" id="foot">Audit works with no API. Ledger needs Render.</p>
 </div>
 <script src="refresh-controller.js"></script>
 <script src="app.js"></script>

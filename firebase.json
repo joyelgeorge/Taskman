@@ -1,7 +1,10 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "packages/web/public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/audit", "destination": "/audit/index.html" }
+    ],
     "headers": [
       {
         "source": "**",

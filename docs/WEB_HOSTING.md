@@ -1,36 +1,32 @@
-# Host the operator UI on a free domain
+# Host the operator UI
 
-The UI is static files in `packages/web/public`. It does not include the API.
-A public host can serve the page; Connect must point at a **public** API URL
-(`packages/api` with `CORS_ORIGIN=*` or the UI origin).
+The complete operator console now lives in `public/` and is served by:
 
-`127.0.0.1:3100` only works on your Mac. A `*.web.app` page cannot reach it.
+- `npm start` → `src/server.js` → http://127.0.0.1:3000
+- Render service `taskman` (same files)
+- Firebase Hosting (`firebase.json` → `public/`)
 
-## Firebase Hosting (`something.web.app`) — free
+## Local
 
 ```bash
-cd /Users/joyelgeorge/Documents/anti-grav/taskmen
+set -a; source .env; set +a
+npm start
+```
+
+Open http://127.0.0.1:3000
+
+Connect:
+- same origin (`http://127.0.0.1:3000`) for brain/tasks/runs/status
+- `http://127.0.0.1:3100` (`npm run api`) for ledger/crons/drones/orders
+
+## Firebase `*.web.app`
+
+```bash
 git pull
 npm install -g firebase-tools
 firebase login
 firebase projects:create taskman-operator --display-name "Taskman operator"
-# or: firebase use --add   and pick an existing project
 firebase deploy --only hosting
 ```
 
-Firebase prints `https://<project-id>.web.app`.
-
-On that page, Connect box = your public API, e.g.
-`https://<your-api>.onrender.com`
-not `http://127.0.0.1:3100`.
-
-## Vercel (already configured)
-
-`packages/web/vercel.json` serves `public/`.
-Import the GitHub repo at vercel.com → set Root Directory to `packages/web`.
-You get `https://<name>.vercel.app`.
-
-## API CORS
-
-`packages/api` defaults `CORS_ORIGIN=*`. For production set
-`CORS_ORIGIN=https://<project-id>.web.app`.
+On the hosted page, Connect must be a **public HTTPS API** (Render `taskman-api` or `taskman`). `127.0.0.1` will not work from web.app.

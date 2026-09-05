@@ -3,113 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Taskman Control</title>
+<title>Taskman Operator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="wrap">
-
-  <header class="top">
-    <h1>Taskman <span>/ control</span></h1>
-    <div class="controls">
-      <input type="text" id="api-base" placeholder="https://your-api.onrender.com" aria-label="API base URL">
-      <input type="password" id="api-token" placeholder="API token (optional)" aria-label="API token">
-      <button id="save">Connect</button>
-      <button id="refresh" class="primary">Refresh</button>
-    </div>
-  </header>
-
-  <div id="error" class="err" hidden></div>
-
-  <div class="tiles" id="tiles"></div>
-
-  <section>
-    <div class="sec-head"><h2>Crons</h2></div>
-    <div class="card"><table>
-      <thead><tr><th>Cron</th><th>Schedule</th><th>Status</th><th>Last run</th><th class="n">Silent</th><th></th></tr></thead>
-      <tbody id="crons"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Drones</h2></div>
-    <div class="card"><table>
-      <thead><tr><th>Drone</th><th>Kind</th><th>Status</th><th>Last OK</th><th class="n">Fails</th><th></th></tr></thead>
-      <tbody id="drones"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Open alerts</h2></div>
-    <div class="card"><table>
-      <thead><tr><th>Severity</th><th>Component</th><th>Message</th><th>Since</th></tr></thead>
-      <tbody id="alerts"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Revenue rails</h2><span id="global-budget" class="pill off"></span></div>
-    <div class="card"><table>
-      <thead><tr><th>Rail</th><th>State</th><th class="n">Attempts</th><th class="n">Spend</th><th class="n">Cleared</th><th class="n">Net</th><th class="n">ROI</th><th></th></tr></thead>
-      <tbody id="rails"><tr><td colspan="8" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Improvement proposals</h2></div>
-    <div class="card"><table>
-      <thead><tr><th class="n">Score</th><th>Source</th><th>Proposal</th><th></th></tr></thead>
-      <tbody id="improvements"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Recent signals</h2></div>
-    <div class="card"><table>
-      <thead><tr><th>Drone</th><th>Title</th><th>Status</th><th class="n">Score</th></tr></thead>
-      <tbody id="signals"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Satellite scans</h2><button id="scan-run" class="mini">scan now</button></div>
-    <div class="card"><table>
-      <thead><tr><th>Target</th><th>Reachable</th><th>Bot defense</th><th>Shape</th><th>Verdict</th><th>Last scan</th></tr></thead>
-      <tbody id="scans"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Gig orders</h2><span id="order-economics" class="pill off"></span></div>
-    <div class="card" style="padding: 14px; border-bottom: 1px solid var(--rule)">
-      <div class="controls">
-        <input type="text" id="order-id" placeholder="Fiverr order ID" aria-label="Order ID">
-        <input type="text" id="order-price" placeholder="Price $" aria-label="Price in dollars">
-        <input type="text" id="order-minutes" placeholder="Minutes" aria-label="Minutes spent">
-        <input type="text" id="order-notes" placeholder="Notes (optional)" aria-label="Notes">
-        <button id="order-add" class="primary">Log order</button>
+<div class="app">
+  <aside class="nav" aria-label="Primary">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">TM</div>
+      <div>
+        <div class="brand-name">TASKMAN</div>
+        <div class="brand-sub">OPERATOR</div>
       </div>
     </div>
-    <div class="card"><table>
-      <thead><tr><th>Order</th><th>Status</th><th class="n">Price</th><th class="n">Min</th><th class="n">Payout</th><th></th></tr></thead>
-      <tbody id="orders"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <section>
-    <div class="sec-head"><h2>Finance</h2></div>
-    <div class="tiles" id="finance-tiles"></div>
-    <div class="card"><table>
-      <thead><tr><th>Rail</th><th>State</th><th class="n">Cleared</th><th class="n">Spend</th><th class="n">Net</th><th class="n">Margin</th></tr></thead>
-      <tbody id="finance-rails"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
-    </table></div>
-  </section>
-
-  <p class="foot" id="foot">Set the API base URL and press Connect. The UI is static and holds no data of its own.</p>
+    <a class="nav-link" href="#/overview">Overview</a>
+    <a class="nav-link" href="#/ledger">Ledger</a>
+    <a class="nav-link" href="#/autonomy">Autonomy</a>
+    <a class="nav-link" href="#/work">Work</a>
+    <a class="nav-link" href="#/growth">Growth</a>
+    <p class="nav-foot">Settlement-verified numbers only. Estimates stay labeled.</p>
+  </aside>
+  <header class="top">
+    <div>
+      <h1 id="page-title">Overview</h1>
+      <nav class="mobile-nav" aria-label="Screens">
+        <a href="#/overview">Overview</a>
+        <a href="#/ledger">Ledger</a>
+        <a href="#/autonomy">Autonomy</a>
+        <a href="#/work">Work</a>
+        <a href="#/growth">Growth</a>
+      </nav>
+    </div>
+    <div class="controls">
+      <input type="url" id="api-base" placeholder="http://127.0.0.1:3100" aria-label="API base URL" autocomplete="off" spellcheck="false">
+      <input type="password" id="api-token" placeholder="Bearer token (optional)" aria-label="API token">
+      <label class="proxy-toggle"><input type="checkbox" id="use-proxy" checked> proxy</label>
+      <button id="save" type="button">Connect</button>
+      <button id="refresh" class="primary" type="button">Refresh</button>
+    </div>
+  </header>
+  <main class="main">
+    <div id="error" class="err" hidden role="alert"></div>
+    <div id="view" aria-live="polite"></div>
+    <p class="foot" id="foot">Set the API base URL and press Connect. packages/api owns drones/crons/ledger; src/server.js owns brain/tasks/runs.</p>
+  </main>
 </div>
 <script src="app.js"></script>
+<script src="screens.js"></script>
+<script src="screens-rest.js"></script>
+<script src="boot.js"></script>
 </body>
 </html>

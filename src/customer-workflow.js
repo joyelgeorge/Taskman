@@ -96,10 +96,17 @@ export function configureCustomerWorkflow({
   if (monthlyVolumeEstimate !== undefined) {
     const vol = Number(monthlyVolumeEstimate) || 0;
     customerWorkflowState.configuredInputs.monthlyVolumeEstimate = vol;
-    // Estimated annual savings: ~5% leakage recovery + tax deductions
-    const est = Math.round((vol * 0.05 * 12) + 48000);
-    customerWorkflowState.valueMetrics.estimatedAnnualSavingsCents = est;
-    customerWorkflowState.economicTaxonomy.estimatedSavingsCents = est;
+    // No projected saving is derived here any more.
+    //
+    // This used to compute (volume * 5% * 12) + $480 and present it to a prospect
+    // as `estimatedAnnualSavingsCents`. Both terms were invented: nothing has ever
+    // measured a 5% leakage rate for this customer or any other, and the flat
+    // addend has no origin at all. It is the same self-flattering arithmetic the
+    // settlement ledger exists to forbid — only pointed outward, at someone
+    // deciding whether to pay, which is worse than pointing it at ourselves.
+    //
+    // The honest number is the one the audit actually finds in their own files,
+    // and it stays zero until a reconciliation produces it.
   }
   if (notificationEmail !== undefined) customerWorkflowState.configuredInputs.notificationEmail = String(notificationEmail).trim();
 

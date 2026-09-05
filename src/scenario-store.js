@@ -7,12 +7,52 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const seedPath = join(__dirname, '..', 'data', 'scenarios.json');
 const moneyFlowHistoryPath = join(__dirname, '..', 'data', 'money-flow-search-history.json');
 
+/**
+ * Loads the optional scenario seed.
+ *
+ * `data/scenarios.json` is not tracked in the repository, so on every fresh
+ * checkout it is simply absent. This used to throw ENOENT straight out of
+ * server startup, before the HTTP listener was ever reached — which meant the
+ * server carrying every customer-facing route (uploads, reconciliation, billing)
+ * could not boot at all on a clean deploy. Verified against a clean worktree of
+ * HEAD: the process exits and nothing listens.
+ *
+ * A missing optional seed is a reason to start with no scenarios, never a reason
+ * to refuse to serve. An unreadable one is reported and treated the same way.
+ */
 export async function loadScenarioSeed() {
-  return JSON.parse(await readFile(seedPath, 'utf8'));
+  let raw;
+  try {
+    raw = await readFile(seedPath, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return { scenarios: [] };
+  }
+  if (!raw.trim()) return { scenarios: [] };
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`[scenarios] ${seedPath} is present but unparseable (${error.message}); starting with no scenarios.`);
+    return { scenarios: [] };
+  }
 }
 
+/** Same contract as the scenario seed: optional, and never fatal to startup. */
 async function loadMoneyFlowHistorySeed() {
-  return JSON.parse(await readFile(moneyFlowHistoryPath, 'utf8'));
+  let raw;
+  try {
+    raw = await readFile(moneyFlowHistoryPath, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return { runs: [] };
+  }
+  if (!raw.trim()) return { runs: [] };
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`[money-flow] ${moneyFlowHistoryPath} is unparseable (${error.message}); starting with no history.`);
+    return { runs: [] };
+  }
 }
 
 function seedMetadata(seed) {

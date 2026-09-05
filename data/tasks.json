@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-05T13:50:00+05:30",
+  "pick": {
+    "id": "first-cleared-settlement",
+    "why": "Revenue tiles are zero because the ledger has no CLEARED settlement. Nothing else in the operator UI will look alive until one real payout row exists. Money-flow research stays in SEARCH; this is the only executable task that changes the dashboard this week."
+  },
+  "tasks": [
+    {
+      "id": "first-cleared-settlement",
+      "title": "Land the first cleared settlement",
+      "track": "operator",
+      "status": "active",
+      "priority": 1,
+      "prompt": "Record one real payout on packages/api: log a Fiverr/gig order with minutes, then mark paid with bank-net cents, or sync Stripe. Confirm GET /api/money/settlements shows status CLEARED and the control UI revenue tile is non-zero.",
+      "done_when": "One settlements row status=CLEARED and verified revenue tile > $0.00"
+    },
+    {
+      "id": "keep-api-and-web-up",
+      "title": "Keep API :3100 and UI :3200 running with .env",
+      "track": "operator",
+      "status": "active",
+      "priority": 2,
+      "prompt": "Start with set -a; source .env; set +a; npm run api and npm run web. Connect the UI at http://127.0.0.1:3200 to http://127.0.0.1:3100. Do not treat :3200 as the API.",
+      "done_when": "lsof shows LISTEN on 3100 and 3200; Connect returns live payloads"
+    },
+    {
+      "id": "autoload-env",
+      "title": "Load .env before config import",
+      "track": "operator",
+      "status": "proposed",
+      "priority": 3,
+      "prompt": "src/server.js reads getRuntimeConfig() at import time, so .env must be sourced before node starts. Add a boot wrapper that loads .env without printing secrets. Do not commit .env.",
+      "done_when": "npm start sees DATABASE_URL and provider keys without a manual source"
+    },
+    {
+      "id": "unify-api-origins",
+      "title": "One origin for ledger and brain",
+      "track": "operator",
+      "status": "proposed",
+      "priority": 4,
+      "prompt": "packages/api owns drones/crons/ledger/orders. src/server.js owns brain/tasks/runs. Document or proxy so the operator UI does not require switching bases.",
+      "done_when": "One Connect URL fills Overview, Ledger, Autonomy, and Work without 404 origins"
+    },
+    {
+      "id": "cloud-support-plan-right-sizing-engine",
+      "title": "Cloud support-plan right-sizing engine",
+      "track": "money-flow",
+      "status": "leader",
+      "priority": 10,
+      "score": 46,
+      "max_score": 60,
+      "mode": "SEARCH",
+      "threshold_crossed": false,
+      "prompt": "Read-only recommend cheapest sufficient cloud support tier from billing forecast + SLO/incident telemetry. Do not execute plan changes. Next test: real change-frequency and savings, not price-comparison whitespace."
+    },
+    {
+      "id": "merchant-card-network-behavior-fee-sentinel",
+      "title": "Merchant card-network behavior-fee sentinel",
+      "track": "money-flow",
+      "status": "runner-up",
+      "priority": 11,
+      "score": 45,
+      "max_score": 60,
+      "mode": "SEARCH",
+      "threshold_crossed": false,
+      "prompt": "Watch merchant network behavior fees. Weaker than the leader on current evidence; do not promote unless it beats support-plan right-sizing on leakage recurrence and whitespace."
+    },
+    {
+      "id": "merchant-settlement-acceleration-decision-engine",
+      "title": "Merchant settlement-acceleration decision engine",
+      "track": "money-flow",
+      "status": "runner-up",
+      "priority": 12,
+      "score": 45,
+      "max_score": 60,
+      "mode": "SEARCH",
+      "threshold_crossed": false,
+      "prompt": "Decide when to accelerate merchant settlement. Same score band as the fee sentinel; not the leader."
+    },
+    {
+      "id": "expiring-contractual-financial-entitlements",
+      "title": "Expiring contractual financial entitlements",
+      "track": "money-flow",
+      "status": "challenger",
+      "priority": 13,
+      "score": null,
+      "mode": "SEARCH",
+      "threshold_crossed": false,
+      "prompt": "Direction from the opportunity-threshold default. Not scored against the current 46/60 leader in this file. Do not freeze."
+    }
+  ]
+}

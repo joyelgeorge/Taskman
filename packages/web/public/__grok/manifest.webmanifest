@@ -1,17 +1,22 @@
 {
-  "name": "Grok App",
-  "short_name": "Grok App",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "name": "Taskman Operator",
+  "short_name": "Taskman",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#141813",
+  "theme_color": "#141813",
   "icons": [
     {
       "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "./icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }

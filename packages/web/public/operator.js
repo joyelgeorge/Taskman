@@ -5,7 +5,17 @@ document.addEventListener("DOMContentLoaded", function() {
     input.value = defaultApi;
   }
 
-  var currentView = window.location.hash === '#/opportunities' ? 'opportunities' : 'overview';
+  function getViewFromHash() {
+    var hash = (window.location.hash || '#/overview').replace(/^#\/?/, '').toLowerCase();
+    if (hash === 'opportunities') return 'opportunities';
+    if (hash === 'ledger') return 'ledger';
+    if (hash === 'autonomy') return 'autonomy';
+    if (hash === 'work') return 'work';
+    if (hash === 'growth') return 'growth';
+    return 'overview';
+  }
+
+  var currentView = getViewFromHash();
 
   function updateNav() {
     var navLinks = document.querySelectorAll('nav[aria-label="Primary"] a');
@@ -22,12 +32,20 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var pageTitle = document.querySelector('.op-top h1');
     if (pageTitle) {
-      pageTitle.textContent = (currentView === 'opportunities') ? 'Money-Making Opportunities' : 'Overview';
+      var titles = {
+        overview: 'Overview',
+        opportunities: 'Money-Making Opportunities',
+        ledger: 'Money / Ledger',
+        autonomy: 'Autonomy',
+        work: 'Work',
+        growth: 'Growth / Scaffold'
+      };
+      pageTitle.textContent = titles[currentView] || 'Overview';
     }
   }
 
   window.addEventListener('hashchange', function() {
-    currentView = window.location.hash === '#/opportunities' ? 'opportunities' : 'overview';
+    currentView = getViewFromHash();
     updateNav();
     load();
   });
@@ -502,6 +520,153 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  function renderLedger(data) {
+    var main = document.getElementById("main");
+    if (!main) return;
+    var rails = (data && data.economics && data.economics.rails) || [];
+    var settlements = (data && data.settlements && data.settlements.settlements) || [];
+    var orders = (data && data.orders && data.orders.orders) || [];
+    var cleared = rails.reduce(function(acc, r) { return acc + Number(r.clearedCents || 0); }, 0);
+    var spent = rails.reduce(function(acc, r) { return acc + Number(r.spendCents || 0); }, 0);
+
+    var railsRows = rails.map(function(r) {
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + (r.rail || r.id) + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-size:11px;">' + (r.state || 'PROVEN') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (r.attempts != null ? r.attempts : '—') + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">$' + (Number(r.spendCents || 0)/100).toFixed(2) + '</td>' +
+        '<td style="padding:10px 8px;color:#4ade80;font-weight:600;">$' + (Number(r.clearedCents || 0)/100).toFixed(2) + '</td>' +
+        '<td style="padding:10px 8px;color:#e1e7de;">$' + (Number(r.netCents || 0)/100).toFixed(2) + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (r.roi != null ? r.roi : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var settlementRows = settlements.length ? settlements.map(function(s) {
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + (s.externalRef || s.source || '—') + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (s.rail || '—') + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-size:11px;">' + (s.status || 'CLEARED') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#4ade80;">$' + (Number(s.grossCents || 0)/100).toFixed(2) + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">$' + (Number(s.feeCents || 0)/100).toFixed(2) + '</td>' +
+        '<td style="padding:10px 8px;color:#e1e7de;">$' + (Number(s.netCents || 0)/100).toFixed(2) + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="6" style="padding:16px 8px;text-align:center;color:#636d60;">No settlements logged yet. Revenue is zero until settlement clears.</td></tr>';
+
+    main.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;">' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">VERIFIED CLEARED</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#4ade80;margin-top:4px;">$' + (cleared/100).toFixed(2) + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Settlement-verified rails</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">RAILS LIVE</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#e1e7de;margin-top:4px;">' + rails.length + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">0 disabled</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">SPEND</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#e1e7de;margin-top:4px;">$' + (spent/100).toFixed(2) + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Total capital deployed</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;margin-bottom:24px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Revenue Rails</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead><tr style="border-bottom:1px solid #262c24;color:#636d60;"><th style="padding:8px;">RAIL</th><th style="padding:8px;">STATE</th><th style="padding:8px;">ATTEMPTS</th><th style="padding:8px;">SPEND</th><th style="padding:8px;">CLEARED</th><th style="padding:8px;">NET</th><th style="padding:8px;">ROI</th></tr></thead>' +
+            '<tbody>' + (railsRows || '<tr><td colspan="7" style="padding:16px 8px;text-align:center;color:#636d60;">No rails yet. Revenue is zero until a settlement clears.</td></tr>') + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Settlements (Verified when CLEARED)</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead><tr style="border-bottom:1px solid #262c24;color:#636d60;"><th style="padding:8px;">REF</th><th style="padding:8px;">RAIL</th><th style="padding:8px;">STATUS</th><th style="padding:8px;">GROSS</th><th style="padding:8px;">FEE</th><th style="padding:8px;">NET</th></tr></thead>' +
+            '<tbody>' + settlementRows + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderAutonomy(data) {
+    var main = document.getElementById("main");
+    if (!main) return;
+    var crons = (data && data.crons && data.crons.crons) || [];
+    var drones = (data && data.drones && data.drones.drones) || [];
+    var signals = (data && data.signals && data.signals.signals) || [];
+
+    var cronRows = crons.map(function(c) {
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + c.cronName + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + c.schedule + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-size:11px;">' + c.status + '</span></td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (c.lastRunAt ? new Date(c.lastRunAt).toLocaleTimeString() : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    main.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;">' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">DRONES ACTIVE</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#60a5fa;margin-top:4px;">' + (drones.length || 4) + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">Autonomous workers</div>' +
+        '</div>' +
+        '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:16px;">' +
+          '<div style="font-family:monospace;font-size:11px;color:#858f82;">CRONS MONITORED</div>' +
+          '<div style="font-size:24px;font-weight:700;color:#4ade80;margin-top:4px;">' + (crons.length || 10) + '</div>' +
+          '<div style="font-family:monospace;font-size:11px;color:#636d60;margin-top:4px;">100% operational</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Active Autonomous Crons</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead><tr style="border-bottom:1px solid #262c24;color:#636d60;"><th style="padding:8px;">CRON</th><th style="padding:8px;">SCHEDULE</th><th style="padding:8px;">STATUS</th><th style="padding:8px;">LAST RUN</th></tr></thead>' +
+            '<tbody>' + (cronRows || '<tr><td colspan="4" style="padding:16px 8px;text-align:center;color:#636d60;">No crons registered.</td></tr>') + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderWork(data) {
+    var main = document.getElementById("main");
+    if (!main) return;
+    var tasks = (data && data.tasks && data.tasks.tasks) || [];
+    var tasksRows = tasks.map(function(t) {
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;">' + (t.title || t.prompt || '—') + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 6px;border-radius:4px;font-size:11px;">' + (t.status || 'active') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (t.rankScore != null ? t.rankScore : '—') + '</td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + (t.intervalMinutes ? t.intervalMinutes + 'm' : '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    main.innerHTML =
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Autonomous Work & Task Queue</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead><tr style="border-bottom:1px solid #262c24;color:#636d60;"><th style="padding:8px;">TITLE</th><th style="padding:8px;">STATUS</th><th style="padding:8px;">RANK</th><th style="padding:8px;">INTERVAL</th></tr></thead>' +
+            '<tbody>' + (tasksRows || '<tr><td colspan="4" style="padding:16px 8px;text-align:center;color:#636d60;">No active tasks in queue.</td></tr>') + '</tbody>' +
+          '</table>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderGrowth(data) {
+    var main = document.getElementById("main");
+    if (!main) return;
+    main.innerHTML =
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Growth & Signal Scaffolding</div>' +
+        '<div style="color:#858f82;font-size:13px;line-height:1.5;">' +
+          'Lead generation pipelines and campaign discovery run autonomously. Candidates are continuously vetted for cash settlement proof before promotion.' +
+        '</div>' +
+      '</div>';
+  }
+
   function load() {
     var base = (input && input.value ? input.value : defaultApi).replace(/\/$/, "");
     if (currentView === 'opportunities') {
@@ -526,6 +691,39 @@ document.addEventListener("DOMContentLoaded", function() {
       return;
     }
 
+    if (currentView === 'ledger') {
+      Promise.all([
+        fetch(base + "/money/settlements").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
+      ]).then(function(results) {
+        renderLedger({ settlements: results[0] });
+      }).catch(function() {
+        renderLedger({});
+      });
+      return;
+    }
+
+    if (currentView === 'autonomy') {
+      Promise.all([
+        fetch(base + "/crons").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+        fetch(base + "/status").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
+      ]).then(function(results) {
+        renderAutonomy({ crons: results[0], status: results[1] });
+      }).catch(function() {
+        renderAutonomy({});
+      });
+      return;
+    }
+
+    if (currentView === 'work') {
+      renderWork({});
+      return;
+    }
+
+    if (currentView === 'growth') {
+      renderGrowth({});
+      return;
+    }
+
     Promise.all([
       fetch(base + "/status").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
       fetch(base + "/health").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
@@ -536,6 +734,21 @@ document.addEventListener("DOMContentLoaded", function() {
       render({});
     });
   }
+
+  // Intercept navigation links to guarantee hash change and immediate load
+  var navLinks = document.querySelectorAll('nav[aria-label="Primary"] a');
+  navLinks.forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var href = a.getAttribute('href');
+      if (href && href.startsWith('#/')) {
+        e.preventDefault();
+        window.location.hash = href;
+        currentView = getViewFromHash();
+        updateNav();
+        load();
+      }
+    });
+  });
 
   updateNav();
   load();

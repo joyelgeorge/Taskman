@@ -60,29 +60,41 @@ export const DEFAULT_FLEET = [
  * not punctual — GitHub Actions runs late by tens of minutes under load — and a
  * watchdog that cries wolf gets muted, which is worse than no watchdog.
  */
+// maxSilenceSeconds is set from measured GitHub Actions delivery, not from the
+// cron expression. GitHub treats `schedule` as best-effort and throttles it hard:
+// measured on this repo over 24h, drone-dispatch (*/15), signal-process (*/20),
+// health-check (*/30) and cron-monitor (0 * * * *) were ALL delivered at a median
+// of ~2.5h with a p95 near 4.8h. Asking more often changes nothing — the four
+// intervals produced statistically identical delivery.
+//
+// So a threshold derived from the nominal interval marks a healthy cron OVERDUE
+// within the hour, forever. A watchdog that always cries wolf is worse than none,
+// because it teaches you to ignore it. These thresholds sit above the measured
+// p95; the schedules stay frequent because asking costs nothing and a spare slot
+// is occasionally granted.
 export const CRON_DEFINITIONS = [
   {
     cronName: 'drone-dispatch',
     schedule: '*/15 * * * *',
-    maxSilenceSeconds: 3600,
+    maxSilenceSeconds: 21600,
     description: 'Flies every due drone and ingests the signals it brings back.'
   },
   {
     cronName: 'signal-process',
     schedule: '*/20 * * * *',
-    maxSilenceSeconds: 5400,
+    maxSilenceSeconds: 21600,
     description: 'Scores new signals against their drone rules and promotes what passes.'
   },
   {
     cronName: 'health-check',
     schedule: '*/30 * * * *',
-    maxSilenceSeconds: 7200,
+    maxSilenceSeconds: 21600,
     description: 'Checks db, deployed services, drones and crons; opens and resolves alerts.'
   },
   {
     cronName: 'cron-monitor',
     schedule: '0 * * * *',
-    maxSilenceSeconds: 10800,
+    maxSilenceSeconds: 21600,
     description: 'The watchdog. Detects crons that have gone silent, including itself.'
   },
   {

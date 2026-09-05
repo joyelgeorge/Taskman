@@ -151,9 +151,9 @@ document.addEventListener("DOMContentLoaded", function() {
   function load() {
     var base = (input && input.value ? input.value : defaultApi).replace(/\/$/, "");
     Promise.all([
-      fetch(base + "/status").then(function(r) { return r.json(); }).catch(function() { return null; }),
-      fetch(base + "/health").then(function(r) { return r.json(); }).catch(function() { return null; }),
-      fetch(base + "/crons").then(function(r) { return r.json(); }).catch(function() { return null; })
+      fetch(base + "/status").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch(base + "/health").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+      fetch(base + "/crons").then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
     ]).then(function(results) {
       render({ status: results[0], health: results[1], crons: results[2] });
     }).catch(function() {

@@ -1,0 +1,19 @@
+{
+  "crons": [
+    { "cronName": "cron-monitor", "schedule": "*/5 * * * *", "status": "OK", "silentSeconds": 45, "lastRunAt": "2026-09-05T16:55:00.000Z" },
+    { "cronName": "data-collect", "schedule": "0 4 * * *", "status": "OK", "silentSeconds": 46400, "lastRunAt": "2026-09-05T04:00:00.000Z" },
+    { "cronName": "drone-dispatch", "schedule": "*/15 * * * *", "status": "OK", "silentSeconds": 88, "lastRunAt": "2026-09-05T16:50:00.000Z" },
+    { "cronName": "finance-report", "schedule": "0 0 * * *", "status": "OK", "silentSeconds": 79200, "lastRunAt": "2026-09-05T00:00:00.000Z" },
+    { "cronName": "health-check", "schedule": "*/10 * * * *", "status": "OK", "silentSeconds": 120, "lastRunAt": "2026-09-05T16:50:00.000Z" },
+    { "cronName": "improve", "schedule": "0 6 * * *", "status": "OK", "silentSeconds": 27100, "lastRunAt": "2026-09-05T06:00:00.000Z" },
+    { "cronName": "revenue-check", "schedule": "0 */6 * * *", "status": "OK", "silentSeconds": 9700, "lastRunAt": "2026-09-05T12:00:00.000Z" },
+    { "cronName": "satellite-scan", "schedule": "0 8 * * *", "status": "OK", "silentSeconds": 46400, "lastRunAt": "2026-09-05T08:00:00.000Z" },
+    { "cronName": "signal-process", "schedule": "*/20 * * * *", "status": "OK", "silentSeconds": 66, "lastRunAt": "2026-09-05T16:40:00.000Z" },
+    { "cronName": "stream-discovery", "schedule": "0 5 * * *", "status": "OK", "silentSeconds": 37000, "lastRunAt": "2026-09-05T05:00:00.000Z" }
+  ],
+  "known": [
+    "cron-monitor", "data-collect", "drone-dispatch", "finance-report",
+    "health-check", "improve", "revenue-check", "satellite-scan",
+    "signal-process", "stream-discovery"
+  ]
+}

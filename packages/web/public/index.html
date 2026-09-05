@@ -27,6 +27,31 @@
   <div class="tiles" id="tiles"></div>
 
   <section>
+    <div class="sec-head"><h2>Transactions</h2></div>
+    <p id="tx-note" class="empty" style="margin:0 0 10px">Connect to load settlement rows. Revenue stays $0 until a settlement is CLEARED.</p>
+    <div class="card"><table>
+      <thead><tr><th>Rail</th><th>Status</th><th>Source</th><th>External ref</th><th class="n">Gross</th><th class="n">Fee</th><th class="n">Net</th><th>When</th></tr></thead>
+      <tbody id="settlements"><tr><td colspan="8" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Rail attempts</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Rail</th><th>Candidate</th><th>Status</th><th class="n">Cost</th><th>Started</th></tr></thead>
+      <tbody id="attempts"><tr><td colspan="5" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Expenses</h2></div>
+    <div class="card"><table>
+      <thead><tr><th>Category</th><th>Description</th><th class="n">Amount</th><th>When</th></tr></thead>
+      <tbody id="expenses"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
     <div class="sec-head"><h2>Crons</h2></div>
     <div class="card"><table>
       <thead><tr><th>Cron</th><th>Schedule</th><th>Status</th><th>Last run</th><th class="n">Silent</th><th></th></tr></thead>
@@ -111,5 +136,6 @@
   <p class="foot" id="foot">Default API is packages/api at http://127.0.0.1:3100 (npm run api). src/server.js is :3000 for brain/tasks/runs.</p>
 </div>
 <script src="app.js"></script>
+<script src="tx.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { route } from './routes.js';
+import { routeTransactions } from './routes-transactions.js';
 
 const port = Number(process.env.API_PORT || process.env.PORT || 3100);
 const allowOrigin = process.env.CORS_ORIGIN || '*';
@@ -33,7 +34,8 @@ export function createServer() {
     };
 
     try {
-      const result = await route(req, url, readBody);
+      const extra = await routeTransactions(req, url);
+      const result = extra || await route(req, url, readBody);
       send(res, result.status, result.body);
     } catch (error) {
       send(res, 500, { error: String(error.message || error) });

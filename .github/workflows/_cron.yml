@@ -63,4 +63,6 @@ jobs:
           API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
           WEB_HEALTH_URL: ${{ vars.WEB_HEALTH_URL }}
           HOSTNAME: github-actions
+          TASKMAN_ALLOW_MEMORY_CRON: 'true'
         run: npm run cron -- ${{ inputs.name }}
+

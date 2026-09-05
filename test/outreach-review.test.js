@@ -5,16 +5,30 @@ import {
   updateOutreachDraftStatus,
   listOutreachDrafts,
   getOutreachDraft,
-  resetOutreachDraftsMemory
+  resetOutreachDraftsMemory,
+  runOutreachDraftTransform
 } from '../src/transforms/outreach-draft.js';
+import { databaseEnabled } from '../src/db.js';
+import { upsertCampaign, createLead, resetMarketingMemory } from '@taskman/core/marketing/store.js';
 
-test('updateOutreachDraftStatus: valid transitions in memory', async () => {
+async function realLead(name, campaignKey = 'c1') {
+  if (!databaseEnabled) return { id: 'l1', rawRecord: { name } };
+  await resetMarketingMemory();
+  const campaign = await upsertCampaign({
+    campaignKey, name: 'Escrow Audit', lane: 'audit',
+    valueProposition: 'Reconcile payouts against deposits'
+  });
+  const lead = await createLead({
+    campaignKey: campaign.campaignKey, source: 'manual', rawRecord: { name }
+  });
+  return { id: lead.id, rawRecord: { name } };
+}
+
+test('updateOutreachDraftStatus: valid transitions', async () => {
   await resetOutreachDraftsMemory();
 
-  // Fake draft in memory
-  const { runOutreachDraftTransform } = await import('../src/transforms/outreach-draft.js');
-  const lead = { id: 'l-test', rawRecord: { name: 'Acme Test' } };
-  const campaign = { campaignKey: 'c-test', name: 'Test Campaign', evidence: { val: '$100' } };
+  const lead = await realLead('Acme Test');
+  const campaign = { campaignKey: 'c1', name: 'Test Campaign', evidence: { val: '$100' } };
   
   const gen = await runOutreachDraftTransform({
     lead,
@@ -41,9 +55,8 @@ test('updateOutreachDraftStatus: valid transitions in memory', async () => {
 test('updateOutreachDraftStatus: invalid transitions are rejected', async () => {
   await resetOutreachDraftsMemory();
 
-  const { runOutreachDraftTransform } = await import('../src/transforms/outreach-draft.js');
-  const lead = { id: 'l-test2', rawRecord: { name: 'Beta Test' } };
-  const campaign = { campaignKey: 'c-test2', name: 'Test Campaign', evidence: {} };
+  const lead = await realLead('Beta Test');
+  const campaign = { campaignKey: 'c1', name: 'Test Campaign', evidence: {} };
   
   const gen = await runOutreachDraftTransform({
     lead,
@@ -72,8 +85,7 @@ test('updateOutreachDraftStatus: invalid transitions are rejected', async () => 
 test('listOutreachDrafts and getOutreachDraft work as expected', async () => {
   await resetOutreachDraftsMemory();
 
-  const { runOutreachDraftTransform } = await import('../src/transforms/outreach-draft.js');
-  const lead = { id: 'l-test3', rawRecord: { name: 'Gamma Test' } };
+  const lead = await realLead('Gamma Test', 'c-gamma');
   const campaign = { campaignKey: 'c-gamma', name: 'Gamma Campaign', evidence: {} };
 
   const gen = await runOutreachDraftTransform({

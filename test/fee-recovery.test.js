@@ -11,10 +11,39 @@ test('a fee at the median is not an anomaly', () => {
   assert.equal(classifyFeeAnomaly({ payout: at(0.029, 50000), medianRate: 0.029 }), null);
 });
 
-test('a difference too small to be worth a conversation is ignored', () => {
-  // Half a point on a small order is rounding. Sending someone to their processor
-  // over eighty cents costs them more than it returns.
-  assert.equal(classifyFeeAnomaly({ payout: at(0.034, 2000), medianRate: 0.029 }), null);
+test('a small finding is kept and grouped, not discarded', () => {
+  // This used to assert the opposite: anything under fifty cents was dropped, on
+  // the reasoning that nobody chases eighty cents. That reasoning is human.
+  // Eighty cents across four hundred orders is $320, and the party enumerating
+  // them is a machine that does not get bored. Small findings now land in the
+  // aggregate instead of the floor.
+  const many = [
+    ...Array.from({ length: 50 }, () => at(0.029, 50000)),
+    ...Array.from({ length: 40 }, () => at(0.04, 2000))
+  ];
+  const result = analyseFeeRecovery(many, {});
+  assert.equal(result.findings.length, 0, 'no single small order is worth its own line');
+  assert.equal(result.minor.count, 40);
+  assert.ok(result.minor.amountInQuestionCents > 0, 'but the total is still reported');
+  assert.match(result.minor.note, /the total may be/);
+});
+
+test('the threshold is derived from the account rather than chosen in advance', () => {
+  // A tight account: 3 MAD of a near-zero spread flags a small deviation, which a
+  // fixed 1% floor would have hidden entirely.
+  const tight = [...Array.from({ length: 30 }, () => at(0.029, 100000)), at(0.035, 400000)];
+  const result = analyseFeeRecovery(tight, {});
+  assert.equal(result.findings.length, 1);
+  assert.match(result.threshold.basis, /median absolute deviations/);
+
+  // A volatile account: the same 0.6% gap is ordinary here, and is not flagged.
+  const volatile = [
+    ...Array.from({ length: 15 }, () => at(0.02, 100000)),
+    ...Array.from({ length: 15 }, () => at(0.05, 100000)),
+    at(0.035, 400000)
+  ];
+  assert.equal(analyseFeeRecovery(volatile, {}).findings.some(f => f.ratePct === 3.5), false,
+    'a deviation smaller than the account\'s own spread is not an anomaly');
 });
 
 test('a large over-median fee reads as an interchange downgrade, with the category to ask about', () => {
@@ -53,10 +82,13 @@ test('the amount is measured against the account\'s own median, not an invented 
 });
 
 test('nothing is ever described as recovered, recoverable, or owed', () => {
-  const result = analyseFeeRecovery(
-    [at(0.05, 300000), at(0.06, 80000, { description: 'refund' })],
-    { medianRate: 0.029 }
-  );
+  // A realistic set: two points have no spread to measure against, so the
+  // baseline needs a body of ordinary transactions behind it.
+  const result = analyseFeeRecovery([
+    ...Array.from({ length: 20 }, () => at(0.029, 50000)),
+    at(0.05, 300000),
+    at(0.06, 80000, { description: 'refund' })
+  ], {});
   const serialized = JSON.stringify(result).toLowerCase();
   for (const word of ['recoverable', 'you will recover', 'owed to you', 'guaranteed', 'refund due']) {
     assert.equal(serialized.includes(word), false, `must not claim "${word}"`);
@@ -72,8 +104,8 @@ test('findings come back worst-first, so the biggest question is asked first', (
   assert.deepEqual(amounts, [...amounts].sort((a, b) => b - a));
 });
 
-test('with no fee baseline it says so rather than inventing one', () => {
-  const result = analyseFeeRecovery([at(0.05, 50000)], { medianRate: null });
+test('with no fee data at all it says so rather than inventing a baseline', () => {
+  const result = analyseFeeRecovery([{ orderId: 'x', grossCents: 50000, feeCents: null }], {});
   assert.equal(result.available, false);
   assert.match(result.reason, /no baseline rate/i);
 });

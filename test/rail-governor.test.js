@@ -184,3 +184,45 @@ test('two writes landing in the same instant still land in different probation w
   const verdict = await evaluateRailGovernor({ rail: 'r', probationBudgetCents: 5000, minAttempts: 100 });
   assert.equal(verdict.nextState, 'PROBATION');
 });
+
+// ---- settlement lag ----------------------------------------------------------
+
+test('a rail is not disabled for attempts too young to have settled', async () => {
+  await reset();
+  // The failure this prevents: a seller delivers 30 Fiverr orders in week one.
+  // Fiverr clears funds 14 days after completion, so on day seven nothing has
+  // arrived — not because the rail is dead, but because it is not due. The
+  // governor used to count all 30 as failures, disable the lane, and require a
+  // manual re-enable, precisely one week before the first payment.
+  const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  for (let i = 0; i < 30; i += 1) {
+    await recordAttempt({ rail: 'fiverr', costCents: 1, startedAt: twoDaysAgo });
+  }
+  const verdict = await evaluateRailGovernor({ rail: 'fiverr', probationBudgetCents: 100_000 });
+  assert.notEqual(verdict.nextState, 'DISABLED', 'young attempts are pending, not failed');
+  assert.match(verdict.reason, /clearing period/);
+});
+
+test('a rail is still disabled once the attempts are genuinely overdue', async () => {
+  await reset();
+  // Older than Fiverr's 14-day clearing period, so the money really is absent.
+  const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
+  for (let i = 0; i < 30; i += 1) {
+    await recordAttempt({ rail: 'fiverr', costCents: 1, startedAt: longAgo });
+  }
+  const verdict = await evaluateRailGovernor({ rail: 'fiverr', probationBudgetCents: 100_000 });
+  assert.equal(verdict.nextState, 'DISABLED');
+  assert.match(verdict.reason, /zero verified settlements/);
+});
+
+test('an unknown rail waits the slowest common term rather than the fastest', async () => {
+  await reset();
+  const twentyDaysAgo = new Date(Date.now() - 20 * 86_400_000).toISOString();
+  for (let i = 0; i < 30; i += 1) {
+    await recordAttempt({ rail: 'some-new-rail', costCents: 1, startedAt: twentyDaysAgo });
+  }
+  // 20 days is past Fiverr's 14 but inside net-30, and being slow to disable
+  // costs a little budget where being quick costs the lane.
+  const verdict = await evaluateRailGovernor({ rail: 'some-new-rail', probationBudgetCents: 100_000 });
+  assert.notEqual(verdict.nextState, 'DISABLED');
+});

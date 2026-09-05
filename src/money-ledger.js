@@ -29,6 +29,33 @@ export const SETTLEMENT_STATUS = Object.freeze({
 });
 
 /** Sources that can be re-queried to confirm the money exists. */
+/**
+ * How long each rail actually takes to pay, from its own published terms.
+ *
+ * These are not tuning knobs. Every value is the platform's stated clearing
+ * period, and the governor treats an attempt younger than this as pending rather
+ * than as evidence of failure. Without it, twenty-five delivered orders in week
+ * one read as twenty-five failures on day seven, and the rail is disabled the
+ * week before its first payment lands.
+ *
+ * When a rail is not listed the default is deliberately the slowest common term
+ * rather than the fastest: being slow to disable costs a little budget, being
+ * quick to disable costs the lane.
+ */
+export const SETTLEMENT_LAG_DAYS = Object.freeze({
+  fiverr: 14,        // cleared 14 days after order completion (7 for Top Rated)
+  upwork: 10,        // 5-day security period plus payout transit
+  stripe: 7,         // rolling payout, 2-7 days depending on account age and country
+  paypal: 3,
+  invoice: 30        // net-30 is the ordinary commercial term
+});
+
+export const DEFAULT_SETTLEMENT_LAG_DAYS = 30;
+
+export function settlementLagFor(rail) {
+  return SETTLEMENT_LAG_DAYS[String(rail || '').toLowerCase()] ?? DEFAULT_SETTLEMENT_LAG_DAYS;
+}
+
 export const VERIFIED_SOURCES = Object.freeze(['stripe', 'bank', 'manual_receipt']);
 
 /**
@@ -87,7 +114,13 @@ async function currentEpoch(rail) {
   return Number(state?.probation_epoch ?? 0);
 }
 
-export async function recordAttempt({ rail, candidateKey = null, stage = 'EXECUTE', costCents = 0, evidence = {} }) {
+export async function recordAttempt({
+  rail, candidateKey = null, stage = 'EXECUTE', costCents = 0, evidence = {},
+  // Explicit when backfilling a historical attempt, or when a caller records one
+  // after the fact. The governor now judges maturity by this timestamp, so it has
+  // to reflect when the work actually happened rather than when it was written.
+  startedAt = null
+}) {
   if (!rail) throw new Error('rail is required');
   const epoch = await currentEpoch(rail);
   const attempt = normalizeAttempt({
@@ -98,7 +131,7 @@ export async function recordAttempt({ rail, candidateKey = null, stage = 'EXECUT
     status: ATTEMPT_STATUS.STARTED,
     cost_cents: costCents,
     evidence,
-    started_at: new Date().toISOString(),
+    started_at: startedAt ? new Date(startedAt).toISOString() : new Date().toISOString(),
     probation_epoch: epoch
   });
 
@@ -108,9 +141,9 @@ export async function recordAttempt({ rail, candidateKey = null, stage = 'EXECUT
   }
 
   const result = await query(
-    `INSERT INTO rail_attempts(id, rail, candidate_key, stage, status, cost_cents, evidence, probation_epoch)
-     VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8) RETURNING *`,
-    [attempt.id, rail, candidateKey, stage, attempt.status, attempt.costCents, JSON.stringify(evidence), epoch]
+    `INSERT INTO rail_attempts(id, rail, candidate_key, stage, status, cost_cents, evidence, probation_epoch, started_at)
+     VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9) RETURNING *`,
+    [attempt.id, rail, candidateKey, stage, attempt.status, attempt.costCents, JSON.stringify(evidence), epoch, attempt.startedAt]
   );
   return normalizeAttempt(result.rows[0]);
 }
@@ -440,21 +473,38 @@ export async function setRailState(rail, state, reason = null) {
  * comparison — see the note on rail_state.probation_epoch in
  * db/migrations/010_rail_governor.sql for why timestamps are not safe here.
  */
-export async function railProbationWindow(rail) {
+export async function railProbationWindow(rail, { settlementLagDays = DEFAULT_SETTLEMENT_LAG_DAYS } = {}) {
   if (!rail) throw new Error('rail is required');
   const epoch = await currentEpoch(rail);
+
+  // Attempts old enough that money would have arrived by now if it was going to.
+  //
+  // An attempt made yesterday proves nothing about whether a rail settles: Fiverr
+  // holds cleared funds 14 days, Stripe pays out on a 2-7 day rolling basis, an
+  // invoice is net-30. Counting a young attempt as evidence of failure is how the
+  // governor kills a lane in the week it starts working, immediately before the
+  // first payment lands — and recovery from DISABLED is manual only.
+  const cutoff = new Date(Date.now() - settlementLagDays * 86_400_000);
 
   if (!databaseEnabled) {
     const attempts = memory.attempts.filter(a => a.rail === rail && a.probationEpoch === epoch);
     const settlements = memory.settlements.filter(s => s.rail === rail && s.probationEpoch === epoch && s.status === SETTLEMENT_STATUS.CLEARED);
     const spendCents = attempts.reduce((sum, a) => sum + a.costCents, 0);
     const clearedCents = settlements.reduce((sum, s) => sum + s.netCents, 0);
-    return { rail, epoch, spendCents, clearedCents, clearedCount: settlements.length, attempts: attempts.length };
+    const maturedAttempts = attempts.filter(a => new Date(a.startedAt ?? a.attemptedAt ?? 0) <= cutoff).length;
+    return {
+      rail, epoch, spendCents, clearedCents, clearedCount: settlements.length,
+      attempts: attempts.length,
+      maturedAttempts,
+      pendingAttempts: attempts.length - maturedAttempts,
+      settlementLagDays
+    };
   }
 
   const [attemptsResult, settlementsResult] = await Promise.all([
-    query(`SELECT COUNT(*)::int AS attempts, COALESCE(SUM(cost_cents),0)::bigint AS spend_cents
-           FROM rail_attempts WHERE rail=$1 AND probation_epoch=$2`, [rail, epoch]),
+    query(`SELECT COUNT(*)::int AS attempts, COALESCE(SUM(cost_cents),0)::bigint AS spend_cents,
+                  COUNT(*) FILTER (WHERE started_at <= $3::timestamptz)::int AS matured_attempts
+           FROM rail_attempts WHERE rail=$1 AND probation_epoch=$2`, [rail, epoch, cutoff.toISOString()]),
     query(`SELECT COUNT(*)::int AS cleared_count, COALESCE(SUM(net_cents),0)::bigint AS cleared_cents
            FROM settlements WHERE rail=$1 AND probation_epoch=$2 AND status='CLEARED'`, [rail, epoch])
   ]);
@@ -463,6 +513,9 @@ export async function railProbationWindow(rail) {
     spendCents: Number(attemptsResult.rows[0].spend_cents),
     clearedCents: Number(settlementsResult.rows[0].cleared_cents),
     clearedCount: Number(settlementsResult.rows[0].cleared_count),
+    maturedAttempts: Number(attemptsResult.rows[0].matured_attempts),
+    pendingAttempts: Number(attemptsResult.rows[0].attempts) - Number(attemptsResult.rows[0].matured_attempts),
+    settlementLagDays,
     attempts: Number(attemptsResult.rows[0].attempts)
   };
 }

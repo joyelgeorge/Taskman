@@ -1,5 +1,7 @@
 import { databaseEnabled, query, truncateForTesting } from './db.js';
-import { railEconomics, railWindow, railProbationWindow, getRailState, setRailState } from './money-ledger.js';
+import {
+  railEconomics, railWindow, railProbationWindow, getRailState, setRailState, settlementLagFor
+} from './money-ledger.js';
 
 /**
  * The four-state rail governor (docs/TARGET_DESIGN.md §8).
@@ -102,7 +104,7 @@ export async function evaluateRailGovernor({
 
   if (currentState === 'PROBATION') {
     // Epoch-scoped, not timestamp-scoped — see railProbationWindow's doc comment.
-    const windowed = await railProbationWindow(rail);
+    const windowed = await railProbationWindow(rail, { settlementLagDays: settlementLagFor(rail) });
 
     if (windowed.clearedCents > 0) {
       return {
@@ -112,22 +114,37 @@ export async function evaluateRailGovernor({
       };
     }
     if (windowed.spendCents >= budget) {
+      // Spend is real the moment it happens, so an exhausted budget still stops
+      // the rail — but if attempts are merely young, say so, because "we ran out
+      // of money before anything could have cleared" is a different finding from
+      // "this rail does not pay", and only one of them means the lane is dead.
+      const pending = windowed.pendingAttempts
+        ? ` ${windowed.pendingAttempts} attempt(s) are still inside the ${windowed.settlementLagDays}-day `
+          + 'clearing period and may yet settle'
+        : '';
       return {
         ...base, nextState: 'DISABLED',
-        reason: `spent ${usd(windowed.spendCents)} of a ${usd(budget)} probation budget with zero verified settlements`,
+        reason: `spent ${usd(windowed.spendCents)} of a ${usd(budget)} probation budget with zero `
+          + `verified settlements.${pending}`,
         budgetCents: budget
       };
     }
-    if (windowed.attempts >= minAttempts) {
+    // Matured attempts only. An attempt younger than the rail's clearing period
+    // has not failed to settle — it has not had the chance to. Counting it kills
+    // the lane in the week it starts working.
+    if (windowed.maturedAttempts >= minAttempts) {
       return {
         ...base, nextState: 'DISABLED',
-        reason: `${windowed.attempts} attempts on probation with zero verified settlements`,
+        reason: `${windowed.maturedAttempts} attempts older than this rail's ${windowed.settlementLagDays}-day `
+          + 'clearing period, with zero verified settlements',
         budgetCents: budget
       };
     }
     return {
       ...base, nextState: 'PROBATION',
-      reason: `on probation: ${usd(budget - windowed.spendCents)} and ${minAttempts - windowed.attempts} attempts remaining before automatic shutdown`,
+      reason: `on probation: ${usd(budget - windowed.spendCents)} and `
+        + `${minAttempts - windowed.maturedAttempts} matured attempts remaining before automatic shutdown`
+        + (windowed.pendingAttempts ? `; ${windowed.pendingAttempts} still within the ${windowed.settlementLagDays}-day clearing period` : ''),
       budgetCents: budget
     };
   }

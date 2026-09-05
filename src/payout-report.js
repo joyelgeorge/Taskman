@@ -149,7 +149,7 @@ export function buildFullReport({
   // it settled at" is something the customer can actually walk into a support
   // conversation holding.
   const feeRecovery = fees.available
-    ? analyseFeeRecovery(platform.payouts, { medianRate: fees.medianRatePct / 100, homeCurrency })
+    ? analyseFeeRecovery(platform.payouts, { homeCurrency })
     : { available: false, reason: fees.reason };
   const duplicates = findDuplicates(platform.payouts, bank.deposits);
   const latency = analyseLatency(matched);
@@ -170,10 +170,16 @@ export function buildFullReport({
     actions.push(`Check ${duplicates.duplicateEarnings.length} duplicated reference(s) in the `
       + 'earnings export before treating any shortfall as real.');
   }
-  if (feeRecovery.available && feeRecovery.findings.length) {
+  if (feeRecovery.available && (feeRecovery.findings.length || feeRecovery.minor.count)) {
     const causes = [...new Set(feeRecovery.findings.map(f => f.cause.replace(/_/g, ' ')))];
+    if (causes.length === 0) causes.push('small consistent overcharges');
+    const lines = feeRecovery.findings.length + feeRecovery.minor.count;
     actions.push(`Query ${usd(feeRecovery.amountInQuestionCents)} of fees charged above your own `
-      + `median across ${feeRecovery.findings.length} order(s) — most likely ${causes.join(' or ')}.`);
+      + `median across ${lines} order(s) — most likely ${causes.join(' or ')}.`
+      + (feeRecovery.minor.count
+        ? ` ${usd(feeRecovery.minor.amountInQuestionCents)} of that is spread across `
+          + `${feeRecovery.minor.count} small order(s) worth raising only together.`
+        : ''));
   } else if (fees.available && fees.outliers.length) {
     actions.push(`Ask why ${fees.outliers.length} order(s) were charged a rate away from your usual `
       + `${fees.medianRatePct}%.`);
@@ -250,7 +256,7 @@ export function renderReportHtml(report) {
     : `<p class="note">${esc(f.fees.reason)}</p>`;
 
   const recovery = f.feeRecovery;
-  const recoveryBlock = recovery.available && recovery.findings.length ? `
+  const recoveryBlock = recovery.available && (recovery.findings.length || recovery.minor.count) ? `
     <p><strong>${money(recovery.amountInQuestionCents)}</strong> was charged above your own median
     rate across ${recovery.findings.length} order(s). ${esc(recovery.basis)}</p>
     <table><thead><tr><th>Reference</th><th>Likely cause</th><th class="n">Rate</th><th class="n">In question</th></tr></thead>
@@ -258,7 +264,10 @@ export function renderReportHtml(report) {
       esc(r2.cause.replace(/_/g, ' ')), `<span class="n">${r2.ratePct}%</span>`,
       `<span class="n">${money(r2.amountInQuestionCents)}</span>`])}</tbody></table>
     ${recovery.findings.map(r2 => `<p class="note"><strong>${esc(r2.orderId ?? '—')}:</strong>
-      ${esc(r2.ask)}${r2.typical ? ` ${esc(r2.typical)}` : ''}</p>`).join('')}` : '';
+      ${esc(r2.ask)}${r2.typical ? ` ${esc(r2.typical)}` : ''}</p>`).join('')}
+    ${recovery.minor.note ? `<p class="note">${esc(recovery.minor.note)}</p>` : ''}
+    <p class="note">Flagged above ${recovery.threshold.flaggedAbovePct}% —
+      ${esc(recovery.threshold.basis)}</p>` : '';
 
   const dupBlock = (f.duplicateEarnings.length || f.duplicateDeposits.length) ? `
     ${f.duplicateEarnings.length ? `<p><strong>${f.duplicateEarnings.length}</strong> duplicated

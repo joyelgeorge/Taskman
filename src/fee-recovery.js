@@ -20,10 +20,33 @@
  * defend rather than a number we invented.
  */
 
-/** Rate this far above the median is worth explaining rather than absorbing. */
-const MATERIAL_RATE_GAP = 0.01;
-/** Below this, the difference is rounding and not worth anyone's time. */
-const MIN_QUESTIONABLE_CENTS = 50;
+/**
+ * What counts as an anomaly is derived from the account, not chosen by us.
+ *
+ * A fixed "1% above median" was a number with no basis. It is wrong in both
+ * directions: on an account whose fees are identical to four decimal places, a
+ * 0.4% jump is a glaring exception that a 1% floor hides; on a volatile account
+ * with mixed card types, 1% is ordinary and every row trips it.
+ *
+ * So the threshold is the median absolute deviation of the account's own rates —
+ * the spread that account actually runs at. MAD is used rather than standard
+ * deviation precisely because the outliers are what is being looked for, and they
+ * would inflate an SD until they no longer stood out from it.
+ */
+const MAD_MULTIPLIER = 3;
+/**
+ * Floor for float noise only, not a materiality judgement. Deliberately tiny.
+ *
+ * There used to be a 50-cent minimum, on the reasoning that nobody chases eighty
+ * cents. That reasoning is human. Eighty cents across four hundred transactions
+ * is $320, and the party asking is a machine that can enumerate all four hundred
+ * without getting bored. Small findings are no longer discarded — they are
+ * grouped, so the aggregate is visible even when no single line justifies a
+ * conversation.
+ */
+const NOISE_FLOOR_CENTS = 1;
+/** Below this a finding is reported in the aggregate rather than line by line. */
+const INDIVIDUALLY_NOTABLE_CENTS = 50;
 
 export const FEE_CAUSES = Object.freeze({
   INTERCHANGE_DOWNGRADE: 'interchange_downgrade',
@@ -45,11 +68,12 @@ const has = (text, ...words) => {
  * those are checked before falling back to the interchange reading, which is an
  * inference rather than a label.
  */
-export function classifyFeeAnomaly({ payout, medianRate, homeCurrency = null }) {
+export function classifyFeeAnomaly({ payout, medianRate, rateThreshold = null, homeCurrency = null }) {
   const rate = payout.grossCents ? payout.feeCents / payout.grossCents : null;
   if (rate == null) return null;
   const excessCents = Math.round((rate - medianRate) * payout.grossCents);
-  if (rate - medianRate < MATERIAL_RATE_GAP || excessCents < MIN_QUESTIONABLE_CENTS) return null;
+  const gate = rateThreshold ?? medianRate;
+  if (rate <= gate || excessCents < NOISE_FLOOR_CENTS) return null;
 
   const label = `${payout.description || ''} ${payout.orderId || ''}`;
   const base = {
@@ -61,7 +85,10 @@ export function classifyFeeAnomaly({ payout, medianRate, homeCurrency = null }) 
     medianRatePct: Number((medianRate * 100).toFixed(2)),
     // The gap against this account's own median, which is the only baseline
     // that is actually evidence. Not a published rate card we do not have.
-    amountInQuestionCents: excessCents
+    amountInQuestionCents: excessCents,
+    // Whether it is worth its own line, or belongs in the aggregate. Never a
+    // reason to discard it.
+    individuallyNotable: excessCents >= INDIVIDUALLY_NOTABLE_CENTS
   };
 
   if (has(label, 'dispute', 'chargeback', 'retrieval')) {
@@ -126,27 +153,81 @@ export function classifyFeeAnomaly({ payout, medianRate, homeCurrency = null }) 
  * a report that adds it up as recovery would be selling a number the customer
  * cannot collect.
  */
-export function analyseFeeRecovery(payouts, { medianRate, homeCurrency = null } = {}) {
-  if (medianRate == null || !Number.isFinite(medianRate)) {
+/** Median absolute deviation: the spread this account actually runs at. */
+export function medianAbsoluteDeviation(values, med) {
+  if (!values.length) return 0;
+  const deviations = values.map(v => Math.abs(v - med)).sort((a, b) => a - b);
+  const mid = Math.floor(deviations.length / 2);
+  return deviations.length % 2 ? deviations[mid] : (deviations[mid - 1] + deviations[mid]) / 2;
+}
+
+/**
+ * The baseline is computed here, from the same rows the deviation is measured
+ * over, rather than accepted from a caller. It was previously handed a median
+ * rounded to two decimal places and derived from a slightly different set, which
+ * made the threshold subtly inconsistent with the data it was applied to.
+ */
+export function analyseFeeRecovery(payouts, { medianRate = null, homeCurrency = null } = {}) {
+  const rates = payouts
+    .filter(p => p.grossCents && p.feeCents != null)
+    .map(p => p.feeCents / p.grossCents)
+    .sort((a, b) => a - b);
+
+  if (rates.length === 0) {
     return { available: false, reason: 'No fee data, so no baseline rate to compare against.' };
   }
-  const findings = payouts
-    .map(payout => classifyFeeAnomaly({ payout, medianRate, homeCurrency }))
+  const mid = Math.floor(rates.length / 2);
+  const computedMedian = rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
+  // An explicit median is honoured so a caller can supply a contracted rate, but
+  // the file's own median is the default because it is the only figure actually
+  // evidenced by the statement.
+  medianRate = Number.isFinite(medianRate) ? medianRate : computedMedian;
+
+  const mad = medianAbsoluteDeviation(rates, medianRate);
+  // A perfectly consistent account has MAD 0, and then any deviation at all is
+  // the exception — which is correct, and the noise floor stops it being noise.
+  const rateThreshold = medianRate + (MAD_MULTIPLIER * mad);
+
+  const all = payouts
+    .map(payout => classifyFeeAnomaly({ payout, medianRate, rateThreshold, homeCurrency }))
     .filter(Boolean)
     .sort((a, b) => b.amountInQuestionCents - a.amountInQuestionCents);
 
+  const findings = all.filter(f => f.individuallyNotable);
+  const minor = all.filter(f => !f.individuallyNotable);
+
   const byCause = {};
-  for (const finding of findings) {
+  for (const finding of all) {
     byCause[finding.cause] = byCause[finding.cause] || { count: 0, amountInQuestionCents: 0 };
     byCause[finding.cause].count += 1;
     byCause[finding.cause].amountInQuestionCents += finding.amountInQuestionCents;
   }
 
+  const minorCents = minor.reduce((sum, f) => sum + f.amountInQuestionCents, 0);
+
   return {
     available: true,
     findings,
+    // Kept, not dropped. No single one of these is worth a phone call; together
+    // they are frequently worth more than the headline, and enumerating all of
+    // them costs nothing.
+    minor: {
+      count: minor.length,
+      amountInQuestionCents: minorCents,
+      note: minor.length
+        ? `${minor.length} further order(s) were charged slightly above your median, totalling `
+          + `$${(minorCents / 100).toFixed(2)}. No single one is worth raising; the total may be.`
+        : null
+    },
     byCause,
-    amountInQuestionCents: findings.reduce((sum, f) => sum + f.amountInQuestionCents, 0),
+    amountInQuestionCents: all.reduce((sum, f) => sum + f.amountInQuestionCents, 0),
+    threshold: {
+      medianRatePct: Number((medianRate * 100).toFixed(3)),
+      madPct: Number((mad * 100).toFixed(3)),
+      flaggedAbovePct: Number((rateThreshold * 100).toFixed(3)),
+      basis: `Anything beyond ${MAD_MULTIPLIER} median absolute deviations from this account's own `
+        + 'median rate. Derived from the file, not a figure chosen in advance.'
+    },
     basis: 'Measured against this account\'s own median rate over the period, not a published rate '
       + 'card. It is the amount worth asking about — some of it will have a good answer.'
   };

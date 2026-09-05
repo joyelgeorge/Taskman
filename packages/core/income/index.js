@@ -26,10 +26,10 @@ export const DEFAULT_DATA_PRODUCTS = [
     buyer: 'Developer-tool marketing teams and founders timing a launch; media monitoring vendors.',
     decision: 'When to post, and what score a submission needs to hold a position — answerable only '
       + 'against months of history, which nobody publishes.',
-    seriesKeys: [
-      ...Array.from({ length: 10 }, (_, i) => `hn.frontpage.slot.${String(i + 1).padStart(2, '0')}.score`),
-      ...Array.from({ length: 10 }, (_, i) => `hn.frontpage.slot.${String(i + 1).padStart(2, '0')}.age_minutes`)
-    ],
+    // Every series the ranked collector writes. A product that declares fewer
+    // keys than are collected quietly under-reports the asset it holds.
+    seriesKeys: ['score', 'comments', 'age_minutes'].flatMap(field =>
+      Array.from({ length: 10 }, (_, i) => `hn.frontpage.slot.${String(i + 1).padStart(2, '0')}.${field}`)),
     upstreamLicences: [{
       source: 'hn-frontpage-ranking',
       licence: 'Hacker News API, public and unauthenticated (https://github.com/HackerNews/API)',

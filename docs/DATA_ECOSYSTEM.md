@@ -15,6 +15,20 @@ is a commodity the moment it exists, it has no buyer, and it costs storage and
 maintenance forever. A database full of today's public data is a liability with
 a hosting bill.
 
+> **Correction, 2026-09-05.** The principle below is right and the execution
+> contradicted it. The one series being collected was the ECB daily rate — and
+> the ECB publishes the complete history at `eurofxref-hist.xml`, so any buyer
+> backfills it in a single request. By this document's own test it was never an
+> asset. It is kept for live conversion and now declared with buyer "Nobody",
+> `reconstructible: true`.
+>
+> The test is therefore not "did we keep history" but **"does the publisher keep
+> it too"** — and `reconstructible` is now a required field on every source and
+> product, so the question has to be answered rather than assumed. What survives
+> it is *ordering*: nobody archives what sat at position 3 at 14:00, and it
+> cannot be recovered afterwards at any price. That is what
+> `hn-frontpage-ranking` collects, and why elapsed time is the whole moat.
+
 **What has real value — three kinds, and only three:**
 
 1. **History nobody else kept.** Anyone can scrape today's number. Almost

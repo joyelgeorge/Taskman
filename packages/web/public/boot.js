@@ -1,10 +1,23 @@
+function readConnectForm() {
+  store.base = $('api-base').value.trim();
+  store.token = $('api-token').value.trim();
+  store.proxy = $('use-proxy').checked;
+}
+
+function applyOrigin(url) {
+  $('api-base').value = url;
+  store.base = url;
+  store.token = $('api-token').value.trim();
+  store.proxy = $('use-proxy').checked;
+}
+
 async function load() {
   markNav();
   $('error').hidden = true;
   const view = $('view');
   if (!store.base) {
-    view.innerHTML = '<div class="state">Set the API base URL and press Connect. packages/api owns drones/crons/ledger; src/server.js owns brain/tasks/runs.</div>';
-    $('foot').textContent = 'Not connected.';
+    view.innerHTML = renderConnectGate();
+    $('foot').textContent = 'Set the API base URL and press Connect. packages/api owns drones/crons/ledger; src/server.js owns brain/tasks/runs.';
     return;
   }
   view.innerHTML = '<div class="state">Loading live payloads…</div>';
@@ -15,22 +28,26 @@ async function load() {
     else if (page === 'autonomy') view.innerHTML = await renderAutonomy();
     else if (page === 'work') view.innerHTML = await renderWork();
     else view.innerHTML = renderGrowth();
-    $('foot').textContent = `Updated ${new Date().toLocaleTimeString()} — ${store.base} — ${page}`;
+    $('foot').textContent = `Updated ${new Date().toLocaleTimeString()} — ${store.base} — ${originHint()} — ${page}`;
   } catch (error) {
     $('error').hidden = false;
-    $('error').textContent = `${error.message}  ·  Check the API base, that the service is awake, and that CORS_ORIGIN allows this page (or leave proxy on).`;
-    view.innerHTML = `<div class="state">${esc(error.message)}</div>`;
+    $('error').textContent = `${error.message}  ·  Is ${store.base} running? Leave proxy on. packages/api is :3100; src/server.js is :3000.`;
+    view.innerHTML = `${renderConnectGate()}<div class="state">${esc(error.message)}</div>`;
   }
 }
 
 document.addEventListener('click', async (event) => {
+  const originBtn = event.target.closest('[data-origin-url]');
+  if (originBtn) {
+    applyOrigin(originBtn.dataset.originUrl);
+    await load();
+    return;
+  }
   const target = event.target.closest('button');
   if (!target) return;
   try {
     if (target.id === 'save') {
-      store.base = $('api-base').value.trim();
-      store.token = $('api-token').value.trim();
-      store.proxy = $('use-proxy').checked;
+      readConnectForm();
       await load();
       return;
     }

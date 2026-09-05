@@ -38,7 +38,7 @@
       </nav>
     </div>
     <div class="controls">
-      <input type="text" id="api-base" placeholder="API base URL" aria-label="API base URL">
+      <input type="url" id="api-base" placeholder="http://127.0.0.1:3100" aria-label="API base URL" autocomplete="off" spellcheck="false">
       <input type="password" id="api-token" placeholder="Bearer token (optional)" aria-label="API token">
       <label class="proxy-toggle"><input type="checkbox" id="use-proxy" checked> proxy</label>
       <button id="save" type="button">Connect</button>
@@ -48,7 +48,7 @@
   <main class="main">
     <div id="error" class="err" hidden role="alert"></div>
     <div id="view" aria-live="polite"></div>
-    <p class="foot" id="foot">Set the API base and press Connect. This page stores no ledger of its own.</p>
+    <p class="foot" id="foot">Set the API base URL and press Connect. packages/api owns drones/crons/ledger; src/server.js owns brain/tasks/runs.</p>
   </main>
 </div>
 <script src="app.js"></script>

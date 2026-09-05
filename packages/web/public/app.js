@@ -10,6 +10,23 @@ const store = {
   set proxy(v) { try { localStorage.setItem('taskman.proxy', v ? '1' : '0'); } catch {} }
 };
 
+const ORIGINS = [
+  {
+    id: 'api',
+    label: 'packages/api',
+    url: 'http://127.0.0.1:3100',
+    start: 'npm run api',
+    owns: 'drones, crons, alerts, ledger, finance, orders'
+  },
+  {
+    id: 'core',
+    label: 'src/server.js',
+    url: 'http://127.0.0.1:3000',
+    start: 'node src/server.js',
+    owns: 'brain, tasks, runs, scenarios, usage on /api/status'
+  }
+];
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 
@@ -95,4 +112,26 @@ function markNav() {
 
 function viewShell(kicker, lede, body) {
   return `<p class="kicker">${esc(kicker)}</p><p class="lede">${esc(lede)}</p>${body}`;
+}
+
+function originHint() {
+  const matched = ORIGINS.find((o) => store.base.replace(/\/$/, '') === o.url);
+  return matched ? `${matched.label} — ${matched.owns}` : 'custom base';
+}
+
+function renderConnectGate() {
+  const cards = ORIGINS.map((o) => `
+    <div class="origin-card">
+      <div class="label">${esc(o.label)}</div>
+      <div class="value">${esc(o.url)}</div>
+      <div class="sub">${esc(o.owns)}</div>
+      <div class="sub">start with <span class="k">${esc(o.start)}</span></div>
+      <button class="primary" type="button" data-origin-url="${esc(o.url)}">Connect ${esc(o.label)}</button>
+    </div>`).join('');
+  return viewShell(
+    'Not connected',
+    'Set the API base URL and press Connect. packages/api owns drones/crons/ledger; src/server.js owns brain/tasks/runs. One process cannot serve both maps.',
+    `<div class="origin-grid">${cards}</div>
+     <div class="state">Leave proxy on. The UI talks through /__proxy so a local API does not need CORS for this page. Token is optional unless TASKMAN_AUTH_MODE=api-key.</div>`
+  );
 }

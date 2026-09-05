@@ -104,6 +104,7 @@ import {
 import { getRuntimeConfig } from './config.js';
 import { handleEconomicSelectorRequest } from './economic-selector.js';
 import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
+import { cronStatuses, listCronRuns } from '@taskman/core';
 
 // Money-ledger routes (/api/money/*) live on the separate packages/api service
 // now — see docs/AUTONOMOUS_SYSTEM.md — rather than duplicated onto this legacy
@@ -798,6 +799,16 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/tasks') return json(res, 200, await listTaskRecords());
     if (req.method === 'GET' && url.pathname === '/api/runs') return json(res, 200, await listRunRecords(50));
+    if (req.method === 'GET' && url.pathname === '/api/crons') {
+      const crons = await cronStatuses();
+      const recentRuns = await listCronRuns({ limit: 20 });
+      return json(res, 200, { crons, recentRuns });
+    }
+    const cronRunsMatch = url.pathname.match(/^\/api\/crons\/([^/]+)\/runs$/);
+    if (req.method === 'GET' && cronRunsMatch) {
+      const cronName = decodeURIComponent(cronRunsMatch[1]);
+      return json(res, 200, { runs: await listCronRuns({ cronName, limit: 25 }) });
+    }
     if (req.method === 'GET' && url.pathname === '/api/scenarios') return json(res, 200, await listScenarios());
     if (req.method === 'GET' && url.pathname === '/api/brain') return json(res, 200, await getBrainState());
 

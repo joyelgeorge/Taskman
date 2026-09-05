@@ -97,6 +97,30 @@ function renderPanel(name, data) {
       ${r.error ? `<div class="result">${esc(r.error)}</div>` : ''}
       ${r.nextBestAction ? `<p class="muted"><strong>Next:</strong> ${esc(r.nextBestAction)}</p>` : ''}
     </div>`).join('') : '<p class="muted">No runs yet.</p>';
+    return;
+  }
+  if (name === 'crons') {
+    const list = data.crons || [];
+    const unhealthy = list.filter(c => c.status && !['OK', 'DISABLED'].includes(c.status)).length;
+    $('#cronsSummary').textContent = `${list.length - unhealthy}/${list.length} healthy · ${unhealthy} unhealthy`;
+    $('#cronsList').innerHTML = list.length ? list.map(c => {
+      const isOk = c.status === 'OK';
+      const isDis = c.status === 'DISABLED';
+      const toneClass = isOk ? 'live' : (isDis ? 'muted' : 'stale');
+      const silent = c.silentSeconds != null ? (c.silentSeconds < 60 ? `${c.silentSeconds}s` : (c.silentSeconds < 3600 ? `${Math.round(c.silentSeconds/60)}m` : `${Math.round(c.silentSeconds/3600)}h`)) : '—';
+      return `
+        <div class="task">
+          <div class="row">
+            <strong>${esc(c.cronName)}</strong>
+            <span class="pill" data-state="${toneClass}">${esc(c.status)}</span>
+            <span class="pill">${esc(c.schedule || 'interval')}</span>
+            <span class="muted">Last run: ${c.lastRunAt ? new Date(c.lastRunAt).toLocaleTimeString() : 'never'}</span>
+            <span class="muted">Silence: ${silent}</span>
+          </div>
+          ${c.lastError ? `<div class="result" style="color:#b91c1c;">${esc(c.lastError)}</div>` : ''}
+        </div>
+      `;
+    }).join('') : '<p class="muted">No crons registered yet.</p>';
   }
 }
 
@@ -212,6 +236,7 @@ const refreshController = createDashboardRefreshController({
   panels: {
     customer: '/api/commercial/customer/workflow',
     system: '/api/status',
+    crons: '/api/crons',
     tasks: '/api/tasks',
     runs: '/api/runs',
     brain: '/api/brain',

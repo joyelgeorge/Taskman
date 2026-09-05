@@ -66,8 +66,9 @@
 <main>
   <h1>Were you actually paid for every order?</h1>
   <p class="lede">
-    Compare your platform earnings against your bank deposits. If a payout was earned
-    and never arrived, this names the order.
+    Compare what you were owed against what reached your bank. If a payout was earned
+    and never arrived, this names it. Works with any platform's export — and if you run
+    more than one, that is exactly where money goes missing.
   </p>
 
   <p class="privacy">
@@ -78,15 +79,16 @@
 
   <form id="form">
     <fieldset>
-      <legend>1 — Platform earnings</legend>
-      <p class="hint">Your Fiverr earnings/activity CSV export. Needs a date column and a gross/amount column.</p>
+      <legend>1 — What you were owed</legend>
+      <p class="hint">Any payout export — Stripe, PayPal, Shopify, Fiverr, Upwork, an invoice list.
+        It needs a date or reference column and an amount. Column names do not matter.</p>
       <input type="file" accept=".csv,text/csv" data-target="platform">
       <textarea id="platform" placeholder="…or paste the CSV here" spellcheck="false"></textarea>
     </fieldset>
 
     <fieldset>
-      <legend>2 — Bank deposits</legend>
-      <p class="hint">Your bank statement CSV. Needs a date column and an amount/deposit/credit column.</p>
+      <legend>2 — What actually arrived</legend>
+      <p class="hint">Your bank statement CSV. Credits only are considered; debits are ignored.</p>
       <input type="file" accept=".csv,text/csv" data-target="bank">
       <textarea id="bank" placeholder="…or paste the CSV here" spellcheck="false"></textarea>
     </fieldset>
@@ -178,6 +180,10 @@
       </table>
       <p class="caveat">Check each of these against your bank for the period around the earned
       date. If one is genuinely absent, that is the question to take to your platform.</p>` : ''}
+      ${audit.assumptions.length ? `<p class="caveat"><strong>Note:</strong> ${audit.assumptions.map(esc).join(' ')}</p>` : ''}
+      <p class="caveat">Read <code>${esc(Object.values(audit.columnsUsed.earnings).join(', '))}</code>
+        from the first file and <code>${esc(Object.values(audit.columnsUsed.deposits).join(', '))}</code>
+        from the second. If that is wrong, the result is wrong — check before acting on it.</p>
       <div class="offer">
         <strong>Want ${esc(OFFER.scope)} checked?</strong>
         <p>This compared what you pasted. The full check covers every order and deposit,

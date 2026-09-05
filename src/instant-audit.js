@@ -1,4 +1,4 @@
-import { parseFiverrActivityCsv, parseBankDepositsCsv } from './fiverr-csv-parser.js';
+import { parsePayouts, parseDeposits } from './payout-csv.js';
 
 /**
  * A payout audit a stranger can run before trusting us with anything.
@@ -21,6 +21,13 @@ import { parseFiverrActivityCsv, parseBankDepositsCsv } from './fiverr-csv-parse
  *
  * It reports only what the two files actually show. No projected annual savings,
  * no assumed leakage rate, no estimate of any kind.
+ *
+ * Platform-agnostic on purpose. It was written against Fiverr exports, and a
+ * single-platform seller is the one person who rarely has this problem — those
+ * payout pipelines are automated and reconcile by construction. Money actually
+ * goes missing for the operator running a processor plus a marketplace plus
+ * PayPal, where nobody is reconciling across the seams. Any export with a date
+ * and an amount now works.
  */
 
 /** Payouts clear well after the order does, so a match is a window, not a date. */
@@ -94,29 +101,33 @@ export function instantAudit({ platformCsv, bankCsv } = {}) {
   let platform;
   let bank;
   try {
-    platform = parseFiverrActivityCsv(platformCsv);
+    platform = parsePayouts(platformCsv);
   } catch (error) {
     return { ok: false, stage: 'platform_csv', error: String(error.message || error) };
   }
   try {
-    bank = parseBankDepositsCsv(bankCsv);
+    bank = parseDeposits(bankCsv);
   } catch (error) {
     return { ok: false, stage: 'bank_csv', error: String(error.message || error) };
   }
 
-  const transactions = platform.normalizedTransactions || platform.transactions || [];
+  const transactions = platform.payouts;
   const { matched, unmatchedEarnings, unmatchedDeposits } = matchPayouts({
-    transactions, deposits: bank.deposits || []
+    transactions, deposits: bank.deposits
   });
 
   const missingCents = unmatchedEarnings.reduce((sum, e) => sum + e.netCents, 0);
-  const feesCents = transactions.reduce((sum, t) => sum + Number(t.feeCents ?? t.fee_cents ?? 0), 0);
+  const feesCents = transactions.reduce((sum, t) => sum + Number(t.feeCents ?? 0), 0);
 
   return {
     ok: true,
     // Nothing about this call is retained. Said in the payload because it is the
     // reason someone is willing to run it at all.
     retention: 'Nothing from these files is stored. This response is computed and discarded.',
+    // Which columns were read, so a misread header is caught by the person who
+    // knows the file rather than becoming a confident wrong answer.
+    columnsUsed: { earnings: platform.columns, deposits: bank.columns },
+    assumptions: platform.assumptions,
     summary: {
       ordersRead: transactions.length,
       depositsRead: (bank.deposits || []).length,

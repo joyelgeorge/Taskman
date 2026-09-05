@@ -85,7 +85,9 @@ test('a malformed platform file is a clear answer, not a crash', () => {
   const result = instantAudit({ platformCsv: 'nope,not,a,statement\n1,2,3,4', bankCsv });
   assert.equal(result.ok, false);
   assert.equal(result.stage, 'platform_csv');
-  assert.match(result.error, /missing required/i);
+  assert.match(result.error, /no (date or reference|amount) column found/i);
+  assert.match(result.error, /columns read: nope, not, a, statement/i,
+    'the error must echo the headers it actually read, so the user can see what it misunderstood');
 });
 
 test('a missing file is refused before anything is parsed', () => {
@@ -104,4 +106,53 @@ test('a missing scenario seed does not stop the server from starting', async () 
   const seed = await loadScenarioSeed();
   assert.ok(seed && typeof seed === 'object');
   assert.ok(Array.isArray(seed.scenarios), 'an absent or empty seed must still yield a usable shape');
+});
+
+// ---- platform independence ----------------------------------------------------
+
+test('a Stripe payout export reconciles without any Fiverr-shaped columns', () => {
+  const stripe = `id,Created,Amount,Fee,Net,Currency
+ch_1,2026-08-01,100.00,3.20,96.80,usd
+ch_2,2026-08-05,250.00,7.55,242.45,usd`;
+  const bank = `Date,Description,Amount
+2026-08-04,STRIPE PAYOUT,96.80`;
+  const result = instantAudit({ platformCsv: stripe, bankCsv: bank });
+  assert.equal(result.ok, true);
+  assert.equal(result.summary.matchedCount, 1);
+  assert.equal(result.summary.unmatchedEarningsCents, 24245, 'the second charge never landed');
+  assert.equal(result.columnsUsed.earnings.net, 'net', 'the stated net must be read, never re-derived');
+});
+
+test('a file with only an amount column never has a fee invented for it', () => {
+  // The Fiverr parser assumed a 20% commission when no fee column existed. On a
+  // Stripe or PayPal export that fabricates a fee, understates the net by 20%,
+  // and reports money missing that arrived in full — telling someone they were
+  // underpaid when they were not.
+  const platform = `Date,Reference,Amount
+2026-08-01,INV-9,500.00`;
+  const bank = `Date,Description,Amount
+2026-08-03,PAYMENT INV-9,500.00`;
+  const result = instantAudit({ platformCsv: platform, bankCsv: bank });
+  assert.equal(result.summary.unmatchedEarningsCount, 0, 'a full payment must not read as short');
+  assert.equal(result.summary.matchedCount, 1);
+  assert.ok(result.assumptions.length > 0, 'and the reading it chose must be stated');
+});
+
+test('accounting negatives and thousands separators are read correctly', () => {
+  const platform = `Date,Name,Gross,Fee,Net
+2026-08-01,Acme,"1,200.00",(34.80),"1,165.20"`;
+  const bank = `Date,Description,Amount
+2026-08-06,ACME,"1,165.20"`;
+  const result = instantAudit({ platformCsv: platform, bankCsv: bank });
+  assert.equal(result.summary.matchedCount, 1);
+});
+
+test('a bank debit is never counted as a payout arriving', () => {
+  const platform = `Date,Reference,Net
+2026-08-01,A,80.00`;
+  const bank = `Date,Description,Amount
+2026-08-02,CARD PURCHASE,-80.00`;
+  const result = instantAudit({ platformCsv: platform, bankCsv: bank });
+  assert.equal(result.summary.depositsRead, 0);
+  assert.equal(result.summary.unmatchedEarningsCount, 1);
 });

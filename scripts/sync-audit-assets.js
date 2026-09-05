@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const AUDIT_ASSETS = ['fiverr-csv-parser.js', 'instant-audit.js'];
+export const AUDIT_ASSETS = ['payout-csv.js', 'instant-audit.js'];
 export const targetDir = join(root, 'packages', 'web', 'public', 'audit');
 
 export async function readPair(name) {

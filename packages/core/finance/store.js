@@ -18,11 +18,25 @@ const normalize = (row = {}) => ({
   createdAt: row.createdAt ?? row.created_at ?? null
 });
 
+/**
+ * Formats a DATE column back to the calendar day it actually holds.
+ *
+ * node-postgres parses a DATE into a JS Date at *local* midnight, so calling
+ * toISOString() on it converts to UTC and moves the day backwards for every
+ * timezone east of Greenwich — a snapshot written for the 2nd read back as the
+ * 1st in IST. Reading the local components returns the stored day in any zone,
+ * which is the only correct thing to do with a value that has no time in it.
+ */
+const calendarDay = value => {
+  if (typeof value === 'string') return value.slice(0, 10);
+  if (!(value instanceof Date)) return String(value || '');
+  const pad = n => String(n).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+};
+
 const normalizeHistory = (row = {}) => ({
   id: row.id,
-  snapshotDate: typeof row.snapshot_date === 'string'
-    ? row.snapshot_date.slice(0, 10)
-    : (row.snapshotDate ?? (row.snapshot_date instanceof Date ? row.snapshot_date.toISOString().slice(0, 10) : String(row.snapshot_date || ''))),
+  snapshotDate: row.snapshotDate ?? calendarDay(row.snapshot_date),
   grossClearedCents: Number(row.grossClearedCents ?? row.gross_cleared_cents ?? 0),
   railSpendCents: Number(row.railSpendCents ?? row.rail_spend_cents ?? 0),
   expenseCents: Number(row.expenseCents ?? row.expense_cents ?? 0),

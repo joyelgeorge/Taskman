@@ -1,56 +1,128 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Taskman</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskman Operator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="wrap">
-    <h1>Taskman</h1>
-    <p class="muted">Describe it once. Taskman runs, routes, learns and moves to the next money-relevant gap.</p>
-    <div id="dashboardHealth" class="dashboard-health" role="status" aria-live="polite" hidden>
-      <span id="dashboardHealthText">Dashboard degraded</span>
-      <button id="retryDashboard" type="button">Retry now</button>
+<div class="wrap">
+  <header class="top">
+    <h1>Taskman <span>/ operator</span></h1>
+    <div class="controls">
+      <input type="url" id="api-base" placeholder="API URL" aria-label="API base URL" autocomplete="off" spellcheck="false">
+      <input type="password" id="api-token" placeholder="API token (optional)" aria-label="API token">
+      <button id="save" type="button">Connect</button>
+      <button id="refresh" class="primary" type="button">Refresh</button>
     </div>
+  </header>
+  <nav class="nav" aria-label="Operator screens">
+    <a href="#overview" data-nav="overview">Overview</a>
+    <a href="#ledger" data-nav="ledger">Ledger</a>
+    <a href="#autonomy" data-nav="autonomy">Autonomy</a>
+    <a href="#work" data-nav="work">Work</a>
+    <a href="#growth" data-nav="growth">Growth</a>
+  </nav>
+  <div id="error" class="err" hidden></div>
 
-    <section class="card brain">
-      <div class="row"><h2 class="row-heading">Brain</h2><span id="brainStatus" class="panel-status" aria-live="polite">Loading…</span><button class="primary" id="runBrain">Run brain once</button></div>
-      <div id="brainState"><p class="muted">Loading brain state…</p></div>
-      <div id="brainResult"></div>
-    </section>
+  <div data-screen="overview">
+    <div class="tiles" id="tiles"></div>
+    <section><div class="sec-head"><h2>Open alerts</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Severity</th><th>Component</th><th>Message</th><th>Since</th></tr></thead>
+        <tbody id="alerts"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Finance snapshot</h2></div>
+      <div class="tiles" id="finance-tiles"></div></section>
+  </div>
 
-    <section class="card">
-      <h2>Create task</h2>
-      <input id="title" placeholder="Optional title" />
-      <textarea id="prompt" rows="5" placeholder="Example: Every hour, research... and return only actionable results."></textarea>
-      <input id="interval" type="number" min="1" max="44640" step="1" placeholder="Repeat every 1–44640 minutes (blank = manual)" />
-      <button class="primary" id="create">Create task</button>
-    </section>
+  <div data-screen="ledger" hidden>
+    <section><div class="sec-head"><h2>Transactions</h2></div>
+      <p id="tx-note" class="empty" style="margin:0 0 10px">Revenue stays $0 until a settlement is CLEARED.</p>
+      <div class="card"><table>
+        <thead><tr><th>Rail</th><th>Status</th><th>Source</th><th>Ref</th><th class="n">Gross</th><th class="n">Fee</th><th class="n">Net</th><th>When</th></tr></thead>
+        <tbody id="settlements"><tr><td colspan="8" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Attempts</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Rail</th><th>Candidate</th><th>Status</th><th class="n">Cost</th><th>Started</th></tr></thead>
+        <tbody id="attempts"><tr><td colspan="5" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Revenue rails</h2><span id="global-budget" class="pill off"></span></div>
+      <div class="card"><table>
+        <thead><tr><th>Rail</th><th>State</th><th class="n">Attempts</th><th class="n">Spend</th><th class="n">Cleared</th><th class="n">Net</th><th class="n">ROI</th><th></th></tr></thead>
+        <tbody id="rails"><tr><td colspan="8" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Gig orders</h2><span id="order-economics" class="pill off"></span></div>
+      <div class="card" style="padding:14px">
+        <div class="controls">
+          <input type="text" id="order-id" placeholder="Fiverr order ID">
+          <input type="text" id="order-price" placeholder="Price $">
+          <input type="text" id="order-minutes" placeholder="Minutes">
+          <input type="text" id="order-notes" placeholder="Notes">
+          <button id="order-add" class="primary">Log order</button>
+        </div>
+      </div>
+      <div class="card"><table>
+        <thead><tr><th>Order</th><th>Status</th><th class="n">Price</th><th class="n">Min</th><th class="n">Payout</th><th></th></tr></thead>
+        <tbody id="orders"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Expenses</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Category</th><th>Description</th><th class="n">Amount</th><th>When</th></tr></thead>
+        <tbody id="expenses"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Finance by rail</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Rail</th><th>State</th><th class="n">Cleared</th><th class="n">Spend</th><th class="n">Net</th><th class="n">Margin</th></tr></thead>
+        <tbody id="finance-rails"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+  </div>
 
-    <section class="card">
-      <div class="row"><h2 class="row-heading">System</h2><span id="systemStatus" class="panel-status" aria-live="polite">Loading…</span><span id="usage" class="muted"></span></div>
-      <div id="providers" class="row"></div>
-    </section>
+  <div data-screen="autonomy" hidden>
+    <section><div class="sec-head"><h2>Crons</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Cron</th><th>Schedule</th><th>Status</th><th>Last run</th><th class="n">Silent</th><th></th></tr></thead>
+        <tbody id="crons"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Drones</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Drone</th><th>Kind</th><th>Status</th><th>Last OK</th><th class="n">Fails</th><th></th></tr></thead>
+        <tbody id="drones"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Scans</h2><button id="scan-run" class="mini">scan now</button></div>
+      <div class="card"><table>
+        <thead><tr><th>Target</th><th>Reachable</th><th>Bot defense</th><th>Shape</th><th>Verdict</th><th>Last scan</th></tr></thead>
+        <tbody id="scans"><tr><td colspan="6" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Signals</h2></div>
+      <div class="card"><table>
+        <thead><tr><th>Drone</th><th>Title</th><th>Status</th><th class="n">Score</th></tr></thead>
+        <tbody id="signals"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+  </div>
 
-    <section class="card">
-      <div class="row"><h2 class="row-heading">Executable tasks</h2><span id="tasksStatus" class="panel-status" aria-live="polite">Loading…</span></div>
-      <p class="muted">Runnable schedules live here. Opportunity candidates and rejected paths are scenario records below.</p>
-      <div id="tasks"></div>
+  <div data-screen="work" hidden>
+    <section><div class="sec-head"><h2>Improvement proposals</h2></div>
+      <div class="card"><table>
+        <thead><tr><th class="n">Score</th><th>Source</th><th>Proposal</th><th></th></tr></thead>
+        <tbody id="improvements"><tr><td colspan="4" class="empty">Not connected.</td></tr></tbody>
+      </table></div></section>
+    <section><div class="sec-head"><h2>Engine</h2></div>
+      <p class="empty">This page is served by <code>npm start</code> (<code>src/server.js</code>). Brain/tasks/runs are same-origin. Ledger/crons/drones need <code>packages/api</code> — set Connect to that public API if this host does not own those routes.</p>
     </section>
+  </div>
 
-    <section class="card">
-      <div class="row"><h2 class="row-heading">Scenario database</h2><span id="scenariosStatus" class="panel-status" aria-live="polite">Loading…</span><span id="scenarioCount" class="muted"></span></div>
-      <p class="muted">The latest scored candidates, active strategy, historical attempts and rejection reasons synchronized from the repository.</p>
-      <div id="scenarios"></div>
-    </section>
+  <div data-screen="growth" hidden>
+    <section><div class="sec-head"><h2>Leads</h2></div><p class="empty">No leads API yet. Empty on purpose.</p></section>
+    <section><div class="sec-head"><h2>Campaigns</h2></div><p class="empty">No campaigns API yet.</p></section>
+  </div>
 
-    <section class="card">
-      <div class="row"><h2 class="row-heading">Recent runs</h2><span id="runsStatus" class="panel-status" aria-live="polite">Loading…</span></div>
-      <div id="runs"></div>
-    </section>
-  </main>
-  <script type="module" src="/app.js"></script>
+  <p class="foot" id="foot">Served from public/ via npm start or Firebase hosting.</p>
+</div>
+<script src="refresh-controller.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

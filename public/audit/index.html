@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payout audit</title>
+<style>
+  :root { --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e3ded7; --card:#fff; --accent:#7a4d1d; --flag:#8a2f22; --ok:#245c3d; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#16150f; --fg:#ece7de; --muted:#9d968b; --line:#322e26; --card:#1e1c15; --accent:#d9a05b; --flag:#e0836f; --ok:#7cc79c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,sans-serif; }
+  main { max-width:44rem; margin:0 auto; padding:3rem 1.25rem 5rem; }
+  h1 { font-size:1.8rem; }
+  .lede,.hint { color:var(--muted); }
+  .privacy { border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--card); padding:.85rem 1rem; margin:0 0 1.5rem; }
+  fieldset { border:1px solid var(--line); background:var(--card); margin:0 0 1rem; padding:1rem; }
+  textarea { width:100%; min-height:7rem; font:13px/1.5 ui-monospace,Menlo,monospace; padding:.6rem; background:var(--bg); color:var(--fg); border:1px solid var(--line); }
+  button { font:inherit; font-weight:600; padding:.7rem 1.4rem; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  .flag { color:var(--flag); } .ok { color:var(--ok); }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:.45rem .5rem; border-bottom:1px solid var(--line); }
+  .n { text-align:right; font-variant-numeric:tabular-nums; }
+  a { color:var(--accent); }
+</style>
+<main>
+  <p><a href="/">Operator</a></p>
+  <h1>Were you actually paid for every order?</h1>
+  <p class="lede">Compare platform earnings against bank deposits. Nothing is uploaded.</p>
+  <p class="privacy"><strong>Usable without an API.</strong> Paste two CSVs. The comparison runs in this tab only.</p>
+  <form id="form">
+    <fieldset>
+      <legend>1 — What you were owed</legend>
+      <p class="hint">Any payout export with a date and an amount.</p>
+      <input type="file" accept=".csv,text/csv" data-target="platform">
+      <textarea id="platform" placeholder="paste CSV" spellcheck="false"></textarea>
+    </fieldset>
+    <fieldset>
+      <legend>2 — What arrived in the bank</legend>
+      <input type="file" accept=".csv,text/csv" data-target="bank">
+      <textarea id="bank" placeholder="paste CSV" spellcheck="false"></textarea>
+    </fieldset>
+    <button type="submit">Run the comparison</button>
+  </form>
+  <section id="result" hidden></section>
+</main>
+<script>
+const CANDIDATES = { net:['net','payout','paid_out','net_amount','amount_paid','settlement'], fee:['fee','commission','charge','processing'], gross:['gross','amount','total','subtotal','value','credit','deposit'], date:['date','created','timestamp','time','posted'], id:['order','transaction_id','txn','reference','invoice','id'], description:['description','memo','payee','details','narrative'] };
+const norm = h => String(h).toLowerCase().trim().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+function splitLine(line){ const out=[]; let cur='', q=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(c==='"'){ if(q&&line[i+1]==='"'){cur+='"';i++;} else q=!q; } else if(c===','&&!q){ out.push(cur.trim()); cur=''; } else cur+=c; } out.push(cur.trim()); return out; }
+function toCents(raw){ if(raw==null) return null; const t=String(raw).trim(); if(!t) return null; const neg=/^\(.*\)$/.test(t)||t.includes('-'); const d=t.replace(/[^0-9.]/g,''); if(!d||Number.isNaN(Number(d))) return null; const n=Math.round(Number(d)*100); return neg?-n:n; }
+function detect(headers){ const chosen={}, taken=new Set(); for(const [role,hints] of Object.entries(CANDIDATES)){ for(const hint of hints){ const m=headers.find(h=>h.includes(hint)&&!taken.has(h)); if(m){ chosen[role]=m; taken.add(m); break; } } } return chosen; }
+function parseRows(text,label){ if(!text||!String(text).trim()) throw new Error(label+' CSV is empty'); const lines=String(text).split(/\r?\n/).filter(l=>l.trim()); if(lines.length<2) throw new Error(label+' CSV needs a header and a row'); const headers=splitLine(lines[0]).map(norm); const rows=lines.slice(1).map(line=>{ const v=splitLine(line); return Object.fromEntries(headers.map((h,i)=>[h,v[i]??''])); }); return {headers,rows}; }
+function parsePayouts(text){ const {headers,rows}=parseRows(text,'Earnings'); const cols=detect(headers); if(!cols.date&&!cols.id) throw new Error('No date/reference column: '+headers.join(', ')); if(!cols.net&&!cols.gross) throw new Error('No amount column: '+headers.join(', ')); const payouts=[]; for(const row of rows){ const net=cols.net?toCents(row[cols.net]):null; const gross=cols.gross?toCents(row[cols.gross]):null; const fee=cols.fee?Math.abs(toCents(row[cols.fee])??0):null; const netCents=net??(gross==null?null:gross-(fee??0)); if(netCents==null||netCents<=0) continue; payouts.push({orderId:(cols.id&&row[cols.id])||null,date:(cols.date&&row[cols.date])||null,netCents}); } return payouts; }
+function parseDeposits(text){ const {headers,rows}=parseRows(text,'Deposits'); const cols=detect(headers); const amountCol=cols.net||cols.gross; if(!amountCol) throw new Error('No amount column: '+headers.join(', ')); const deposits=[]; for(const row of rows){ const amountCents=toCents(row[amountCol]); if(amountCents==null||amountCents<=0) continue; deposits.push({amountCents,date:(cols.date&&row[cols.date])||null}); } return deposits; }
+function instantAudit(platformCsv,bankCsv){ const tx=parsePayouts(platformCsv); const deposits=parseDeposits(bankCsv).map(d=>({...d,taken:false})); const missing=[]; let matched=0; const day=(a,b)=>Math.abs(new Date(a)-new Date(b))/86400000; for(const t of tx){ const hits=deposits.filter(d=>!d.taken&&Math.abs(d.amountCents-t.netCents)<=2&&(!t.date||!d.date||day(t.date,d.date)<=45)); hits.sort((a,b)=>day(t.date,a.date)-day(t.date,b.date)); if(hits[0]){ hits[0].taken=true; matched++; } else missing.push(t); } const cents=missing.reduce((s,m)=>s+m.netCents,0); return {matched,orders:tx.length,deposits:deposits.length,missing,cents,headline:missing.length?missing.length+' payout(s) totalling $'+(cents/100).toFixed(2)+' not in the bank file.':'Every payout in these files reconciles.'}; }
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+for(const input of document.querySelectorAll('input[type=file]')) input.addEventListener('change',async e=>{ const f=e.target.files?.[0]; if(f) $(e.target.dataset.target).value=await f.text(); });
+$('form').addEventListener('submit',e=>{ e.preventDefault(); const out=$('result'); out.hidden=false; try{ const a=instantAudit($('platform').value,$('bank').value); out.innerHTML='<p class="'+(a.missing.length?'flag':'ok')+'">'+esc(a.headline)+'</p><p>'+a.orders+' orders · '+a.deposits+' deposits · '+a.matched+' matched</p>'+(a.missing.length?'<table><thead><tr><th>Order</th><th>Earned</th><th class="n">Net</th></tr></thead><tbody>'+a.missing.map(m=>'<tr><td>'+esc(m.orderId||'—')+'</td><td>'+esc(m.date||'—')+'</td><td class="n">$'+(m.netCents/100).toFixed(2)+'</td></tr>').join('')+'</tbody></table>':''); } catch(err){ out.innerHTML='<p class="flag">'+esc(err.message)+'</p>'; } });
+</script>
+</html>

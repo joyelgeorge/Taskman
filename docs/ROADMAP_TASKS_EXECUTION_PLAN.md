@@ -73,6 +73,28 @@ The next sprint focuses on data durability, automated cold archiving, lead drone
 
 ---
 
+## 4. Phase 4: "Mean Money-Making Machine" (MMM) Commercial Expansion Track
+
+The core platform has proven capabilities in identifying and executing specific financial retrieval tasks. The next evolution scales these into fully autonomous pipelines based on proven real-world business models.
+
+### Task Group D: The AI SDR / Autonomous Outreach (B2B Expansion)
+Inspired by Apollo.io, Artisan AI, and 11x.ai. B2B automated lead generation and personalized outreach campaigns, functioning as an autonomous outbound agency.
+7. **Issue #161**: Introduce automated data enrichment capability (Clearbit/LinkedIn) for raw lead profiles.
+8. **Issue #162**: Implement a fully autonomous, self-optimizing multi-step email drip sequencer.
+9. **Issue #163**: Auto-schedule meetings and generate per-meeting commission billing models.
+
+### Task Group E: E-Commerce / Marketplace Fee Recovery (Retail Arbitrage)
+Inspired by Getida, Share a Refund. Expanding beyond Fiverr into massive E-Commerce hubs.
+10. **Issue #164**: Amazon FBA / Shopify fulfillment fee statement ingester and dimension/weight cross-referencing.
+11. **Issue #165**: Automated dispute case filing engine and case-status tracking dashboard.
+
+### Task Group F: Corporate Grants & R&D Tax Recovery
+Inspired by NeoTax, MainStreet. Capitalizing on complex, document-heavy bureaucratic recovery processes.
+12. **Issue #166**: R&D tax credit eligibility screener over GitHub commits, Jira tickets, and payroll structures.
+13. **Issue #167**: Automated compliance and filing document generation for standard government portals.
+
+---
+
 ## 4. Technical Guardrails & Quality Gates
 
 All future pull requests must strictly adhere to the following invariants:

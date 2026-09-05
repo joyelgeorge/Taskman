@@ -10,6 +10,10 @@ export {
   registerDataProduct, refreshDataProducts, listDataProducts, appraise, resetDataProductMemory
 } from './data-products.js';
 export { DEFAULT_STREAMS } from './defaults.js';
+export {
+  discoverIncomeStreams, DETECTORS, detectOpenedVenues, detectMaturingSeries,
+  detectRecurringDemand, detectUnattributedSettlements
+} from './discovery.js';
 
 /**
  * The datasets this system is actually accumulating.

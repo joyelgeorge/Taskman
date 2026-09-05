@@ -21,6 +21,9 @@ const normalize = (row = {}) => ({
   nextAction: row.nextAction ?? row.next_action,
   unblockedBy: row.unblockedBy ?? row.unblocked_by,
   state: row.state,
+  origin: row.origin || 'seed',
+  fingerprint: row.fingerprint ?? null,
+  detector: row.detector ?? null,
   stateReason: row.stateReason ?? row.state_reason ?? null,
   testCostHours: row.testCostHours ?? (row.test_cost_hours == null ? null : Number(row.test_cost_hours)),
   proofCents: row.proofCents ?? row.proof_cents ?? null,
@@ -40,7 +43,8 @@ const normalize = (row = {}) => ({
 export async function registerStream({
   streamKey, title, mechanism, requires, nextAction, unblockedBy,
   state = STREAM_STATES.HYPOTHESIS, stateReason = null,
-  testCostHours = null, proofCents = null, evidence = []
+  testCostHours = null, proofCents = null, evidence = [],
+  origin = 'seed', fingerprint = null, detector = null, discoveredAt = null
 }) {
   if (!streamKey || !title) throw new Error('streamKey and title are required');
   if (!mechanism) throw new Error(`${streamKey}: mechanism is required — name how the money physically arrives`);
@@ -53,7 +57,8 @@ export async function registerStream({
 
   const row = {
     streamKey, title, mechanism, requires, nextAction, unblockedBy,
-    state, stateReason, testCostHours, proofCents, evidence, firstSettledAt: null
+    state, stateReason, testCostHours, proofCents, evidence, firstSettledAt: null,
+    origin, fingerprint, detector, discoveredAt
   };
 
   if (!databaseEnabled) {
@@ -66,14 +71,15 @@ export async function registerStream({
 
   const result = await query(`
     INSERT INTO income_streams(stream_key, title, mechanism, requires, next_action, unblocked_by,
-      state, state_reason, test_cost_hours, proof_cents, evidence)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
+      state, state_reason, test_cost_hours, proof_cents, evidence, origin, fingerprint, detector, discovered_at)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14,$15)
     ON CONFLICT (stream_key) DO UPDATE SET
       title = EXCLUDED.title, mechanism = EXCLUDED.mechanism, requires = EXCLUDED.requires,
       updated_at = now()
     RETURNING *
   `, [streamKey, title, mechanism, requires, nextAction, unblockedBy,
-      state, stateReason, testCostHours, proofCents, JSON.stringify(evidence)]);
+      state, stateReason, testCostHours, proofCents, JSON.stringify(evidence),
+      origin, fingerprint, detector, discoveredAt ? new Date(discoveredAt).toISOString() : null]);
   return normalize(result.rows[0]);
 }
 

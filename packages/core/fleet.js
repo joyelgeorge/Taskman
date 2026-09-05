@@ -104,6 +104,13 @@ export const CRON_DEFINITIONS = [
     description: 'Syncs settlements from the payment processor and enforces rail viability.'
   },
   {
+    cronName: 'stream-discovery',
+    schedule: '0 5 * * *',
+    maxSilenceSeconds: 172800,
+    description: 'Proposes new income streams from recorded evidence — scans, rollups, signals, '
+      + 'settlements. Never from a model: an idea available by prompting is arbitraged to zero.'
+  },
+  {
     cronName: 'improve',
     schedule: '0 3 * * *',
     maxSilenceSeconds: 108000,

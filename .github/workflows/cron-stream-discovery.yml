@@ -1,0 +1,28 @@
+# Proposes new income streams from recorded evidence — never from a model.
+name: cron · stream-discovery
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Run even if this slot already ran (manual runs only).
+        type: boolean
+        default: true
+
+concurrency:
+  group: cron-stream-discovery
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/_cron.yml
+    with:
+      name: stream-discovery
+      # Only ever true for a manual dispatch; a scheduled run leaves it false so
+      # slot idempotency still governs bursts of deliveries.
+      force: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

@@ -18,6 +18,10 @@ import {
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
 import { getJob, cronNames } from '../crons/registry.js';
+import {
+  listOutreachDrafts, getOutreachDraft, updateOutreachDraftStatus
+} from '../../src/transforms/outreach-draft.js';
+
 
 /**
  * Read routes are open; anything with a side effect requires the bearer token
@@ -349,6 +353,40 @@ export async function route(req, url, readBody) {
     try {
       const updated = await decideImprovement(decodeURIComponent(decision[1]), body.status);
       return updated ? { status: 200, body: updated } : notFound;
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
+  }
+
+  // ---- outreach review ------------------------------------------------------
+  // Human-gated: drafts are reviewed and sent manually; only outcomes are recorded here.
+  if (method === 'GET' && pathname === '/api/outreach/drafts') {
+    const campaignKey = url.searchParams.get('campaignKey');
+    const status = url.searchParams.get('status');
+    return { status: 200, body: { drafts: await listOutreachDrafts({ campaignKey, status }) } };
+  }
+
+  const outreachDraft = pathname.match(/^\/api\/outreach\/drafts\/([^/]+)$/);
+  if (method === 'GET' && outreachDraft) {
+    const draft = await getOutreachDraft(decodeURIComponent(outreachDraft[1]));
+    return draft ? { status: 200, body: { draft } } : notFound;
+  }
+
+  if (method === 'PATCH' && outreachDraft) {
+    const body = await readBody();
+    if (!body.status) return { status: 400, body: { error: 'status is required' } };
+    try {
+      const id = decodeURIComponent(outreachDraft[1]);
+      const updatedDraft = await updateOutreachDraftStatus(id, body.status);
+      if (body.status === 'CONVERTED') {
+        await recordExpense({
+          category: 'marketing',
+          campaignKey: updatedDraft.campaignKey,
+          amountCents: 1,
+          description: 'outreach-conversion:' + id
+        });
+      }
+      return { status: 200, body: { draft: updatedDraft } };
     } catch (error) {
       return { status: 400, body: { error: String(error.message || error) } };
     }

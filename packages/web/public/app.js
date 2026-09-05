@@ -216,9 +216,57 @@ async function load() {
       </tr>`, 'No rails yet.', 6);
 
     $('foot').textContent = `Updated ${new Date().toLocaleTimeString()} — ${store.base}`;
+
+    await loadOutreachDrafts();
   } catch (error) {
     $('error').hidden = false;
     $('error').textContent = `${error.message}  ·  Check the API base URL, that the service is awake, and that CORS_ORIGIN allows this page.`;
+  }
+}
+
+async function loadOutreachDrafts() {
+  const container = $('outreach-drafts-list');
+  if (!container) return;
+  try {
+    const data = await api('/api/outreach/drafts?status=READY_FOR_REVIEW');
+    const drafts = data.drafts || [];
+    if (drafts.length === 0) {
+      container.innerHTML = '<p class="empty">No drafts awaiting review.</p>';
+      return;
+    }
+    container.innerHTML = drafts.map(d => {
+      const preview = esc((d.draftText || '').slice(0, 300)) + (d.draftText && d.draftText.length > 300 ? '…' : '');
+      return `
+      <div class="card" style="margin-bottom:10px;padding:12px" data-draft-id="${esc(d.id)}">
+        <strong>${esc(d.subject)}</strong>
+        <span class="pill off" style="margin-left:8px">${esc(d.campaignKey)}</span>
+        <p style="margin:.5rem 0;color:var(--muted);font-size:.9em">${preview}</p>
+        <div class="row-actions">
+          <button class="mini" data-outreach-action="SENT" data-draft-id="${esc(d.id)}">Mark Sent</button>
+          <button class="mini" data-outreach-action="DISCARDED" data-draft-id="${esc(d.id)}">Discard</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+  }
+}
+
+async function loadSentDraft(id) {
+  const container = $('outreach-drafts-list');
+  if (!container) return;
+  try {
+    const { draft } = await api(`/api/outreach/drafts/${encodeURIComponent(id)}`);
+    const card = container.querySelector(`[data-draft-id="${id}"]`);
+    if (!card) { await loadOutreachDrafts(); return; }
+    card.querySelector('.row-actions').innerHTML = `
+      <span class="pill ok" style="margin-right:8px">SENT</span>
+      <button class="mini" data-outreach-action="REPLIED" data-draft-id="${esc(draft.id)}">Replied</button>
+      <button class="mini" data-outreach-action="DECLINED" data-draft-id="${esc(draft.id)}">Declined</button>
+      <button class="mini" data-outreach-action="CONVERTED" data-draft-id="${esc(draft.id)}">Converted</button>`;
+  } catch (e) {
+    /* silently fall back to a full reload */
+    await loadOutreachDrafts();
   }
 }
 
@@ -255,6 +303,17 @@ document.addEventListener('click', async event => {
       // argues its own way out of a market that did not pay it.
       if (!confirm(`Re-enable rail "${target.dataset.railReenable}"? It gets a fresh probation budget.`)) return;
       await api(`/api/money/rails/${encodeURIComponent(target.dataset.railReenable)}/reenable`, { method: 'POST' });
+    } else if (target.dataset.outreachAction) {
+      const id = target.dataset.draftId;
+      const action = target.dataset.outreachAction;
+      target.disabled = true; target.textContent = '…';
+      await api(`/api/outreach/drafts/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: action } });
+      if (action === 'SENT') {
+        await loadSentDraft(id);
+        return; // don't trigger full reload — card stays with outcome buttons
+      }
+      await loadOutreachDrafts();
+      return;
     } else {
       return;
     }

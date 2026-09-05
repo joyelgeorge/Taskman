@@ -146,16 +146,71 @@ export async function runOutreachDraftTransform({
   return { ok: true, draft: res.rows[0] };
 }
 
-export function getOutreachDraft(id) {
-  return memoryOutreachDrafts.get(id) || null;
+function normalizeOutreachDraft(row) {
+  return {
+    id: row.id,
+    leadId: row.leadId ?? row.lead_id,
+    campaignKey: row.campaignKey ?? row.campaign_key,
+    subject: row.subject,
+    draftText: row.draftText ?? row.draft_text,
+    status: row.status,
+    createdAt: row.createdAt ?? row.created_at,
+    updatedAt: row.updatedAt ?? row.updated_at ?? null
+  };
 }
 
-export function listOutreachDrafts({ campaignKey = null, status = null } = {}) {
-  return Array.from(memoryOutreachDrafts.values()).filter(d => {
-    if (campaignKey && d.campaignKey !== campaignKey) return false;
-    if (status && d.status !== status) return false;
-    return true;
-  });
+export async function getOutreachDraft(id) {
+  if (!databaseEnabled) return memoryOutreachDrafts.get(id) || null;
+  const result = await query('SELECT * FROM outreach_drafts WHERE id = $1', [id]);
+  return result.rows[0] ? normalizeOutreachDraft(result.rows[0]) : null;
+}
+
+export async function listOutreachDrafts({ campaignKey = null, status = null } = {}) {
+  if (!databaseEnabled) {
+    return Array.from(memoryOutreachDrafts.values()).filter(d => {
+      if (campaignKey && d.campaignKey !== campaignKey) return false;
+      if (status && d.status !== status) return false;
+      return true;
+    });
+  }
+  const conditions = [];
+  const params = [];
+  if (campaignKey) { params.push(campaignKey); conditions.push(`campaign_key = $${params.length}`); }
+  if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const result = await query(`SELECT * FROM outreach_drafts ${where} ORDER BY created_at DESC`, params);
+  return result.rows.map(normalizeOutreachDraft);
+}
+
+const VALID_TRANSITIONS = {
+  [OUTREACH_DRAFT_STATUS.READY_FOR_REVIEW]: new Set([OUTREACH_DRAFT_STATUS.SENT, OUTREACH_DRAFT_STATUS.DISCARDED]),
+  [OUTREACH_DRAFT_STATUS.SENT]: new Set([OUTREACH_DRAFT_STATUS.REPLIED, OUTREACH_DRAFT_STATUS.DECLINED, OUTREACH_DRAFT_STATUS.CONVERTED])
+};
+
+export async function updateOutreachDraftStatus(id, newStatus) {
+  if (!OUTREACH_DRAFT_STATUS[newStatus]) {
+    throw new Error(`Unknown status: "${newStatus}"`);
+  }
+
+  const draft = await getOutreachDraft(id);
+  if (!draft) throw new Error(`Outreach draft not found: ${id}`);
+
+  const allowed = VALID_TRANSITIONS[draft.status];
+  if (!allowed || !allowed.has(newStatus)) {
+    throw new Error(`Invalid status transition: ${draft.status} -> ${newStatus}`);
+  }
+
+  if (!databaseEnabled) {
+    const updated = { ...draft, status: newStatus, updatedAt: new Date().toISOString() };
+    memoryOutreachDrafts.set(id, updated);
+    return updated;
+  }
+
+  const result = await query(
+    'UPDATE outreach_drafts SET status=$2, updated_at=now() WHERE id=$1 RETURNING *',
+    [id, newStatus]
+  );
+  return normalizeOutreachDraft(result.rows[0]);
 }
 
 export async function resetOutreachDraftsMemory() {

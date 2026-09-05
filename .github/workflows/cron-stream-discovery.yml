@@ -1,9 +1,9 @@
-# Syncs settlements from the processor and enforces rail viability.
-name: cron · revenue-check
+# Proposes new income streams from recorded evidence — never from a model.
+name: cron · stream-discovery
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -12,14 +12,14 @@ on:
         default: true
 
 concurrency:
-  group: cron-revenue-check
+  group: cron-stream-discovery
   cancel-in-progress: false
 
 jobs:
   run:
     uses: ./.github/workflows/_cron.yml
     with:
-      name: revenue-check
+      name: stream-discovery
       # Only ever true for a manual dispatch; a scheduled run leaves it false so
       # slot idempotency still governs bursts of deliveries.
       force: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}

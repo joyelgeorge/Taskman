@@ -13,8 +13,16 @@ import { DEFAULT_SOURCES } from './sources.js';
  * against data far older than the day just rolled up.
  */
 export async function runDataCollection({ fetchImpl, now = new Date(), seed = true } = {}) {
-  if (seed && (await listSources()).length === 0) {
-    for (const source of DEFAULT_SOURCES) await registerSource(source);
+  // Seed by difference, not all-or-nothing. Seeding only into an empty store
+  // meant a newly declared source never reached an install that already had one:
+  // the ephemeral ranking series was added, deployed, and silently never
+  // collected, because the ECB row already existed. Registering the missing keys
+  // is also what carries a new column (reconstructible) onto existing rows.
+  if (seed) {
+    const known = new Set((await listSources()).map(s => s.sourceKey));
+    for (const source of DEFAULT_SOURCES) {
+      if (!known.has(source.sourceKey)) await registerSource(source);
+    }
   }
 
   const sources = await dueSources({ now });

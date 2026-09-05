@@ -33,6 +33,7 @@ import { listExecutionRuns, dispatchCodingAgentWork } from './adapters/coding-ag
 import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
 import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
+import { instantAudit } from './instant-audit.js';
 import { FIRST_PAYING_CUSTOMER_PROFILE, qualifyProspect } from './customer-profile.js';
 import { MINIMUM_STACK_CONFIG, verifyCustomerStackReady } from './integration-stack.js';
 import {
@@ -597,6 +598,24 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/commercial/wedge') {
       return json(res, 200, COMMERCIAL_WEDGE_SPEC);
+    }
+    // The only route on this server a stranger can use, deliberately.
+    //
+    // No auth, no account, no workflow to activate, nothing stored. Every other
+    // commercial route requires an onboarded customer, which meant the
+    // reconciliation could only ever run for people who had already committed —
+    // and nobody commits to find out whether there is anything to find. This is
+    // the path from "someone with a problem" to "here is the specific payout that
+    // never landed", which is the only sequence that has ever sold this.
+    if (req.method === 'POST' && url.pathname === '/api/audit/instant') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        const result = instantAudit(body);
+        // A malformed upload is the user's to fix, not a 500.
+        return json(res, result.ok ? 200 : 422, result);
+      } catch (error) {
+        return json(res, 400, { ok: false, error: String(error.message || error) });
+      }
     }
     if (req.method === 'POST' && url.pathname === '/api/commercial/fiverr/reconcile') {
       const body = await readJsonBody(req).catch(() => ({}));

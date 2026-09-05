@@ -3,7 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
@@ -17,7 +19,8 @@
     "web": "node packages/web/server.js",
     "cron": "node packages/crons/cli.js",
     "scheduler": "node packages/crons/scheduler.js",
-    "smoke": "node packages/crons/smoke.js"
+    "smoke": "node packages/crons/smoke.js",
+    "sync:audit": "node scripts/sync-audit-assets.js"
   },
   "dependencies": {
     "pg": "^8.13.1"

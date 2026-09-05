@@ -14,6 +14,10 @@ on:
       timeout-minutes:
         type: number
         default: 10
+      force:
+        description: Ignore slot idempotency and run now.
+        type: boolean
+        default: false
     secrets:
       DATABASE_URL:
         required: true
@@ -63,6 +67,5 @@ jobs:
           API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
           WEB_HEALTH_URL: ${{ vars.WEB_HEALTH_URL }}
           HOSTNAME: github-actions
-          TASKMAN_ALLOW_MEMORY_CRON: 'true'
-        run: npm run cron -- ${{ inputs.name }}
+        run: npm run cron -- ${{ inputs.name }} ${{ inputs.force && '--force' || '' }}
 

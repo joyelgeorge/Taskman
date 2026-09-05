@@ -58,12 +58,68 @@ export async function withTransaction(fn) {
   }
 }
 
+async function loadMigrationsFromDisk() {
+  const migrations = new Map();
+  for (const dir of MIGRATION_DIRS) {
+    let names = [];
+    try {
+      names = await readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const filename of names.filter(file => file.endsWith('.sql'))) {
+      if (migrations.has(filename)) {
+        throw new Error(`Duplicate migration filename across directories: ${filename}`);
+      }
+      const sql = await readFile(join(dir, filename), 'utf8');
+      migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
+    }
+  }
+  return migrations;
+}
+
+/**
+ * True when every migration on disk is already applied with a matching checksum,
+ * so there is provably nothing to do.
+ *
+ * Every cron runs migrate() before its work, and GitHub delivers crons in bursts.
+ * Taking the advisory lock unconditionally made them serialize behind each other,
+ * and the loser died on `canceling statement due to statement timeout` after
+ * waiting out the 15s lock timeout — a green cron turned red by a no-op.
+ *
+ * Migrations are pending only just after a deploy, so this lock-free check skips
+ * the contention entirely in the normal case. It is only ever allowed to say
+ * "nothing to do": anything else falls through to the locked path, which re-reads
+ * under the lock and remains the authority on what gets applied.
+ */
+async function schemaIsCurrent(migrations) {
+  let rows;
+  try {
+    const result = await query('SELECT filename, checksum FROM schema_migrations');
+    rows = result.rows;
+  } catch {
+    return false; // no schema_migrations table yet, or unreadable — let the lock path decide
+  }
+  if (rows.length !== migrations.size) return false;
+  for (const row of rows) {
+    const migration = migrations.get(row.filename);
+    if (!migration) return false;
+    // A drifted checksum must reach the locked path so it throws the real error.
+    if (row.checksum && row.checksum !== migration.checksum) return false;
+    if (!row.checksum) return false; // needs the backfill the locked path performs
+  }
+  return true;
+}
+
 export async function migrate({ lockTimeoutMs = 15_000 } = {}) {
   if (!pool) return { enabled: false, applied: [] };
   const timeout = Number(lockTimeoutMs);
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 120_000) {
     throw new Error('Migration lock timeout must be an integer between 1 and 120000 milliseconds');
   }
+
+  const preloaded = await loadMigrationsFromDisk();
+  if (await schemaIsCurrent(preloaded)) return { enabled: true, applied: [], upToDate: true };
 
   const client = await pool.connect();
   let lockAcquired = false;
@@ -82,22 +138,9 @@ export async function migrate({ lockTimeoutMs = 15_000 } = {}) {
     `);
     await client.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT');
 
-    const migrations = new Map();
-    for (const dir of MIGRATION_DIRS) {
-      let names = [];
-      try {
-        names = await readdir(dir);
-      } catch {
-        continue;
-      }
-      for (const filename of names.filter(file => file.endsWith('.sql'))) {
-        if (migrations.has(filename)) {
-          throw new Error(`Duplicate migration filename across directories: ${filename}`);
-        }
-        const sql = await readFile(join(dir, filename), 'utf8');
-        migrations.set(filename, { sql, checksum: calculateChecksum(sql) });
-      }
-    }
+    // Re-read under the lock: the authority on what is applied is always this
+    // path, never the lock-free pre-check.
+    const migrations = await loadMigrationsFromDisk();
     const filenames = [...migrations.keys()].sort();
 
     const existingResult = await client.query('SELECT filename, checksum FROM schema_migrations');

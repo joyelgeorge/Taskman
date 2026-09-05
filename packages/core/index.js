@@ -51,3 +51,11 @@ export {
   listRollups, storageStats, resetObservationMemory, RAW_RETENTION_DAYS,
   DEFAULT_SOURCES, crossRate, runDataCollection
 } from './observations/index.js';
+
+export {
+  registerStream, setStreamState, markStreamSettled, listStreams, streamPortfolio,
+  resetIncomeMemory, STREAM_STATES, registerDataProduct, refreshDataProducts,
+  listDataProducts, appraise, resetDataProductMemory, seedIncomeStreams, incomeReport,
+  DEFAULT_STREAMS, DEFAULT_DATA_PRODUCTS, discoverIncomeStreams, DETECTORS,
+  detectOpenedVenues, detectMaturingSeries, detectRecurringDemand, detectUnattributedSettlements
+} from './income/index.js';

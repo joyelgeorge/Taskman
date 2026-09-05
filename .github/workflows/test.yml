@@ -51,4 +51,4 @@ jobs:
       - name: Apply every migration from an empty database
         run: npm run migrate:all
       - name: Run the complete PostgreSQL suite serially
-        run: npm test -- test/*.test.js --test-concurrency=1
+        run: npm test -- --test-concurrency=1

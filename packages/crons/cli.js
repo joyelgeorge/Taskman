@@ -19,28 +19,29 @@ export async function main(argv = process.argv.slice(2)) {
     return 0;
   }
 
-  // When DATABASE_URL is unset, running against in-memory storage allows
-  // guardrail checks, smoke runs, and CI scheduled runs to execute and verify health
-  // without failing abruptly. In production environments outside CI, explicit opt-in
-  // is required so non-persisting runs aren't silently accepted.
-  const allowMemory = process.env.TASKMAN_ALLOW_MEMORY_CRON === 'true'
-    || process.env.GITHUB_ACTIONS === 'true'
-    || process.env.CI === 'true';
-
-  if (!databaseEnabled) {
-    if (process.env.TASKMAN_ALLOW_MEMORY_CRON === 'false' || (process.env.NODE_ENV === 'production' && !allowMemory)) {
-      console.error(JSON.stringify({
-        cronName: name,
-        status: 'REFUSED',
-        reason: 'DATABASE_URL is not set. A scheduled cron will not run against in-memory storage, '
-          + 'because it would do real work, persist nothing, and still report success. '
-          + 'Set DATABASE_URL, or set TASKMAN_ALLOW_MEMORY_CRON=true for a throwaway run.'
-      }, null, 2));
-      return 1;
-    }
-    console.warn(`[cron:${name}] DATABASE_URL is not set; running in ephemeral memory mode (guardrail check).`);
+  // Without DATABASE_URL every store falls back to an in-process Map. A cron
+  // would then fly real drones, spend real time, write to memory, exit, and
+  // report COMPLETED — and the watchdog would see a healthy system that has
+  // persisted nothing. That silent success is the exact failure class this
+  // system exists to eliminate, so a scheduled run refuses it outright.
+  //
+  // GITHUB_ACTIONS/CI must NOT be treated as permission. Actions is where the
+  // scheduled crons actually run, so allowing memory there does not make a
+  // smoke test pass — it makes every real scheduled run green while it
+  // persists nothing. Measured on this repo: drone-dispatch collected 81 live
+  // signals, reported COMPLETED, exited 0, and discarded all 81.
+  //
+  // Local dev, smoke runs and tests opt in explicitly, and only explicitly.
+  if (!databaseEnabled && process.env.TASKMAN_ALLOW_MEMORY_CRON !== 'true') {
+    console.error(JSON.stringify({
+      cronName: name,
+      status: 'REFUSED',
+      reason: 'DATABASE_URL is not set. A scheduled cron will not run against in-memory storage, '
+        + 'because it would do real work, persist nothing, and still report success. '
+        + 'Set DATABASE_URL, or set TASKMAN_ALLOW_MEMORY_CRON=true for a local throwaway run.'
+    }, null, 2));
+    return 1;
   }
-
 
   const job = getJob(name);
   const outcome = await runCron(job.definition, () => job.handler(), { force });

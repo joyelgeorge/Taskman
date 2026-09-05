@@ -23,7 +23,7 @@ test('getCustomerWorkflowState provides clear blockers before configuration and 
   assert.ok(state.blockers.some(b => b.includes('Fiverr transaction statement source not connected')));
 });
 
-test('configureCustomerWorkflow updates customer profile and calculates unverified estimated savings', () => {
+test('configuring a customer projects no saving it has not measured', () => {
   const updated = configureCustomerWorkflow({
     agencyName: 'Apex Creative Studio',
     fiverrUsername: 'apexpro',
@@ -32,9 +32,12 @@ test('configureCustomerWorkflow updates customer profile and calculates unverifi
 
   assert.equal(updated.configuredInputs.agencyName, 'Apex Creative Studio');
   assert.equal(updated.configuredInputs.fiverrUsername, 'apexpro');
-  assert.ok(updated.valueMetrics.estimatedAnnualSavingsCents > 0);
-  assert.equal(updated.economicTaxonomy.estimatedSavingsCents, updated.valueMetrics.estimatedAnnualSavingsCents);
-  // Verified cash recovered and confirmed savings must remain 0
+  // This previously asserted a savings figure derived from an invented 5% leakage
+  // rate plus an unexplained flat $480, and showed it to a prospect deciding
+  // whether to pay. Entering a volume estimate is not evidence of a saving.
+  assert.equal(updated.valueMetrics.estimatedAnnualSavingsCents, 0,
+    'a number typed into an onboarding form must not become a projected saving');
+  assert.equal(updated.economicTaxonomy.estimatedSavingsCents, 0);
   assert.equal(updated.valueMetrics.verifiedCashRecoveredCents, 0);
   assert.equal(updated.economicTaxonomy.verifiedCashRecoveredCents, 0);
 });

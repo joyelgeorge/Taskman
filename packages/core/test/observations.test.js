@@ -231,3 +231,44 @@ test('a source is not collected again before its interval has elapsed', async ()
   assert.equal(second.collected, 0, 'daily source, same run — nothing is due');
   assert.equal((await dueSources({ now: testNow })).length, 0);
 });
+
+// ---- robots wildcards --------------------------------------------------------
+
+test('an Allow with a wildcard and an end anchor beats a blanket Disallow', () => {
+  // Hacker News publishes exactly this, permitting the endpoints its API
+  // documents. Treating `/*.json$` as a literal prefix matched nothing, so
+  // `Disallow: /` won and the collector refused a source the publisher had gone
+  // out of its way to allow.
+  const rules = parseRobots('User-agent: *\nAllow: /*.json$\nAllow: /*.json?*$\nDisallow: /');
+  assert.equal(isAllowedByRules(rules, '/v0/topstories.json'), true);
+  assert.equal(isAllowedByRules(rules, '/v0/item/123.json'), true);
+  assert.equal(isAllowedByRules(rules, '/v0/user/pg'), false, 'the blanket Disallow still governs everything else');
+});
+
+test('an end anchor really anchors', () => {
+  const rules = parseRobots('User-agent: *\nDisallow: /\nAllow: /ok$');
+  assert.equal(isAllowedByRules(rules, '/ok'), true);
+  assert.equal(isAllowedByRules(rules, '/ok/more'), false);
+});
+
+test('a plain rule with no wildcard is still a prefix match', () => {
+  const rules = parseRobots('User-agent: *\nDisallow: /private/');
+  assert.equal(isAllowedByRules(rules, '/private/x'), false);
+  assert.equal(isAllowedByRules(rules, '/public/x'), true);
+});
+
+test('a newly declared source reaches an install that already has others', async () => {
+  await reset();
+  // Seeding only into an empty store meant adding a source to DEFAULT_SOURCES
+  // was a no-op everywhere it was already running — the exact way the ephemeral
+  // ranking series shipped and then silently collected nothing.
+  await registerSource({
+    sourceKey: 'pre-existing', kind: 'http_json', url: 'https://example.test/a.json',
+    licence: 'test', decision: 'test'
+  });
+  await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: new Date('2026-09-03T12:00:00Z') });
+  const keys = (await listSources()).map(s => s.sourceKey);
+  for (const declared of DEFAULT_SOURCES) {
+    assert.ok(keys.includes(declared.sourceKey), `${declared.sourceKey} should have been seeded alongside the existing source`);
+  }
+});

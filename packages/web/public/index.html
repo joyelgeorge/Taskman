@@ -15,10 +15,10 @@
   <header class="top">
     <h1>Taskman <span>/ control</span></h1>
     <div class="controls">
-      <input type="text" id="api-base" placeholder="https://your-api.onrender.com" aria-label="API base URL">
+      <input type="url" id="api-base" value="http://127.0.0.1:3100" placeholder="http://127.0.0.1:3100" aria-label="API base URL" autocomplete="off" spellcheck="false">
       <input type="password" id="api-token" placeholder="API token (optional)" aria-label="API token">
-      <button id="save">Connect</button>
-      <button id="refresh" class="primary">Refresh</button>
+      <button id="save" type="button">Connect</button>
+      <button id="refresh" class="primary" type="button">Refresh</button>
     </div>
   </header>
 
@@ -108,7 +108,7 @@
     </table></div>
   </section>
 
-  <p class="foot" id="foot">Set the API base URL and press Connect. The UI is static and holds no data of its own.</p>
+  <p class="foot" id="foot">Default API is packages/api at http://127.0.0.1:3100 (npm run api). src/server.js is :3000 for brain/tasks/runs.</p>
 </div>
 <script src="app.js"></script>
 </body>

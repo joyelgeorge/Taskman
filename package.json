@@ -20,7 +20,8 @@
     "cron": "node packages/crons/cli.js",
     "scheduler": "node packages/crons/scheduler.js",
     "smoke": "node packages/crons/smoke.js",
-    "sync:audit": "node scripts/sync-audit-assets.js"
+    "sync:audit": "node scripts/sync-audit-assets.js",
+    "build:audit-site": "node scripts/build-audit-site.js"
   },
   "dependencies": {
     "pg": "^8.13.1"

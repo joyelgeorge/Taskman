@@ -2,6 +2,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Payout audit — check what you were actually paid</title>
+<meta name="description" content="Compare what a platform says it paid you against what reached your bank. Names the specific payout that never arrived. Runs entirely in your browser — nothing is uploaded.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="./">
+<!-- A link shared into Slack, WhatsApp or a forum renders from these. Without
+     them it arrives as a bare URL, which is the difference between a click and a
+     scroll past. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Were you actually paid for every order?">
+<meta property="og:description" content="Compare what you were owed against what reached your bank. Free, runs in your browser, nothing uploaded.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Were you actually paid for every order?">
+<meta name="twitter:description" content="Compare what you were owed against what reached your bank. Free, runs in your browser, nothing uploaded.">
 <style>
   :root {
     --bg: #fbfaf8; --fg: #1c1a17; --muted: #6b6560; --line: #e3ded7;
@@ -137,6 +149,14 @@
     });
   }
 
+  if (!OFFER.contact) {
+    // Operator-facing, deliberately in the console: a visitor must never be shown
+    // a setup instruction. The offer still renders — the free audit is useful on
+    // its own — it simply has no way to be acted on until this is filled in.
+    console.warn('[audit] OFFER.contact is unset, so the offer has no reply path. '
+      + 'Set it in this file before relying on the page to convert.');
+  }
+
   $('form').addEventListener('submit', event => {
     event.preventDefault();
     const out = $('result');
@@ -192,7 +212,7 @@
         ${esc(OFFER.price)}.</p>
         ${OFFER.contact
           ? `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`
-          : '<p class="caveat">Contact not configured yet — set OFFER.contact in this page before publishing.</p>'}
+          : ''}
       </div>
     `;
   });

@@ -30,9 +30,14 @@ function duration(seconds) {
 
 const CRON_TONE = { OK: 'ok', DISABLED: 'off', FAILING: 'warn', OVERDUE: 'bad', STUCK: 'bad' };
 
+function isLocalHost() {
+  return ['127.0.0.1', 'localhost'].includes(location.hostname);
+}
+
 function connectBase() {
   const typed = ($('api-base')?.value || '').trim();
-  const base = (typed || store.base || DEFAULT_API).replace(/\/$/, '');
+  const fallback = isLocalHost() ? DEFAULT_API : store.base;
+  const base = (typed || fallback || DEFAULT_API).replace(/\/$/, '');
   store.base = base;
   if ($('api-base')) $('api-base').value = base;
   store.token = ($('api-token')?.value || '').trim();
@@ -42,11 +47,15 @@ function connectBase() {
 async function api(path, { method = 'GET', body } = {}) {
   const base = (store.base || DEFAULT_API).replace(/\/$/, '');
   if (!base) throw new Error('No API base URL set.');
-  const headers = { 'x-taskman-base': base };
+  const headers = {};
   if (body) headers['content-type'] = 'application/json';
   if (store.token) headers.authorization = `Bearer ${store.token}`;
 
-  const response = await fetch(`/__proxy${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const local = isLocalHost();
+  const url = local ? `/__proxy${path}` : `${base}${path}`;
+  if (local) headers['x-taskman-base'] = base;
+
+  const response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const text = await response.text();
   let payload;
   try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
@@ -55,7 +64,6 @@ async function api(path, { method = 'GET', body } = {}) {
     throw new Error(`${payload.message || 'proxy failed'} — is ${base} running? Start packages/api with npm run api (:3100) or src/server.js (:3000).`);
   }
 
-  // /api/health answers 503 when degraded; that is a valid reading, not a failure.
   if (!response.ok && response.status !== 503) {
     throw new Error(payload?.error || payload?.message || `HTTP ${response.status} from ${path}`);
   }
@@ -329,7 +337,7 @@ $('scan-run').addEventListener('click', async () => {
   }
 });
 
-$('api-base').value = store.base || DEFAULT_API;
+$('api-base').value = store.base || (isLocalHost() ? DEFAULT_API : '');
 $('api-token').value = store.token;
 connectBase();
 load();

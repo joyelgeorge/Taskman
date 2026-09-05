@@ -14,7 +14,7 @@ import {
   listFinanceReportHistory,
   recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics,
   listSources, registerSource, listObservations, listRollups, storageStats,
-  listStreams, incomeReport
+  listStreams, registerStream, incomeReport
 } from '@taskman/core';
 import { healthCheck as dbHealth } from '@taskman/db';
 import { runCron } from '../crons/lib/run.js';
@@ -404,6 +404,60 @@ export async function route(req, url, readBody) {
       body: {
         ...report,
         streams
+      }
+    };
+  }
+
+  if (method === 'POST' && pathname === '/api/money/opportunities') {
+    const body = await readBody();
+    if (!body.title || !body.mechanism || !body.requires || !body.nextAction || !body.unblockedBy) {
+      return {
+        status: 400,
+        body: { error: 'title, mechanism, requires, nextAction, and unblockedBy are required' }
+      };
+    }
+
+    const streamKey = body.streamKey || String(body.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const proofCents = body.proofCents != null ? Number(body.proofCents) : null;
+    const testCostHours = body.testCostHours != null ? Number(body.testCostHours) : 0;
+    const pSuccess = Math.min(1, Math.max(0, body.pSuccess != null ? Number(body.pSuccess) : (body.unblockedBy === 'machine' ? 0.7 : 0.4)));
+
+    // Usual economic calculations
+    const grossReward = (proofCents || 0) / 100;
+    const expectedValue = grossReward * pSuccess;
+    const opportunityCost = testCostHours * 50; // $50/hr opportunity baseline
+    const expectedNetValue = expectedValue - opportunityCost;
+    const hourlyProofRate = testCostHours > 0 ? (grossReward / testCostHours) : grossReward;
+    const stats = {
+      grossReward,
+      pSuccess,
+      expectedValue,
+      opportunityCost,
+      expectedNetValue,
+      hourlyProofRate,
+      viable: expectedNetValue >= 0 || testCostHours <= 2
+    };
+
+    const stream = await registerStream({
+      streamKey,
+      title: body.title,
+      mechanism: body.mechanism,
+      requires: body.requires,
+      nextAction: body.nextAction,
+      unblockedBy: body.unblockedBy,
+      state: body.state || 'HYPOTHESIS',
+      stateReason: body.stateReason || `Registered via operator UI. EV: $${expectedNetValue.toFixed(2)}, Proof: $${grossReward.toFixed(2)}`,
+      testCostHours,
+      proofCents,
+      evidence: body.evidence || [{ kind: 'economic_calculation', stats, at: new Date().toISOString() }],
+      origin: body.origin || 'operator_ui'
+    });
+
+    return {
+      status: 201,
+      body: {
+        stream,
+        stats
       }
     };
   }

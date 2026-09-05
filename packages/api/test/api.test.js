@@ -290,3 +290,48 @@ test('recording an expense requires the token when one is configured, and reject
     delete process.env.TASKMAN_API_TOKEN;
   }
 });
+
+test('GET and POST /api/money/opportunities calculates stats and registers stream', async () => {
+  await reset();
+  await withServer(async base => {
+    const initial = await get(base, '/api/money/opportunities');
+    assert.equal(initial.status, 200);
+    assert.ok(Array.isArray(initial.body.streams));
+
+    const badPost = await fetch(`${base}/api/money/opportunities`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Missing required fields' })
+    });
+    assert.equal(badPost.status, 400);
+
+    const post = await fetch(`${base}/api/money/opportunities`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Chargeback Recovery Audit',
+        mechanism: 'Merchant pays via Stripe invoice after detecting lost chargebacks',
+        requires: 'A merchant running >$20k/mo with at least 5 disputes',
+        nextAction: 'Audit first sample dispute ledger',
+        unblockedBy: 'machine',
+        proofCents: 10000,
+        testCostHours: 1,
+        pSuccess: 0.8
+      })
+    });
+    assert.equal(post.status, 201);
+    const postBody = await post.json();
+    assert.equal(postBody.stream.streamKey, 'chargeback-recovery-audit');
+    assert.equal(postBody.stream.proofCents, 10000);
+    assert.equal(postBody.stats.grossReward, 100);
+    assert.equal(postBody.stats.pSuccess, 0.8);
+    assert.equal(postBody.stats.expectedValue, 80);
+    assert.equal(postBody.stats.opportunityCost, 50);
+    assert.equal(postBody.stats.expectedNetValue, 30);
+    assert.equal(postBody.stats.viable, true);
+
+    const after = await get(base, '/api/money/opportunities');
+    assert.equal(after.status, 200);
+    assert.ok(after.body.streams.some(s => s.streamKey === 'chargeback-recovery-audit'));
+  });
+});

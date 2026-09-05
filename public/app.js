@@ -447,6 +447,76 @@ document.addEventListener('click', async e => {
 
 $('#retryDashboard').onclick = () => refreshDashboard({ supersede: true });
 
+function updateCoreOppStats() {
+  const proofVal = parseFloat($('#coreOppProof')?.value) || 0;
+  const hoursVal = parseFloat($('#coreOppHours')?.value) || 0;
+  const probVal = parseFloat($('#coreOppProb')?.value) || 0;
+  const ev = proofVal * probVal;
+  const oppCost = hoursVal * 50;
+  const netEv = ev - oppCost;
+  const proofRate = hoursVal > 0 ? (proofVal / hoursVal) : proofVal;
+  const statsEl = $('#coreOppStats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div class="row">
+        <span>Gross Proof: <strong>$${proofVal.toFixed(2)}</strong></span>
+        <span>P(Payout): <strong>${Math.round(probVal * 100)}%</strong></span>
+        <span>Expected Value: <strong>$${ev.toFixed(2)}</strong></span>
+        <span>Net EV: <strong style="color:${netEv >= 0 ? '#15803d' : '#b45309'}">$${netEv.toFixed(2)}</strong></span>
+        <span>Proof Rate: <strong>$${proofRate.toFixed(2)}/h</strong></span>
+      </div>
+    `;
+  }
+  return { grossReward: proofVal, pSuccess: probVal, expectedValue: ev, opportunityCost: oppCost, expectedNetValue: netEv, hourlyProofRate: proofRate };
+}
+
+$('#coreOppProof')?.addEventListener('input', updateCoreOppStats);
+$('#coreOppHours')?.addEventListener('input', updateCoreOppStats);
+$('#coreOppProb')?.addEventListener('input', updateCoreOppStats);
+updateCoreOppStats();
+
+$('#coreOppSubmit')?.addEventListener('click', async () => {
+  const title = $('#coreOppTitle')?.value.trim();
+  const mech = $('#coreOppMech')?.value.trim();
+  const req = $('#coreOppReq')?.value.trim();
+  const action = $('#coreOppAction')?.value.trim();
+  const unblocked = $('#coreOppUnblocked')?.value || 'machine';
+  const resultEl = $('#coreOppResult');
+
+  if (!title || !mech || !req || !action) {
+    if (resultEl) resultEl.textContent = 'Please fill out title, mechanism, requires, and next action.';
+    return;
+  }
+
+  const calc = updateCoreOppStats();
+  if (resultEl) resultEl.textContent = 'Calculating stats and registering opportunity…';
+
+  try {
+    const res = await requestJson('/api/money/opportunities', mutationOptions({
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        mechanism: mech,
+        requires: req,
+        nextAction: action,
+        unblockedBy: unblocked,
+        proofCents: Math.round(calc.grossReward * 100),
+        testCostHours: parseFloat($('#coreOppHours')?.value) || 0,
+        pSuccess: calc.pSuccess
+      })
+    }));
+
+    if (resultEl) resultEl.innerHTML = `Added to database! EV: $${res.stats.expectedNetValue.toFixed(2)} (Proof: $${res.stats.grossReward.toFixed(2)})`;
+    $('#coreOppTitle').value = '';
+    $('#coreOppMech').value = '';
+    $('#coreOppReq').value = '';
+    $('#coreOppAction').value = '';
+    await refreshDashboard({ supersede: true });
+  } catch (err) {
+    if (resultEl) resultEl.textContent = `Error: ${err.message}`;
+  }
+});
+
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) refreshDashboard({ supersede: true });
   scheduleRefresh();

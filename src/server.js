@@ -104,7 +104,7 @@ import {
 import { getRuntimeConfig } from './config.js';
 import { handleEconomicSelectorRequest } from './economic-selector.js';
 import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
-import { cronStatuses, listCronRuns, listStreams, incomeReport } from '@taskman/core';
+import { cronStatuses, listCronRuns, listStreams, registerStream, incomeReport } from '@taskman/core';
 
 // Money-ledger routes (/api/money/*) live on the separate packages/api service
 // now — see docs/AUTONOMOUS_SYSTEM.md — rather than duplicated onto this legacy
@@ -811,6 +811,47 @@ const server = http.createServer(async (req, res) => {
         listTaskRecords()
       ]);
       return json(res, 200, { ...report, streams, tasks });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/money/opportunities') {
+      const body = await readJsonBody(req);
+      if (!body.title || !body.mechanism || !body.requires || !body.nextAction || !body.unblockedBy) {
+        return json(res, 400, { error: 'title, mechanism, requires, nextAction, and unblockedBy are required' });
+      }
+      const streamKey = body.streamKey || String(body.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const proofCents = body.proofCents != null ? Number(body.proofCents) : null;
+      const testCostHours = body.testCostHours != null ? Number(body.testCostHours) : 0;
+      const pSuccess = Math.min(1, Math.max(0, body.pSuccess != null ? Number(body.pSuccess) : (body.unblockedBy === 'machine' ? 0.7 : 0.4)));
+
+      const grossReward = (proofCents || 0) / 100;
+      const expectedValue = grossReward * pSuccess;
+      const opportunityCost = testCostHours * 50;
+      const expectedNetValue = expectedValue - opportunityCost;
+      const hourlyProofRate = testCostHours > 0 ? (grossReward / testCostHours) : grossReward;
+      const stats = {
+        grossReward,
+        pSuccess,
+        expectedValue,
+        opportunityCost,
+        expectedNetValue,
+        hourlyProofRate,
+        viable: expectedNetValue >= 0 || testCostHours <= 2
+      };
+
+      const stream = await registerStream({
+        streamKey,
+        title: body.title,
+        mechanism: body.mechanism,
+        requires: body.requires,
+        nextAction: body.nextAction,
+        unblockedBy: body.unblockedBy,
+        state: body.state || 'HYPOTHESIS',
+        stateReason: body.stateReason || `Registered via UI. EV: $${expectedNetValue.toFixed(2)}, Proof: $${grossReward.toFixed(2)}`,
+        testCostHours,
+        proofCents,
+        evidence: body.evidence || [{ kind: 'economic_calculation', stats, at: new Date().toISOString() }],
+        origin: body.origin || 'operator_ui'
+      });
+      return json(res, 201, { stream, stats });
     }
     const cronRunsMatch = url.pathname.match(/^\/api\/crons\/([^/]+)\/runs$/);
     if (req.method === 'GET' && cronRunsMatch) {

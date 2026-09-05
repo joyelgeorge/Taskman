@@ -116,7 +116,31 @@
       <div class="row"><h2 class="row-heading">Money-Making Streams & Opportunities</h2><span id="opportunitiesStatus" class="panel-status" aria-live="polite">Loading…</span><span id="opportunitiesCount" class="muted"></span></div>
       <p class="muted">Live income stream candidates, verification metrics, test costs, proof targets, and observation moats from the database.</p>
       <div id="opportunitiesSummary"></div>
-      <div id="opportunitiesList"></div>
+
+      <div class="customer-section-margin">
+        <h3>Add & Evaluate New Possibility</h3>
+        <p class="muted">Computes Expected Value (EV), Opportunity Cost, and Proof Rate before adding to the database.</p>
+        <div id="newOppForm">
+          <input id="coreOppTitle" placeholder="Opportunity title (e.g. Stripe dispute chargeback auditor)" />
+          <textarea id="coreOppMech" rows="2" placeholder="Mechanism: exactly how money physically arrives"></textarea>
+          <input id="coreOppReq" placeholder="Requires: what would have to be true to earn" />
+          <input id="coreOppAction" placeholder="Next action: concrete immediate next step" />
+          <div class="row">
+            <select id="coreOppUnblocked">
+              <option value="machine">machine (autonomous)</option>
+              <option value="human">human (requires account KYC/trust)</option>
+            </select>
+            <input id="coreOppProof" type="number" step="1" value="25" placeholder="First Proof ($)" />
+            <input id="coreOppHours" type="number" step="0.5" value="1" placeholder="Test Cost (hrs)" />
+            <input id="coreOppProb" type="number" step="0.05" min="0" max="1" value="0.60" placeholder="P(Payout)" />
+          </div>
+          <div id="coreOppStats" class="value-card customer-margin-small"></div>
+          <button id="coreOppSubmit" class="primary">Calculate & Add Opportunity</button>
+          <div id="coreOppResult" class="muted customer-margin-small"></div>
+        </div>
+      </div>
+
+      <div id="opportunitiesList" class="customer-section-margin"></div>
     </section>
 
     <section class="card">

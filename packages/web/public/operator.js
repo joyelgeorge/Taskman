@@ -160,6 +160,66 @@ document.addEventListener("DOMContentLoaded", function() {
         '</div>' +
       '</div>' +
 
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;margin-bottom:24px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<div>' +
+            '<div style="font-size:16px;font-weight:700;color:#e1e7de;">Evaluate & Add New Possibility</div>' +
+            '<div style="font-size:12px;color:#858f82;margin-top:2px;">Runs economic calculations (EV, hourly proof rate, opportunity cost, and viability gate) before recording into the database.</div>' +
+          '</div>' +
+        '</div>' +
+        '<form id="new-opp-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;background:#0d110d;padding:16px;border-radius:8px;border:1px solid #1c211b;">' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">OPPORTUNITY TITLE *</label>' +
+            '<input id="opp-title" required placeholder="e.g. Automated Shopify inventory dispute audit" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">STREAM KEY (SLUG) *</label>' +
+            '<input id="opp-key" placeholder="e.g. shopify-dispute-audit" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div style="grid-column:1 / -1;">' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">HOW MONEY PHYSICALLY ARRIVES (MECHANISM) *</label>' +
+            '<textarea id="opp-mech" rows="2" required placeholder="Name the exact money movement (e.g. Buyer pays via Stripe invoice after previewing missing reconciliations)." style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;resize:vertical;"></textarea>' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">WHAT WOULD HAVE TO BE TRUE (REQUIRES) *</label>' +
+            '<input id="opp-req" required placeholder="e.g. Merchant with >$10k/mo dispute volume." style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">IMMEDIATE NEXT ACTION *</label>' +
+            '<input id="opp-action" required placeholder="e.g. Build sample CSV transformer parser." style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">UNBLOCKED BY *</label>' +
+            '<select id="opp-unblocked" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;">' +
+              '<option value="machine">machine (zero KYC / autonomous execution)</option>' +
+              '<option value="human">human (requires account KYC / bank / manual trust)</option>' +
+            '</select>' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">FIRST SETTLEMENT PROOF (USD $)</label>' +
+            '<input id="opp-proof" type="number" step="0.01" value="25.00" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">TEST COST (HOURS)</label>' +
+            '<input id="opp-hours" type="number" step="0.5" value="1.0" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+          '<div>' +
+            '<label style="display:block;font-size:11px;font-family:monospace;color:#858f82;margin-bottom:4px;">ESTIMATED PROBABILITY OF PAYOUT (0.0 - 1.0)</label>' +
+            '<input id="opp-prob" type="number" step="0.05" min="0" max="1" value="0.60" style="width:100%;box-sizing:border-box;background:#141813;border:1px solid #262c24;border-radius:6px;padding:8px 12px;font-size:13px;color:#e1e7de;outline:none;" />' +
+          '</div>' +
+
+          '<div id="opp-calc-preview" style="grid-column:1 / -1;background:#141813;border:1px solid #262c24;border-radius:8px;padding:14px;margin-top:4px;">' +
+            '<div style="font-size:12px;font-weight:700;color:#858f82;text-transform:uppercase;letter-spacing:0.5px;">Economic Calculation & Viability Stats</div>' +
+            '<div id="opp-stats-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:10px;font-family:monospace;font-size:12px;"></div>' +
+          '</div>' +
+
+          '<div style="grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
+            '<div id="opp-submit-status" style="font-family:monospace;font-size:12px;color:#858f82;"></div>' +
+            '<button id="opp-submit-btn" type="button" style="background:#22c55e;color:#0d110d;border:none;padding:10px 20px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">Calculate & Add to Database</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>' +
+
       '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;">' +
         '<div style="font-size:15px;font-weight:700;color:#e1e7de;margin-bottom:12px;">Connected Database Execution Tasks</div>' +
         '<div style="overflow-x:auto;">' +
@@ -176,6 +236,127 @@ document.addEventListener("DOMContentLoaded", function() {
           '</table>' +
         '</div>' +
       '</div>';
+
+    function computeStats() {
+      var proofVal = parseFloat(document.getElementById('opp-proof').value) || 0;
+      var hoursVal = parseFloat(document.getElementById('opp-hours').value) || 0;
+      var probVal = parseFloat(document.getElementById('opp-prob').value) || 0;
+      var unblockedVal = document.getElementById('opp-unblocked').value;
+
+      var ev = proofVal * probVal;
+      var oppCost = hoursVal * 50;
+      var netEv = ev - oppCost;
+      var proofRate = hoursVal > 0 ? (proofVal / hoursVal) : proofVal;
+      var viable = netEv >= 0 || hoursVal <= 2;
+
+      var statsContent = document.getElementById('opp-stats-content');
+      if (statsContent) {
+        statsContent.innerHTML =
+          '<div><div style="color:#858f82;">GROSS PROOF:</div><div style="font-weight:700;color:#e1e7de;font-size:14px;">$' + proofVal.toFixed(2) + '</div></div>' +
+          '<div><div style="color:#858f82;">EST. PROBABILITY:</div><div style="font-weight:700;color:#60a5fa;font-size:14px;">' + Math.round(probVal * 100) + '%</div></div>' +
+          '<div><div style="color:#858f82;">EXPECTED VALUE:</div><div style="font-weight:700;color:#4ade80;font-size:14px;">$' + ev.toFixed(2) + '</div></div>' +
+          '<div><div style="color:#858f82;">OPP. COST ($50/h):</div><div style="font-weight:700;color:#f87171;font-size:14px;">$' + oppCost.toFixed(2) + '</div></div>' +
+          '<div><div style="color:#858f82;">EXPECTED NET VALUE:</div><div style="font-weight:700;color:' + (netEv >= 0 ? '#4ade80' : '#facc15') + ';font-size:14px;">$' + netEv.toFixed(2) + '</div></div>' +
+          '<div><div style="color:#858f82;">PROOF RATE/HR:</div><div style="font-weight:700;color:#e1e7de;font-size:14px;">$' + proofRate.toFixed(2) + '/h</div></div>' +
+          '<div><div style="color:#858f82;">GATE VERDICT:</div><div style="font-weight:700;color:' + (viable ? '#4ade80' : '#f87171') + ';font-size:14px;">' + (viable ? 'VIABLE' : 'HIGH_TEST_COST') + '</div></div>';
+      }
+      return { grossReward: proofVal, pSuccess: probVal, expectedValue: ev, opportunityCost: oppCost, expectedNetValue: netEv, hourlyProofRate: proofRate, viable: viable };
+    }
+
+    var proofInput = document.getElementById('opp-proof');
+    var hoursInput = document.getElementById('opp-hours');
+    var probInput = document.getElementById('opp-prob');
+    var titleInput = document.getElementById('opp-title');
+    var keyInput = document.getElementById('opp-key');
+
+    if (titleInput && keyInput) {
+      titleInput.addEventListener('input', function() {
+        if (!keyInput.dataset.manual) {
+          keyInput.value = titleInput.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        }
+      });
+      keyInput.addEventListener('input', function() { keyInput.dataset.manual = 'true'; });
+    }
+
+    if (proofInput) proofInput.addEventListener('input', computeStats);
+    if (hoursInput) hoursInput.addEventListener('input', computeStats);
+    if (probInput) probInput.addEventListener('input', computeStats);
+    computeStats();
+
+    var submitBtn = document.getElementById('opp-submit-btn');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', function() {
+        var title = (titleInput && titleInput.value) ? titleInput.value.trim() : '';
+        var mech = document.getElementById('opp-mech') ? document.getElementById('opp-mech').value.trim() : '';
+        var req = document.getElementById('opp-req') ? document.getElementById('opp-req').value.trim() : '';
+        var action = document.getElementById('opp-action') ? document.getElementById('opp-action').value.trim() : '';
+        var unblocked = document.getElementById('opp-unblocked') ? document.getElementById('opp-unblocked').value : 'machine';
+        var key = (keyInput && keyInput.value) ? keyInput.value.trim() : title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        var statusEl = document.getElementById('opp-submit-status');
+
+        if (!title || !mech || !req || !action) {
+          if (statusEl) statusEl.innerHTML = '<span style="color:#f87171;">Please complete title, mechanism, requires, and next action.</span>';
+          return;
+        }
+
+        var calc = computeStats();
+        var proofCents = Math.round(calc.grossReward * 100);
+        var testHours = parseFloat(document.getElementById('opp-hours').value) || 0;
+
+        var payload = {
+          streamKey: key,
+          title: title,
+          mechanism: mech,
+          requires: req,
+          nextAction: action,
+          unblockedBy: unblocked,
+          proofCents: proofCents,
+          testCostHours: testHours,
+          pSuccess: calc.pSuccess,
+          state: 'HYPOTHESIS'
+        };
+
+        if (statusEl) statusEl.textContent = 'Calculating & saving to database…';
+        submitBtn.disabled = true;
+
+        var base = (input && input.value ? input.value : defaultApi).replace(/\/$/, "");
+        fetch(base + '/money/opportunities', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res.error) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#f87171;">Error: ' + res.error + '</span>';
+            submitBtn.disabled = false;
+          } else {
+            if (statusEl) statusEl.innerHTML = '<span style="color:#4ade80;">Saved to db! EV: $' + calc.expectedNetValue.toFixed(2) + '. Refreshing…</span>';
+            setTimeout(load, 1200);
+          }
+        })
+        .catch(function(err) {
+          // Fallback if running on static page: append locally and update UI
+          var newStream = {
+            streamKey: key,
+            title: title,
+            mechanism: mech,
+            requires: req,
+            nextAction: action,
+            unblockedBy: unblocked,
+            state: 'HYPOTHESIS',
+            testCostHours: testHours,
+            proofCents: proofCents,
+            origin: 'local_entry'
+          };
+          if (!data) data = { streams: [], dataProducts: [], tasks: [] };
+          if (!data.streams) data.streams = [];
+          data.streams.unshift(newStream);
+          if (statusEl) statusEl.innerHTML = '<span style="color:#4ade80;">Calculated (EV: $' + calc.expectedNetValue.toFixed(2) + ') & added to local list!</span>';
+          setTimeout(function() { renderOpportunities(data); }, 1000);
+        });
+      });
+    }
   }
 
   function render(data) {

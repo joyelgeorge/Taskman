@@ -121,6 +121,43 @@ export async function signalStats() {
   return { total: Object.values(byStatus).reduce((a, b) => a + b, 0), byStatus };
 }
 
+/**
+ * Counts how many distinct droneIds produced signals containing any significant
+ * word from the given title in the last windowMs milliseconds.
+ * Used to compute corroboration_score for economic scoring.
+ */
+export async function countCorroboratingSignals(titleWords, windowMs = 86400000) {
+  if (!titleWords || titleWords.length === 0) return 0;
+
+  if (!databaseEnabled) {
+    const cutoff = new Date(Date.now() - windowMs).toISOString();
+    const seen = new Set();
+    for (const signal of mem.signals.all()) {
+      if (!signal.observedAt || signal.observedAt < cutoff) continue;
+      const lower = (signal.title ?? '').toLowerCase();
+      if (titleWords.some(w => lower.includes(w.toLowerCase()))) {
+        seen.add(signal.droneId);
+      }
+    }
+    return seen.size;
+  }
+
+  // Build dynamic LIKE clauses: LOWER(title) LIKE $2 OR LOWER(title) LIKE $3 ...
+  const params = [windowMs];
+  const likeClauses = titleWords.map((word, i) => {
+    params.push(`%${word.toLowerCase()}%`);
+    return `LOWER(title) LIKE $${i + 2}`;
+  });
+
+  const result = await query(
+    `SELECT COUNT(DISTINCT drone_id) AS count FROM signals
+     WHERE observed_at > NOW() - ($1 * INTERVAL '1 millisecond')
+     AND (${likeClauses.join(' OR ')})`,
+    params
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
+
 export async function resetSignalMemory() {
   mem.signals.clear();
   await truncateForTesting(['signals']);

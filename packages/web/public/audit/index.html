@@ -186,8 +186,10 @@
         from the second. If that is wrong, the result is wrong — check before acting on it.</p>
       <div class="offer">
         <strong>Want ${esc(OFFER.scope)} checked?</strong>
-        <p>This compared what you pasted. The full check covers every order and deposit,
-        reconciles the fee lines, and comes back as a list you can act on — ${esc(OFFER.price)}.</p>
+        <p>This compared what you pasted. The full check covers every order and deposit, finds
+        duplicated references, checks whether your fee rate was consistent, flags payouts that took
+        unusually long, and comes back as a saved report you can take to your platform —
+        ${esc(OFFER.price)}.</p>
         ${OFFER.contact
           ? `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`
           : '<p class="caveat">Contact not configured yet — set OFFER.contact in this page before publishing.</p>'}

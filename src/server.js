@@ -34,6 +34,7 @@ import { listMergeTrainRecords, processMergeTrainStep } from './merge-train.js';
 import { createStrategicObjective, listStrategicObjectives, addStrategicDirective, generateStrategicBrief } from './strategic-control-plane.js';
 import { COMMERCIAL_WEDGE_SPEC, reconcileFiverrPayoutBatch } from './commercial-wedge.js';
 import { instantAudit } from './instant-audit.js';
+import { buildFullReport, renderReportHtml } from './payout-report.js';
 import { FIRST_PAYING_CUSTOMER_PROFILE, qualifyProspect } from './customer-profile.js';
 import { MINIMUM_STACK_CONFIG, verifyCustomerStackReady } from './integration-stack.js';
 import {
@@ -615,6 +616,22 @@ const server = http.createServer(async (req, res) => {
         return json(res, result.ok ? 200 : 422, result);
       } catch (error) {
         return json(res, 400, { ok: false, error: String(error.message || error) });
+      }
+    }
+    // The paid deliverable. Same audit, the whole period, and the findings that
+    // need more than a pasted sample: fee consistency, duplicates, timing.
+    // Returns HTML when asked, so it can be saved, printed or forwarded.
+    if (req.method === 'POST' && url.pathname === '/api/audit/report') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      try {
+        const report = buildFullReport(body);
+        if (body.format === 'html') {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          return res.end(renderReportHtml(report));
+        }
+        return json(res, 200, report);
+      } catch (error) {
+        return json(res, 422, { ok: false, error: String(error.message || error) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/commercial/fiverr/reconcile') {

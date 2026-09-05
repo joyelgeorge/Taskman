@@ -136,6 +136,27 @@ export function scoreEconomicOpportunity(opportunity = {}, {
     && observedAtMs <= nowMs
     && nowMs - observedAtMs <= finiteNumber(config.maxEvidenceAgeMs, { min: 1 });
   const minExpectedNetValue = money(config.minExpectedNetValue);
+
+  // ── Source credibility & corroboration adjustment (added 2026-09-05) ──────
+  //
+  // Different signal origins have different signal-to-noise ratios. A Reuters
+  // article corroborated by three independent sources is not the same as a
+  // single Reddit post. We apply two multiplicative adjustments to the raw EV
+  // before comparing against the threshold:
+  //
+  //   1. sourceWeight  — prior credibility of the feed (0.5-1.5, see sources.js)
+  //   2. corroborationBonus — how many independent sources fired on the same
+  //      signal recently. Each additional corroborating source adds +10% EV,
+  //      capped at +50% (i.e. 5+ independent sources = maximum bonus).
+  //
+  // This does NOT change the 7-level economic taxonomy fields or the underlying
+  // probability chain — it only adjusts the *adjusted EV* used for threshold
+  // comparison, and is surfaced in the return value for transparency.
+  const sourceWeight = finiteNumber(opportunity.sourceWeight, { min: 0.1, max: 2.0, fallback: 1.0 });
+  const corroborationCount = Math.min(5, Math.max(0, Number(opportunity.corroborationCount) || 1));
+  const corroborationBonus = 1 + 0.1 * (corroborationCount - 1); // 1.0 at count=1, 1.4 at count=5
+  const adjustedEv = Number((ev.expectedNetValue * sourceWeight * corroborationBonus).toFixed(2));
+
   let decision = ECONOMIC_DECISION.ENTER;
   let reason = 'positive_expected_net_value';
 
@@ -151,7 +172,7 @@ export function scoreEconomicOpportunity(opportunity = {}, {
   } else if (!evidenceFresh || ev.missingEvidence.length) {
     decision = ECONOMIC_DECISION.NEEDS_EVIDENCE;
     reason = !evidenceFresh ? 'live_state_evidence_missing_or_stale' : 'probability_evidence_missing';
-  } else if (ev.expectedNetValue < minExpectedNetValue) {
+  } else if (adjustedEv < minExpectedNetValue) {
     decision = ECONOMIC_DECISION.SKIP;
     reason = 'expected_net_value_below_threshold';
   }
@@ -169,10 +190,15 @@ export function scoreEconomicOpportunity(opportunity = {}, {
     evidenceFresh,
     observedAt: evidenceFresh ? opportunity.observedAt : null,
     ev,
+    sourceWeight,
+    corroborationCount,
+    corroborationBonus: Number(corroborationBonus.toFixed(2)),
+    adjustedEv,
     recommendationOnly: true,
     executionAuthorized: false,
     spendAuthorized: false,
     requiresSeparateSpendAuthorization: ev.costs.upfrontFee > 0
+
   });
 }
 
@@ -187,7 +213,7 @@ export function rankEconomicOpportunities(opportunities = [], options = {}) {
   };
   return opportunities.map(opportunity => scoreEconomicOpportunity(opportunity, options)).sort((a, b) =>
     priority[b.decision] - priority[a.decision]
-      || b.ev.expectedNetValue - a.ev.expectedNetValue
+      || b.adjustedEv - a.adjustedEv
       || a.rail.localeCompare(b.rail)
       || a.id.localeCompare(b.id)
   );
@@ -205,4 +231,73 @@ export async function handleEconomicSelectorRequest(req, res, url, options = {})
     : scoreEconomicOpportunity(body.opportunity, { capabilities: capabilityRegistry, nowMs });
   sendJson(res, 200, result);
   return true;
+}
+
+/**
+ * Bundles micro-value opportunities into aggregate execution plans.
+ *
+ * The core insight (from the MMM strategy): even the smallest amount executed
+ * across multiple transactions compounds into large sums. A single $5 task
+ * has too high an overhead ratio; 20 × $5 tasks executed as a batch share
+ * overhead costs and become economically attractive.
+ *
+ * A "micro" opportunity is one whose grossReward is below `microThresholdCents`.
+ * This function separates the opportunity set into macro and micro buckets,
+ * then groups the micro opportunities by rail into bundles. Each bundle is
+ * returned as a synthetic aggregate opportunity whose reward = sum of parts
+ * and whose sourceWeight = mean sourceWeight of its constituent signals.
+ *
+ * Bundles smaller than `minBundleSize` are returned as individual micro items
+ * (not bundled) so nothing is silently dropped.
+ */
+export function bundleMicroOpportunities(opportunities = [], {
+  microThresholdCents = 1000,  // $10 or below = micro
+  minBundleSize = 3
+} = {}) {
+  if (!Array.isArray(opportunities)) return { macro: [], bundles: [], unbundledMicro: [] };
+
+  const macro = [];
+  const microByRail = new Map();
+
+  for (const opp of opportunities) {
+    const reward = money(opp.reward);
+    if (reward >= microThresholdCents) {
+      macro.push(opp);
+    } else {
+      const rail = String(opp.rail || 'generic');
+      if (!microByRail.has(rail)) microByRail.set(rail, []);
+      microByRail.get(rail).push(opp);
+    }
+  }
+
+  const bundles = [];
+  const unbundledMicro = [];
+
+  for (const [rail, items] of microByRail) {
+    if (items.length >= minBundleSize) {
+      const totalReward = items.reduce((s, o) => s + money(o.reward), 0);
+      const avgSourceWeight = items.reduce((s, o) => s + finiteNumber(o.sourceWeight, { fallback: 1.0 }), 0) / items.length;
+      bundles.push({
+        id: `bundle-${rail}-${items.length}`,
+        rail,
+        title: `Bundle: ${items.length} micro-tasks on ${rail} rail`,
+        reward: totalReward,
+        sourceWeight: Number(avgSourceWeight.toFixed(2)),
+        corroborationCount: items.length,
+        bundleSize: items.length,
+        constituentIds: items.map(o => o.id || o.candidateId).filter(Boolean),
+        // Inherit evidence fields from the first item in the bundle
+        ...Object.fromEntries(
+          ['pEligible', 'pClaim', 'pAccept', 'pPayout', 'workerShare', 'aiCost',
+           'platformFee', 'riskReserve', 'observedAt', 'probabilityEvidence',
+           'requiredCapabilities'].map(k => [k, items[0][k]])
+        ),
+        isMicroBundle: true
+      });
+    } else {
+      unbundledMicro.push(...items);
+    }
+  }
+
+  return { macro, bundles, unbundledMicro };
 }

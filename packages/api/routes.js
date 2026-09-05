@@ -11,6 +11,7 @@ import {
   DRONE_KINDS,
   listTargets, registerTarget, setTargetEnabled, latestScans, scanHistory,
   financeReport, recordExpense, listExpenses, EXPENSE_CATEGORIES,
+  listFinanceReportHistory,
   recordOrder, markOrderDelivered, recordOrderPayout, listOrders, orderEconomics,
   listSources, registerSource, listObservations, listRollups, storageStats
 } from '@taskman/core';
@@ -233,6 +234,12 @@ export async function route(req, url, readBody) {
   if (method === 'GET' && pathname === '/api/finance/report') {
     const trailingDays = Math.min(Math.max(Number(url.searchParams.get('trailingDays') || 30), 1), 365);
     return { status: 200, body: await financeReport({ trailingDays }) };
+  }
+
+  if (method === 'GET' && pathname === '/api/finance/report/history') {
+    const since = url.searchParams.get('since') || null;
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 30), 1), 365);
+    return { status: 200, body: { history: await listFinanceReportHistory({ since, limit }) } };
   }
 
   if (method === 'GET' && pathname === '/api/finance/expenses') {

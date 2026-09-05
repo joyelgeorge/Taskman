@@ -1,0 +1,20 @@
+# Snapshots the finance report daily for historical trend lines.
+name: cron · finance-report
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cron-finance-report
+  cancel-in-progress: false
+
+jobs:
+  run:
+    uses: ./.github/workflows/_cron.yml
+    with:
+      name: finance-report
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}

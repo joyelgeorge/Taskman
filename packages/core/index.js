@@ -35,7 +35,8 @@ export {
 } from './scans/index.js';
 
 export {
-  recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES, financeReport
+  recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES, financeReport,
+  recordFinanceReportSnapshot, listFinanceReportHistory, snapshotFinanceReport
 } from './finance/index.js';
 
 export {

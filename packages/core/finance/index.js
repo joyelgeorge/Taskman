@@ -1,2 +1,5 @@
-export { recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES } from './store.js';
-export { financeReport } from './report.js';
+export {
+  recordExpense, listExpenses, resetFinanceMemory, EXPENSE_CATEGORIES,
+  recordFinanceReportSnapshot, listFinanceReportHistory
+} from './store.js';
+export { financeReport, snapshotFinanceReport } from './report.js';

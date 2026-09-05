@@ -7,8 +7,9 @@ import * as improve from './jobs/improve.js';
 import * as satelliteScan from './jobs/satellite-scan.js';
 import * as dataCollect from './jobs/data-collect.js';
 import * as streamDiscovery from './jobs/stream-discovery.js';
+import * as financeReport from './jobs/finance-report.js';
 
-const JOBS = [droneDispatch, signalProcess, healthCheck, cronMonitor, revenueCheck, improve, satelliteScan, dataCollect, streamDiscovery];
+const JOBS = [droneDispatch, signalProcess, healthCheck, cronMonitor, revenueCheck, improve, satelliteScan, dataCollect, streamDiscovery, financeReport];
 
 export const jobs = new Map(JOBS.map(job => [job.definition.cronName, job]));
 

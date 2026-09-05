@@ -200,27 +200,42 @@ export async function getLead(id) {
   return result.rows[0] ? normalizeLead(result.rows[0]) : null;
 }
 
-export async function updateLeadStatus(id, newStatus) {
-  if (!Object.values(LEAD_STATUS).includes(newStatus)) {
-    throw new Error(`Invalid lead status: ${newStatus}`);
-  }
+export async function updateLead(id, updates = {}) {
   const now = nowIso();
-
   if (!databaseEnabled) {
     const found = mem.leads.find(l => l.id === id);
     if (found) {
-      found.status = newStatus;
+      if (updates.status) found.status = updates.status;
+      if (updates.contactHint !== undefined) found.contactHint = updates.contactHint;
+      if (updates.rawRecord !== undefined) found.rawRecord = updates.rawRecord;
       found.updatedAt = now;
       return normalizeLead(found);
     }
     return null;
   }
 
-  const result = await query(
-    `UPDATE leads SET status = $2, updated_at = $3 WHERE id = $1 RETURNING *`,
-    [id, newStatus, now]
-  );
+  const result = await query(`
+    UPDATE leads SET
+      status = COALESCE($2, status),
+      contact_hint = COALESCE($3, contact_hint),
+      raw_record = COALESCE($4::jsonb, raw_record),
+      updated_at = $5
+    WHERE id = $1 RETURNING *
+  `, [
+    id,
+    updates.status || null,
+    updates.contactHint !== undefined ? updates.contactHint : null,
+    updates.rawRecord ? JSON.stringify(updates.rawRecord) : null,
+    now
+  ]);
   return result.rows[0] ? normalizeLead(result.rows[0]) : null;
+}
+
+export async function updateLeadStatus(id, newStatus) {
+  if (!Object.values(LEAD_STATUS).includes(newStatus)) {
+    throw new Error(`Invalid lead status: ${newStatus}`);
+  }
+  return updateLead(id, { status: newStatus });
 }
 
 export async function listLeads({ campaignKey = null, status = null } = {}) {

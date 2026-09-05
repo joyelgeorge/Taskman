@@ -37,7 +37,7 @@ test('a period where every payout landed still reports a fee question if one exi
 2026-08-20,P,56.00`;
   const r = buildFullReport({ platformCsv: platform, bankCsv: allLanded });
   assert.equal(r.summary.unmatchedEarningsCount, 0);
-  assert.match(r.actions[0], /charged a rate away from your usual/,
+  assert.match(r.actions[0], /fees charged above your own median/,
     'money can reconcile perfectly and still have been charged inconsistently');
 });
 

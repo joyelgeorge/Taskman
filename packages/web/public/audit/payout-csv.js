@@ -27,6 +27,7 @@ const CANDIDATES = Object.freeze({
   gross: ['gross', 'amount', 'total', 'subtotal', 'value', 'credit', 'deposit'],
   date: ['date', 'created', 'timestamp', 'time', 'posted'],
   id: ['order', 'transaction_id', 'txn', 'reference', 'invoice', 'id'],
+  currency: ['currency', 'ccy'],
   description: ['description', 'memo', 'payee', 'details', 'narrative', 'type', 'activity']
 });
 
@@ -139,6 +140,7 @@ export function parsePayouts(csvText) {
       grossCents: gross,
       feeCents: fee,
       netCents,
+      currency: (cols.currency && row[cols.currency]) || null,
       rowNumber: index + 2
     });
   }

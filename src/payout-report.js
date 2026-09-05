@@ -1,5 +1,6 @@
 import { parsePayouts, parseDeposits } from './payout-csv.js';
 import { matchPayouts } from './instant-audit.js';
+import { analyseFeeRecovery } from './fee-recovery.js';
 
 /**
  * The paid deliverable: everything the free check does, plus the findings that
@@ -132,7 +133,9 @@ export function analyseLatency(matched) {
  * The whole report. Structured data only — rendering is separate so the same
  * findings can be delivered as a page, an email or a row in the ledger.
  */
-export function buildFullReport({ platformCsv, bankCsv, preparedFor = null, now = new Date() } = {}) {
+export function buildFullReport({
+  platformCsv, bankCsv, preparedFor = null, homeCurrency = null, now = new Date()
+} = {}) {
   const platform = parsePayouts(platformCsv);
   const bank = parseDeposits(bankCsv);
   const { matched, unmatchedEarnings, unmatchedDeposits } = matchPayouts({
@@ -141,6 +144,13 @@ export function buildFullReport({ platformCsv, bankCsv, preparedFor = null, now 
 
   const missingCents = unmatchedEarnings.reduce((s, e) => s + e.netCents, 0);
   const fees = analyseFees(platform.payouts);
+  // Named causes for the anomalies analyseFees only counts. "This fee is unusual"
+  // is a curiosity; "this looks like an interchange downgrade, ask which category
+  // it settled at" is something the customer can actually walk into a support
+  // conversation holding.
+  const feeRecovery = fees.available
+    ? analyseFeeRecovery(platform.payouts, { medianRate: fees.medianRatePct / 100, homeCurrency })
+    : { available: false, reason: fees.reason };
   const duplicates = findDuplicates(platform.payouts, bank.deposits);
   const latency = analyseLatency(matched);
 
@@ -160,7 +170,11 @@ export function buildFullReport({ platformCsv, bankCsv, preparedFor = null, now 
     actions.push(`Check ${duplicates.duplicateEarnings.length} duplicated reference(s) in the `
       + 'earnings export before treating any shortfall as real.');
   }
-  if (fees.available && fees.outliers.length) {
+  if (feeRecovery.available && feeRecovery.findings.length) {
+    const causes = [...new Set(feeRecovery.findings.map(f => f.cause.replace(/_/g, ' ')))];
+    actions.push(`Query ${usd(feeRecovery.amountInQuestionCents)} of fees charged above your own `
+      + `median across ${feeRecovery.findings.length} order(s) — most likely ${causes.join(' or ')}.`);
+  } else if (fees.available && fees.outliers.length) {
     actions.push(`Ask why ${fees.outliers.length} order(s) were charged a rate away from your usual `
       + `${fees.medianRatePct}%.`);
   }
@@ -189,6 +203,7 @@ export function buildFullReport({ platformCsv, bankCsv, preparedFor = null, now 
       depositsWithNoOrder: unmatchedDeposits,
       ...duplicates,
       fees,
+      feeRecovery,
       latency
     },
     actions,
@@ -233,6 +248,17 @@ export function renderReportHtml(report) {
     <p class="note">A rate away from your median usually means a different product or a promotion.
     It is a question, not an overcharge.</p>` : '<p class="note">Fees are consistent across the period.</p>'}`
     : `<p class="note">${esc(f.fees.reason)}</p>`;
+
+  const recovery = f.feeRecovery;
+  const recoveryBlock = recovery.available && recovery.findings.length ? `
+    <p><strong>${money(recovery.amountInQuestionCents)}</strong> was charged above your own median
+    rate across ${recovery.findings.length} order(s). ${esc(recovery.basis)}</p>
+    <table><thead><tr><th>Reference</th><th>Likely cause</th><th class="n">Rate</th><th class="n">In question</th></tr></thead>
+    <tbody>${rows(recovery.findings, r2 => [esc(r2.orderId ?? '—'),
+      esc(r2.cause.replace(/_/g, ' ')), `<span class="n">${r2.ratePct}%</span>`,
+      `<span class="n">${money(r2.amountInQuestionCents)}</span>`])}</tbody></table>
+    ${recovery.findings.map(r2 => `<p class="note"><strong>${esc(r2.orderId ?? '—')}:</strong>
+      ${esc(r2.ask)}${r2.typical ? ` ${esc(r2.typical)}` : ''}</p>`).join('')}` : '';
 
   const dupBlock = (f.duplicateEarnings.length || f.duplicateDeposits.length) ? `
     ${f.duplicateEarnings.length ? `<p><strong>${f.duplicateEarnings.length}</strong> duplicated
@@ -286,6 +312,7 @@ export function renderReportHtml(report) {
 
 ${section('Payouts with no matching deposit', missingTable)}
 ${section('Fees', feeBlock)}
+${section('Fees worth querying', recoveryBlock)}
 ${section('Duplicates', dupBlock)}
 ${section('Timing', latencyBlock)}
 

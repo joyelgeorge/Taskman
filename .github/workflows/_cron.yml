@@ -36,6 +36,26 @@ jobs:
       # or not package-lock.json is committed.
       - run: npm install --omit=dev --no-audit --no-fund
 
+      # A cron is the first thing to touch a newly provisioned database, so the
+      # schema has to exist before it runs — otherwise the first run after
+      # DATABASE_URL is set dies on "relation does not exist" and every cron
+      # stays red for a reason that looks nothing like the actual cause.
+      # scripts/migrate.js takes an advisory lock and is a no-op once applied, so
+      # it is safe to run ahead of every cron and safe when two crons overlap.
+      - name: Apply pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # Skip rather than fail when the secret is absent. scripts/migrate.js
+          # would exit 1 with "database unavailable", which would mask the cron's
+          # own far more precise refusal — the message that actually tells you
+          # what to set and why a memory-backed cron is worse than a failed one.
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not set — skipping migrations so the cron reports the setup error itself."
+            exit 0
+          fi
+          npm run migrate
+
       - name: Run ${{ inputs.name }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

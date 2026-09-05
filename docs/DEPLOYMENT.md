@@ -45,6 +45,62 @@ To trigger a manual deploy: **Dashboard → taskman → Manual Deploy → Deploy
 
 ---
 
+## The crons (GitHub Actions)
+
+The eight crons do **not** run on Render. They run as scheduled GitHub Actions
+workflows and talk to the database directly, so a sleeping free-tier web service
+cannot silently stop the autonomous system. That independence has a consequence:
+they read their own `DATABASE_URL` from a **repository secret**, not from
+Render's environment. Setting it in Render does nothing for them.
+
+Until that secret exists, every scheduled run fails on purpose:
+
+> `DATABASE_URL is not set. A scheduled cron will not run against in-memory
+> storage, because it would do real work, persist nothing, and still report
+> success.`
+
+That refusal is the intended behaviour, not a bug. A cron that "succeeded"
+against memory would discard everything it collected and still report green.
+
+### Enabling the crons
+
+1. Provision a PostgreSQL database. Any host works; [Neon](https://neon.tech)'s
+   free tier is enough and needs no card. Copy its connection string.
+2. Add it as a repository secret — **Settings → Secrets and variables → Actions
+   → New repository secret** — named `DATABASE_URL`. Or:
+
+   ```
+   gh secret set DATABASE_URL --body 'postgresql://…'
+   ```
+
+3. Optionally add `STRIPE_API_KEY` the same way, so `revenue-check` can reconcile
+   settlements. Without it that cron runs and simply reports `stripeSync:
+   { attempted: false }`.
+4. Trigger one run to confirm: **Actions → cron · health-check → Run workflow**.
+
+No manual migration step is needed. `_cron.yml` runs `npm run migrate` before
+every cron; it takes an advisory lock and is a no-op once the schema is current,
+so a brand-new empty database is brought up to date by the first cron that fires.
+
+### The crons
+
+| Workflow | Schedule | What it does |
+|---|---|---|
+| `cron · drone-dispatch` | `*/15 * * * *` | Runs due drones; collects raw signals |
+| `cron · signal-process` | `*/20 * * * *` | Scores signals, promotes survivors to the candidate queue |
+| `cron · health-check` | `*/30 * * * *` | Checks db, services, drones and crons; opens and resolves alerts |
+| `cron · cron-monitor` | `0 * * * *` | Watches the other crons for silence and failure |
+| `cron · revenue-check` | `0 */6 * * *` | Reconciles settlements, applies the rail governor |
+| `cron · improve` | `0 3 * * *` | Proposes self-improvements from observed evidence |
+| `cron · satellite-scan` | `0 8 * * *` | Profiles venues — reachable? bot-defended? what shape? |
+| `cron · data-collect` | `0 17 * * *` | Collects licensed public series, rolls them up, prunes raw rows |
+
+Times are UTC. GitHub does not guarantee punctual scheduled runs under load, so
+`cron-monitor` judges silence against `maxSilenceSeconds`, not the nominal
+interval.
+
+---
+
 ## Environment variables reference
 
 | Variable | Source | Required | Description |

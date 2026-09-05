@@ -2,17 +2,28 @@
 
 Two tracks. Do not mix them.
 
+Catalog: [`data/tasks.json`](./tasks.json)
+
 ## Best task to do now
 
-**`first-cleared-settlement`** — Land the first cleared settlement.
+**`first-cleared-settlement`** — rank **92**. Land the first cleared settlement.
 
-The control UI is live. Revenue is $0 because `settlements` has no `CLEARED` row. Logging one real payout (Gig orders → mark paid with bank-net cents, or Stripe sync) is the only task that changes what the dashboard shows.
+The operator UI Connects to this origin by default. Revenue tiles are settlement-`CLEARED` only. Preview seed orders (FO-10421 / FO-10408 / FO-10455) are not live Neon rows. Logging one real payout (Gig orders → minutes required → mark paid with bank-net cents, or Stripe sync) is the only task that changes what the live dashboard shows.
 
-Runner-up operator task: **`keep-api-and-web-up`** (`npm run api` on :3100 + `npm run web` on :3200, `.env` sourced).
+Operator queue behind it:
+
+| Rank | Id | Do |
+| ---: | --- | --- |
+| 92 | `first-cleared-settlement` | **Pick.** One CLEARED row on live Neon. |
+| 71 | `unstick-satellite-scan` | Run the overdue cron; do not leave it silent. |
+| 68 | `default-connect-this-origin` | Prefill API URL with this origin; auto-Connect. |
+| 64 | `drop-forum-radar` | Keep disabled until fail streak is 0. |
+| 60 | `require-minutes-on-orders` | Reject orders without minutesSpent > 0. |
+| 55 | `keep-api-and-web-up` | Same origin for UI + `/api/*`. |
 
 ## Best money-flow candidate (not a build decision)
 
-**`cloud-support-plan-right-sizing-engine`** — 46/60, current leader.
+**`cloud-support-plan-right-sizing-engine`** — 46/60, current leader. **KEEP SEARCHING.**
 
 ```
 CANDIDATE: Cloud support-plan right-sizing engine

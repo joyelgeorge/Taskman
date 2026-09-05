@@ -1,9 +1,10 @@
 {
-  "schema_version": 1,
-  "updated_at": "2026-09-05T13:50:00+05:30",
+  "schema_version": 2,
+  "updated_at": "2026-09-05T20:45:00+05:30",
   "pick": {
     "id": "first-cleared-settlement",
-    "why": "Revenue tiles are zero because the ledger has no CLEARED settlement. Nothing else in the operator UI will look alive until one real payout row exists. Money-flow research stays in SEARCH; this is the only executable task that changes the dashboard this week."
+    "rank": 92,
+    "why": "Do this now. Verified revenue is settlement-CLEARED only. The operator UI is connected by default to this origin; tiles stay honest zeros until one real payout row exists. Do not treat preview seed orders (FO-10421 / FO-10408 / FO-10455) as live Neon rows. Money-flow research stays SEARCH."
   },
   "tasks": [
     {
@@ -12,35 +13,79 @@
       "track": "operator",
       "status": "active",
       "priority": 1,
-      "prompt": "Record one real payout on packages/api: log a Fiverr/gig order with minutes, then mark paid with bank-net cents, or sync Stripe. Confirm GET /api/money/settlements shows status CLEARED and the control UI revenue tile is non-zero.",
-      "done_when": "One settlements row status=CLEARED and verified revenue tile > $0.00"
+      "rank": 92,
+      "prompt": "Record one real payout on packages/api: POST /api/orders with orderId, priceCents, minutesSpent > 0, then POST /api/orders/:id/payout with bank-net cents (or sync Stripe). Confirm GET /api/money/settlements shows status CLEARED and the operator Verified revenue tile is non-zero.",
+      "done_when": "One settlements row status=CLEARED on the live Neon ledger and verified revenue tile > $0.00"
     },
     {
-      "id": "keep-api-and-web-up",
-      "title": "Keep API :3100 and UI :3200 running with .env",
+      "id": "unstick-satellite-scan",
+      "title": "Unstick satellite-scan",
       "track": "operator",
       "status": "active",
       "priority": 2,
-      "prompt": "Start with set -a; source .env; set +a; npm run api and npm run web. Connect the UI at http://127.0.0.1:3200 to http://127.0.0.1:3100. Do not treat :3200 as the API.",
-      "done_when": "lsof shows LISTEN on 3100 and 3200; Connect returns live payloads"
+      "rank": 71,
+      "prompt": "GET /api/crons: satellite-scan is OVERDUE / silent ~2d. POST /api/crons/satellite-scan/run, then decide if the weekend skip is still valid. Do not leave OVERDUE as the default.",
+      "done_when": "cron satellite-scan status is OK and lastRunAt is recent"
     },
     {
-      "id": "autoload-env",
-      "title": "Load .env before config import",
+      "id": "default-connect-this-origin",
+      "title": "Default API URL + auto-Connect to this origin",
       "track": "operator",
-      "status": "proposed",
+      "status": "active",
       "priority": 3,
-      "prompt": "src/server.js reads getRuntimeConfig() at import time, so .env must be sourced before node starts. Add a boot wrapper that loads .env without printing secrets. Do not commit .env.",
-      "done_when": "npm start sees DATABASE_URL and provider keys without a manual source"
+      "rank": 68,
+      "prompt": "Operator Connect bar must prefill window.location.origin and load on boot. No empty 'No API base URL set.' on first paint. Optional token stays. Same-origin /api/* is the default; a typed base still overrides.",
+      "done_when": "Opening the operator UI shows live payloads without typing a URL"
+    },
+    {
+      "id": "drop-forum-radar",
+      "title": "Keep forum-radar disabled until the fail streak clears",
+      "track": "operator",
+      "status": "active",
+      "priority": 4,
+      "rank": 64,
+      "prompt": "forum-radar has consecutive_failures > 0. Leave enabled=false until consecutive_failures = 0 after a clean fly. Do not re-enable from the operator UI until then.",
+      "done_when": "drone forum-radar stays disabled or consecutive_failures is 0"
+    },
+    {
+      "id": "require-minutes-on-orders",
+      "title": "Require minutes on every gig order",
+      "track": "operator",
+      "status": "active",
+      "priority": 5,
+      "rank": 60,
+      "prompt": "Reject POST /api/orders without minutesSpent > 0. Effective hourly rate is settlement-net / minutes; missing minutes makes the ledger lie.",
+      "done_when": "POST /api/orders with minutesSpent 0 returns 400"
+    },
+    {
+      "id": "keep-api-and-web-up",
+      "title": "Keep API and operator UI on one origin",
+      "track": "operator",
+      "status": "active",
+      "priority": 6,
+      "rank": 55,
+      "prompt": "packages/api should serve /api/* and the operator UI from the same process so Connect defaults to this origin. If split: npm run api on :3100 and npm run web on :3200 with .env sourced. Do not treat the static host as the API.",
+      "done_when": "One Connect URL fills Overview, Ledger, Autonomy, and Work"
     },
     {
       "id": "unify-api-origins",
       "title": "One origin for ledger and brain",
       "track": "operator",
       "status": "proposed",
-      "priority": 4,
-      "prompt": "packages/api owns drones/crons/ledger/orders. src/server.js owns brain/tasks/runs. Document or proxy so the operator UI does not require switching bases.",
-      "done_when": "One Connect URL fills Overview, Ledger, Autonomy, and Work without 404 origins"
+      "priority": 7,
+      "rank": 50,
+      "prompt": "packages/api owns drones/crons/ledger/orders. src/server.js owns brain/tasks/runs. Proxy or merge so the operator UI does not require switching bases.",
+      "done_when": "Work screen tasks/runs are not 404 when Connect is on the ledger origin"
+    },
+    {
+      "id": "autoload-env",
+      "title": "Load .env before config import",
+      "track": "operator",
+      "status": "proposed",
+      "priority": 8,
+      "rank": 40,
+      "prompt": "src/server.js reads getRuntimeConfig() at import time, so .env must be sourced before node starts. Add a boot wrapper that loads .env without printing secrets. Do not commit .env.",
+      "done_when": "npm start sees DATABASE_URL and provider keys without a manual source"
     },
     {
       "id": "cloud-support-plan-right-sizing-engine",
@@ -48,11 +93,12 @@
       "track": "money-flow",
       "status": "leader",
       "priority": 10,
+      "rank": 46,
       "score": 46,
       "max_score": 60,
       "mode": "SEARCH",
       "threshold_crossed": false,
-      "prompt": "Read-only recommend cheapest sufficient cloud support tier from billing forecast + SLO/incident telemetry. Do not execute plan changes. Next test: real change-frequency and savings, not price-comparison whitespace."
+      "prompt": "Keep searching. Money-flow leader at 46/60 — do not freeze as the product. Read-only recommend cheapest sufficient cloud support tier from billing forecast + SLO/incident telemetry. Do not execute plan changes. Next test: real change-frequency and savings, not price-comparison whitespace."
     },
     {
       "id": "merchant-card-network-behavior-fee-sentinel",
@@ -60,6 +106,7 @@
       "track": "money-flow",
       "status": "runner-up",
       "priority": 11,
+      "rank": 45,
       "score": 45,
       "max_score": 60,
       "mode": "SEARCH",
@@ -72,6 +119,7 @@
       "track": "money-flow",
       "status": "runner-up",
       "priority": 12,
+      "rank": 45,
       "score": 45,
       "max_score": 60,
       "mode": "SEARCH",
@@ -84,6 +132,7 @@
       "track": "money-flow",
       "status": "challenger",
       "priority": 13,
+      "rank": null,
       "score": null,
       "mode": "SEARCH",
       "threshold_crossed": false,

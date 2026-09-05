@@ -215,7 +215,10 @@ test('a full run collects, rolls up, prunes, and seeds the declared source once'
   const testNow = new Date('2026-09-03T12:00:00Z');
   const result = await runDataCollection({ fetchImpl: stubFetch(ECB_XML), now: testNow });
 
-  assert.equal(result.collected, DEFAULT_SOURCES.length);
+  // Enabled sources only. A declared-but-disabled source stays in the file so its
+  // disproof travels with it — the HN ranking series is kept and switched off
+  // rather than deleted — but it is not collected.
+  assert.equal(result.collected, DEFAULT_SOURCES.filter(s => s.enabled !== false).length);
   assert.equal(result.ok, 1);
   assert.ok(result.newPoints >= 3);
   assert.ok(result.rollup.seriesRolled >= 1);

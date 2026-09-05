@@ -89,14 +89,16 @@ export const DEFAULT_STREAMS = [
       + 'need history that cannot be bought anywhere because nobody kept it.',
     requires: 'Series that the publisher does NOT archive, so elapsed time is the moat. Ranking and '
       + 'position data qualifies; a published statistical series does not.',
-    nextAction: 'Collect ephemeral rank/position series daily and let observation_days accrue. '
-      + 'Fully machine-actionable — no account, no counterparty, no approval.',
+    nextAction: 'Do not restart without a series whose history the publisher genuinely does not keep.',
     unblockedBy: 'machine',
-    state: 'HYPOTHESIS',
-    stateReason: 'Downgraded from TESTING on review. Being the lane the machine can advance alone '
-      + 'is not evidence it is worth advancing, and treating it as the active lane let it absorb '
-      + 'effort while every lane that could actually settle waited on a 30-minute human step. Its '
-      + 'moat is also unverified: rank may be approximable for free from the Algolia HN API.',
+    state: 'DISPROVEN',
+    stateReason: 'Checked 2026-09-05. The premise was that ordering is never archived, so elapsed '
+      + 'time was the whole moat. It is archived: Hacker News publishes the exact front-page list '
+      + 'for every date since 2014-11-11, toddwschneider/hntrends mirrors it free and nightly back '
+      + 'to 2006, and sangaline holds 2007-2017 snapshots carrying position, score and age — the '
+      + 'same three fields collected here. A buyer gets two decades for nothing. Ten minutes of '
+      + 'checking published sources ended a lane that was 364 days from a payday it would never '
+      + 'have had.',
     testCostHours: 4,
     proofCents: 5000
   },

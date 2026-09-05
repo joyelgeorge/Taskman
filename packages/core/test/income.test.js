@@ -141,8 +141,14 @@ test('seeding records both the earning hypotheses and the dataset that is worth 
   const products = await listDataProducts();
   const ecb = products.find(p => p.productKey === 'ecb-fx-daily');
   assert.equal(ecb.reconstructible, true, 'the ECB series must be recorded as reconstructible — it is');
+  // Both declared products are now reconstructible, and that is the honest state:
+  // the HN ranking moat was checked on 2026-09-05 and does not exist. A store
+  // that reported only its good assets would be the accounting the settlement
+  // ledger exists to prevent — so a product worth nothing stays declared, with
+  // the reason attached.
   const hn = products.find(p => p.productKey === 'hn-frontpage-history');
-  assert.equal(hn.reconstructible, false);
+  assert.equal(hn.reconstructible, true);
+  assert.match(hn.reconstructibleNote, /2014-11-11/);
 });
 
 test('the report states plainly that nothing has settled', async () => {

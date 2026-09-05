@@ -52,15 +52,29 @@ export const DEFAULT_SOURCES = [
      * The official Firebase API is public, unauthenticated, documented for reuse
      * at github.com/HackerNews/API, and carries no rate limit. No scraping.
      */
-    // Marked unreconstructible because the publisher exposes only the current
-    // ranking — but the stronger claim, that no third party keeps one either, is
-    // NOT verified and should not be relied on. Algolia's HN API serves points
-    // and timestamps for every story, from which rank can be approximated for
-    // free, and rank-tracking side projects are a long-running genre. Confirm
-    // before treating elapsed time here as a moat worth waiting a year for.
-    reconstructible: false,
-    reconstructibleNote: 'Publisher exposes current ranking only. Third-party archives NOT ruled out: '
-      + 'Algolia HN API allows approximate reconstruction from points and timestamps. Unverified.',
+    // Checked, 2026-09-05, and the moat does not exist. Disabled below.
+    //
+    // The premise was that nobody archives front-page rank, so elapsed time could
+    // not be bought. All three parts of that are false:
+    //
+    //   - Hacker News itself exposes the exact front-page list for every date
+    //     since 2014-11-11. The publisher archives it.
+    //   - toddwschneider/hntrends is a free public dataset of front-page items
+    //     back to 2006, on GitHub, updated nightly to the present day.
+    //   - sangaline's front-page-snapshots covers 2007-2017 with the vote total,
+    //     age and relative position of each story — the same three fields this
+    //     source collects — under GPL-3.0.
+    //
+    // A buyer obtains two decades of this for free. Collecting it accumulates
+    // nothing, exactly like the ECB series above.
+    reconstructible: true,
+    reconstructibleNote: 'Reconstructible in full. HN publishes the exact front-page list since '
+      + '2014-11-11; toddwschneider/hntrends mirrors it back to 2006 free and nightly; '
+      + 'sangaline/reverse-engineering-the-hacker-news-ranking-algorithm holds 2007-2017 snapshots '
+      + 'with position, score and age. Verified 2026-09-05.',
+    // Kept in the file rather than deleted so the disproof stays attached to the
+    // thing it disproves, and nobody adds it again next quarter.
+    enabled: false,
     sourceKey: 'hn-frontpage-ranking',
     kind: 'http_json_ranked',
     url: 'https://hacker-news.firebaseio.com/v0/topstories.json',

@@ -27,7 +27,7 @@ export const DEFAULT_DATA_PRODUCTS = [
   {
     productKey: 'hn-frontpage-history',
     title: 'Hacker News front-page position history',
-    buyer: 'Developer-tool marketing teams and founders timing a launch; media monitoring vendors.',
+    buyer: 'Nobody. Recorded as a product so the disproof stays with the thing it disproves.',
     decision: 'When to post, and what score a submission needs to hold a position — answerable only '
       + 'against months of history, which nobody publishes.',
     // Every series the ranked collector writes. A product that declares fewer
@@ -40,9 +40,11 @@ export const DEFAULT_DATA_PRODUCTS = [
       note: 'Derived facts about ranking and timing. No article text, no user data, no personal data.'
     }],
     resalePermitted: true,
-    reconstructible: false,
-    reconstructibleNote: 'No historical rank archive exists from the publisher or any third party. '
-      + 'Every day of coverage is unrepeatable.'
+    reconstructible: true,
+    reconstructibleNote: 'Checked 2026-09-05 and the premise was wrong. HN publishes the exact '
+      + 'front-page list since 2014-11-11, toddwschneider/hntrends mirrors it free and nightly back '
+      + 'to 2006, and sangaline holds 2007-2017 snapshots carrying position, score and age. Two '
+      + 'decades are available for nothing, so elapsed time buys no moat.'
   },
   {
     productKey: 'ecb-fx-daily',

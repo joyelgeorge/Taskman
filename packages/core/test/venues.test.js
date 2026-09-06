@@ -4,25 +4,33 @@ import {
   VENUES, PAYOUT_COST, netOf, isReachable, venueOptions, minimumViableTicket, CONFIDENCE
 } from '../income/venues.js';
 
-test('a venue that cannot pay an individual in this country is closed, whatever it lists', () => {
-  // Algora carries the largest bounty volume of the three and is the one that
-  // cannot pay. Stripe is invite-only in India, skewed to registered businesses
-  // rather than individuals, and Algora's terms prohibit robotic access. Either
-  // alone is fatal; job volume does not enter into it.
+test('algora is closed by its terms, not by its border', () => {
+  // This assertion previously claimed the opposite, and the claim was wrong. It
+  // read "Stripe is invite-only in India" and concluded the payout could not
+  // arrive — conflating standalone Stripe, where you are your own merchant, with
+  // Stripe Connect Express, where a platform pays you. They are different
+  // products with different availability, and the second one reaches India.
+  //
+  // The conclusion happened to survive: Algora is still closed to this system,
+  // because its terms prohibit robotic access. But it was being held up by a
+  // reason that was not true, which made it look better established than it was.
   const algora = VENUES.find(v => v.key === 'algora');
+  assert.ok(algora.paysTo.includes('IN'), 'the money can reach India over Connect Express');
+  assert.equal(algora.requiresBusinessEntity, false, 'an individual can be paid');
+
   const { reachable, blockers } = isReachable(algora, { country: 'IN' });
-  assert.equal(reachable, false);
-  assert.ok(blockers.some(b => /does not pay out to IN/.test(b)));
-  assert.ok(blockers.some(b => /business entity/.test(b)));
-  assert.ok(blockers.some(b => /prohibit automated/.test(b)));
+  assert.equal(reachable, false, 'still closed — on the terms');
+  assert.ok(blockers.some(b => /robotic access/.test(b)));
+  assert.equal(blockers.some(b => /does not pay out to IN/.test(b)), false,
+    'must not still claim the border blocks it');
 });
 
 test('the same venue can be open somewhere else', () => {
   const algora = VENUES.find(v => v.key === 'algora');
   // Reachability is a property of the pair, not of the venue. Recording it that
   // way is what makes moving country a data change rather than a rewrite.
-  assert.equal(isReachable({ ...algora, paysTo: ['US'], requiresBusinessEntity: false, agentPolicy: 'unrestricted' },
-    { country: 'US' }).reachable, true);
+  assert.equal(isReachable({ ...algora, rejected: undefined, paysTo: ['US'],
+    requiresBusinessEntity: false, agentPolicy: 'unrestricted' }, { country: 'US' }).reachable, true);
 });
 
 test('fixed fees, not percentages, are what make small tickets unviable', () => {
@@ -88,7 +96,10 @@ test('a lane that passes every reachability test can still be rejected', async (
 
   const options = venueOptions({ country: 'IN' });
   assert.ok(options.rejected.some(v => v.key === 'defi-arbitrage'));
-  assert.ok(options.unreachable.some(v => v.key === 'algora'));
+  // Every declared venue can now reach India, so unreachability is asserted on a
+  // constructed case rather than pretending one of these still cannot be paid.
+  assert.equal(isReachable({ paysTo: ['US'], requiresBusinessEntity: false, agentPolicy: 'unrestricted' },
+    { country: 'IN' }).reachable, false);
   assert.equal(options.open.some(v => v.key === 'defi-arbitrage'), false);
 });
 
@@ -97,8 +108,9 @@ test('the two reasons a lane is unavailable are reported separately', async () =
   const options = venueOptions({ country: 'IN' });
   // "Cannot pay you" and "not worth doing" call for different responses: one may
   // change if you move or incorporate, the other will not.
-  assert.match(options.summary, /cannot pay/);
+  // Only the halves that apply are printed, so assert on what the data supports.
   assert.match(options.summary, /rejected on merits/);
+  assert.match(options.summary, /open to an individual/);
 });
 
 test('the crypto rail carries the tax that lands before the money is spendable', async () => {

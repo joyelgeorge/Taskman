@@ -34,6 +34,15 @@ export const PAYOUT_COST = Object.freeze({
     confidence: CONFIDENCE.ASSUMED,
     evidence: 'Standard published US card rate.'
   },
+  'stripe_express:IN': {
+    // Being paid out by a platform, not being a merchant. Different product from
+    // standalone Stripe, different availability — the distinction that made an
+    // earlier assessment wrong. Indian accounts settle in INR.
+    percent: 0, fixedCents: 0, fxPercent: 2,
+    confidence: CONFIDENCE.ASSUMED,
+    evidence: 'Platform absorbs processing; the cost to the payee is the INR conversion. '
+      + 'Modelled at 2% and not measured against a real payout.'
+  },
   'crypto:IN': {
     // No processor percentage, but the tax is not optional and lands before the
     // money is spendable: India taxes virtual digital asset gains at a flat 30%
@@ -108,20 +117,28 @@ export const VENUES = Object.freeze([
   },
   {
     key: 'algora',
+    rejected: 'platform terms prohibit robotic access, so this system may not participate — a '
+      + 'human with the same account could',
     title: 'Algora open-source bounties',
     work: 'Fixing bountied GitHub issues.',
-    rail: 'stripe:IN',
-    paysTo: [],
-    requiresBusinessEntity: true,
+    rail: 'stripe_express:IN',
+    paysTo: ['IN'],
+    requiresBusinessEntity: false,
     agentPolicy: 'prohibited',
     ticketCents: { min: 50, max: 500_000 },
     confidence: CONFIDENCE.VERIFIED,
-    evidence: 'Algora pays through Stripe Express, and Stripe is invite-only in India with '
-      + 'approvals skewed to registered businesses rather than individuals; Indian accounts '
-      + 'receive INR only. Algora terms prohibit robotic access. Checked 2026-09-06.',
-    note: 'Two independent blockers, either of which is fatal: the payout rail may not reach an '
-      + 'Indian individual at all, and automated participation breaches the terms. The bounty '
-      + 'drone still collects from GitHub, which is a public API and not the platform.'
+    evidence: 'Corrected 2026-09-07. The earlier reading conflated two different Stripe products. '
+      + 'Standalone Stripe — being your own merchant — is invite-only in India and skewed to '
+      + 'registered businesses. Stripe CONNECT EXPRESS, being paid out by someone else\'s '
+      + 'platform, is a separate product and does reach India: Polar documents that "any '
+      + 'individual or company operating in our supported countries can receive payouts even if '
+      + 'Stripe standalone is invite-only there", and states publicly that it has Indian users '
+      + 'paid without issue. Algora pays over that same rail. What remains true is that Algora\'s '
+      + 'terms prohibit robotic access.',
+    note: 'Reopened as reachable, and still closed to this system. The money can arrive — the '
+      + 'blocker is the automation ban, not the border. A person may use it; this machine may '
+      + 'not. That distinction was lost when the rail was wrongly assessed, and the wrong reason '
+      + 'made the right conclusion look better established than it was.'
   },
   {
     /**

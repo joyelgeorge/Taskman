@@ -31,9 +31,9 @@ const providers = [
     }
   },
   {
-    id: 'groq', env: 'GROQ_API_KEY', model: 'llama-3.1-8b-instant',
+    id: 'groq', env: 'GROQ_API_KEY', model: 'qwen/qwen3.6-27b',
     async call(prompt, key, { signal } = {}) {
-      return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key, signal);
+      return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key, signal, { max_tokens: 1024 });
     }
   },
   {
@@ -44,11 +44,11 @@ const providers = [
   }
 ];
 
-async function openAICompatible(url, model, prompt, key, signal) {
+async function openAICompatible(url, model, prompt, key, signal, extraParams = {}) {
   const r = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], ...extraParams }),
     signal
   });
   if (!r.ok) throw new Error(`${model} ${r.status}`);

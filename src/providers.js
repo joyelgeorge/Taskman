@@ -37,7 +37,7 @@ const providers = [
     }
   },
   {
-    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'openai/gpt-oss-20b:free',
+    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'deepseek/deepseek-r1:free',
     async call(prompt, key, { signal } = {}) {
       return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key, signal);
     }

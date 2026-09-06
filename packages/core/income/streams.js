@@ -29,6 +29,8 @@ const UNBLOCKED_BY = Object.freeze(['machine', 'human']);
  */
 export const STREAM_ORIGINS = Object.freeze(['seed', 'discovered', 'operator_ui', 'local_entry']);
 
+const toIso = value => (value == null ? null : new Date(value).toISOString());
+
 const normalize = (row = {}) => ({
   streamKey: row.streamKey ?? row.stream_key,
   title: row.title,
@@ -43,7 +45,11 @@ const normalize = (row = {}) => ({
   stateReason: row.stateReason ?? row.state_reason ?? null,
   testCostHours: row.testCostHours ?? (row.test_cost_hours == null ? null : Number(row.test_cost_hours)),
   proofCents: row.proofCents ?? row.proof_cents ?? null,
-  firstSettledAt: row.firstSettledAt ?? row.first_settled_at ?? null,
+  // node-postgres returns a timestamptz as a Date while the memory store holds an
+  // ISO string, so callers got different types depending on the backend. Both
+  // normalise to ISO here; a field whose type depends on storage is a bug waiting
+  // for whoever calls .slice() on it.
+  firstSettledAt: toIso(row.firstSettledAt ?? row.first_settled_at),
   evidence: row.evidence || []
 });
 

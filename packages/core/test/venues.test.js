@@ -68,5 +68,45 @@ test('the report leads with what can pay, not with the biggest market', () => {
   assert.ok(options.open.length >= 1);
   assert.ok(options.open.every(v => v.reachable));
   assert.ok(options.closed.every(v => !v.reachable));
-  assert.match(options.summary, /can pay an individual in IN/);
+  assert.match(options.summary, /open to an individual in IN/);
+});
+
+// ---- rejected on merits is not the same as unreachable ----------------------
+
+test('a lane that passes every reachability test can still be rejected', async () => {
+  const { venueOptions, isReachable, VENUES } = await import('../income/venues.js');
+  // DeFi arbitrage pays to India, needs no company, and welcomes agents — every
+  // reachability test passes. It is still a bad lane: the spread closes before a
+  // public RPC answers, and it is the only lane here that loses money on a failed
+  // attempt rather than earning none. A model that only asks "can the money
+  // arrive" would rank it open.
+  const defi = VENUES.find(v => v.key === 'defi-arbitrage');
+  assert.ok(defi.paysTo.includes('IN'));
+  assert.equal(defi.requiresBusinessEntity, false);
+  assert.notEqual(defi.agentPolicy, 'prohibited');
+  assert.equal(isReachable(defi, { country: 'IN' }).reachable, false, 'rejection must close it');
+
+  const options = venueOptions({ country: 'IN' });
+  assert.ok(options.rejected.some(v => v.key === 'defi-arbitrage'));
+  assert.ok(options.unreachable.some(v => v.key === 'algora'));
+  assert.equal(options.open.some(v => v.key === 'defi-arbitrage'), false);
+});
+
+test('the two reasons a lane is unavailable are reported separately', async () => {
+  const { venueOptions } = await import('../income/venues.js');
+  const options = venueOptions({ country: 'IN' });
+  // "Cannot pay you" and "not worth doing" call for different responses: one may
+  // change if you move or incorporate, the other will not.
+  assert.match(options.summary, /cannot pay/);
+  assert.match(options.summary, /rejected on merits/);
+});
+
+test('the crypto rail carries the tax that lands before the money is spendable', async () => {
+  const { netOf } = await import('../income/venues.js');
+  // India taxes virtual digital asset gains at a flat 30% with 1% TDS and no
+  // loss set-off. Modelling it as a rail cost is what makes a $30/month compute
+  // lane show as $20.70, which is the number worth comparing against electricity.
+  const net = netOf(3000, 'crypto:IN');
+  assert.equal(net.takeRatePct, 31);
+  assert.ok(net.netCents < 2100);
 });

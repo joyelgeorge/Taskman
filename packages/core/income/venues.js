@@ -34,6 +34,17 @@ export const PAYOUT_COST = Object.freeze({
     confidence: CONFIDENCE.ASSUMED,
     evidence: 'Standard published US card rate.'
   },
+  'crypto:IN': {
+    // No processor percentage, but the tax is not optional and lands before the
+    // money is spendable: India taxes virtual digital asset gains at a flat 30%
+    // with 1% TDS at source, and losses cannot be set off. Recorded on the rail
+    // because it is a cost of using this rail, not a footnote.
+    percent: 1, fixedCents: 0, fxPercent: 30,
+    confidence: CONFIDENCE.ASSUMED,
+    evidence: 'India VDA regime: 30% flat tax on gains plus 1% TDS, no loss set-off. Modelled '
+      + 'as rail cost because it applies before the proceeds are usable. Not re-checked against '
+      + 'the current finance act.'
+  },
   'paypal:IN': {
     percent: 4.4, fixedCents: 30, fxPercent: 3.5,
     confidence: CONFIDENCE.VERIFIED,
@@ -59,6 +70,14 @@ export function netOf(grossCents, railKey) {
  */
 export function isReachable(venue, { country }) {
   const blockers = [];
+  // Rejected on merits is not the same as unreachable, and collapsing them loses
+  // the more useful fact. DeFi arbitrage pays to India, needs no company and
+  // welcomes agents — every reachability test passes — and is still a bad lane,
+  // because the spread closes before a public RPC answers and a failed attempt
+  // costs gas. A model that only asks "can the money arrive" would rank it open.
+  if (venue.rejected) {
+    blockers.push(`rejected: ${venue.rejected}`);
+  }
   if (!venue.paysTo.includes(country)) {
     blockers.push(`does not pay out to ${country}`);
   }
@@ -103,6 +122,83 @@ export const VENUES = Object.freeze([
     note: 'Two independent blockers, either of which is fatal: the payout rail may not reach an '
       + 'Indian individual at all, and automated participation breaches the terms. The bounty '
       + 'drone still collects from GitHub, which is a public API and not the platform.'
+  },
+  {
+    /**
+     * Renting out hardware that is already owned and already idle.
+     *
+     * Structurally unlike everything else here: no customer to find, no bounty to
+     * win, no maintainer to convince, no account to be approved for beyond a
+     * wallet. The work is the machine sitting there. That makes it the only lane
+     * the operator can start alone and finish alone.
+     *
+     * io.net does support Apple Silicon — it announced M-series support and
+     * documents M1 through M3 — so the module's metalSupported flag is not an
+     * invention.
+     *
+     * What is NOT verified is the money. The $15-45/month figure in
+     * inference-profiler.js has no source attached, these networks are heavily
+     * oversupplied with GPUs, and io.net's own annualised revenue was tracked at
+     * roughly $12.5M in mid-2026, below the $20M+ implied by earlier
+     * self-reported figures. Supply-side earnings on an oversupplied network are
+     * the first thing to fall. Treat the estimate as unmeasured until a real
+     * payout is observed.
+     *
+     * Against it: electricity. Sustained load on an M-series desktop is roughly
+     * 40-60W, so about 36 kWh a month, which at Indian domestic rates is close to
+     * $3.50. The lane is only worth running if actual payouts clear that with
+     * enough margin to notice, and the honest way to find out is to run it for a
+     * month and read the ledger.
+     */
+    key: 'decentralised-compute',
+    title: 'Renting idle hardware to a decentralised inference network',
+    work: 'Running inference jobs on hardware that is already owned.',
+    rail: 'crypto:IN',
+    paysTo: ['IN'],
+    requiresBusinessEntity: false,
+    agentPolicy: 'welcomed',
+    ticketCents: { min: 1500, max: 4500 },
+    confidence: CONFIDENCE.ASSUMED,
+    evidence: 'io.net announced Apple Silicon support and documents M1-M3 as workers. The '
+      + '$15-45/month rate carries no source and is not measured. io.net annualised revenue '
+      + 'tracked near $12.5M mid-2026, down from $20M+ self-reported. Checked 2026-09-06.',
+    note: 'The one lane with no counterparty to persuade. Also the one whose revenue figure is '
+      + 'entirely unverified, and paid in tokens that carry India\'s 30% VDA tax and 1% TDS '
+      + 'before any of it becomes spendable.'
+  },
+  {
+    /**
+     * Rejected, and recorded so it is not rebuilt.
+     *
+     * The scanner is competent code and the market is real — but capturing L2
+     * arbitrage means competing with professional searchers running colocated
+     * infrastructure and private orderflow, on spreads that close in
+     * milliseconds. A $2 minimum profit threshold against $0.05 gas describes
+     * exactly the micro-arbitrage that is taken before a public RPC has even
+     * returned.
+     *
+     * It is also the first lane in this project where the operator can lose
+     * money rather than merely fail to make it: it needs capital at risk, or
+     * flashloans, which need a deployed contract and gas paid on every failed
+     * attempt.
+     */
+    key: 'defi-arbitrage',
+    rejected: 'the spread is taken by colocated searchers before a public RPC answers, and this '
+      + 'is the only lane here that loses money on a failed attempt rather than earning none',
+    title: 'L2 DEX arbitrage and liquidations',
+    work: 'Executing price differences across Base and Arbitrum DEXes.',
+    rail: 'crypto:IN',
+    paysTo: ['IN'],
+    requiresBusinessEntity: false,
+    agentPolicy: 'welcomed',
+    ticketCents: { min: 200, max: 100_000 },
+    confidence: CONFIDENCE.VERIFIED,
+    evidence: 'MEV and liquidation revenue is real and large, and is captured by searchers with '
+      + 'colocated infrastructure, private orderflow and capital. A solo operator on a public RPC '
+      + 'arrives after the spread has closed. Assessed 2026-09-06.',
+    note: 'Not opened. The only lane here that can lose money rather than just earn none — it '
+      + 'requires capital at risk and pays gas on every failed attempt. Everything else in this '
+      + 'system fails to nothing; this one fails to negative.'
   },
   {
     key: 'fiverr',
@@ -157,12 +253,20 @@ export function venueOptions({ country = 'IN' } = {}) {
     };
   });
   const open = assessed.filter(v => v.reachable);
+  const rejected = assessed.filter(v => v.rejected);
+  const unreachable = assessed.filter(v => !v.reachable && !v.rejected);
   return {
     country,
     open,
+    rejected,
+    unreachable,
+    // Kept for callers that only care whether a lane is available at all.
     closed: assessed.filter(v => !v.reachable),
-    // Said plainly: the count that matters is how many can pay, not how many exist.
-    summary: `${open.length} of ${assessed.length} venue(s) can pay an individual in ${country}.`
+    // The count that matters is how many can pay, not how many exist — and the
+    // two reasons a lane is unavailable are worth telling apart.
+    summary: `${open.length} of ${assessed.length} venue(s) are open to an individual in ${country}`
+      + `${unreachable.length ? `; ${unreachable.length} cannot pay` : ''}`
+      + `${rejected.length ? `; ${rejected.length} rejected on merits` : ''}.`
   };
 }
 

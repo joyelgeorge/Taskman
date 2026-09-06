@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from '../server.js';
+import { databaseEnabled } from '@taskman/db';
 import {
   resetCronMemory, resetAlertMemory, resetDroneMemory, resetSignalMemory, registerDrone,
   resetScanMemory, resetFinanceMemory, resetLedgerMemory, resetGovernorMemory, registerCron,
@@ -333,5 +334,40 @@ test('GET and POST /api/money/opportunities calculates stats and registers strea
     const after = await get(base, '/api/money/opportunities');
     assert.equal(after.status, 200);
     assert.ok(after.body.streams.some(s => s.streamKey === 'chargeback-recovery-audit'));
+  });
+});
+
+// ---- storage honesty ---------------------------------------------------------
+
+test('every response declares which storage it came from', async () => {
+  // Without DATABASE_URL every store is an in-process Map, and this API served
+  // those numbers exactly as if they were real. A console reading it then shows
+  // cleared settlements and a revenue figure that exist in no database and vanish
+  // on restart — the failure that looks like success, because unlike a crash it
+  // does not announce itself. The crons refuse to run that way; the API says so
+  // on every response instead.
+  await reset();
+  const expected = databaseEnabled ? 'postgres' : 'memory';
+  await withServer(async base => {
+    const response = await fetch(`${base}/api/status`);
+    assert.equal(response.headers.get('x-taskman-storage'), expected);
+    const body = await response.json();
+    assert.equal(body.storage, expected);
+    if (databaseEnabled) {
+      // A warning that appears when it should not is how a real one gets ignored.
+      assert.equal('warning' in body, false);
+    } else {
+      assert.match(body.warning, /persist nowhere/);
+      assert.match(body.warning, /is not money/);
+    }
+  });
+});
+
+test('the warning names revenue specifically, because that is the figure that misleads', async () => {
+  await reset();
+  await withServer(async base => {
+    const { body } = await get(base, '/api/money/economics');
+    if (databaseEnabled) assert.equal('warning' in body, false);
+    else assert.match(body.warning, /revenue/i);
   });
 });

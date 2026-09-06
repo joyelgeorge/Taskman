@@ -152,7 +152,34 @@ export function recordStageResult(stage, result = {}) {
   addTraceEvent('pipeline.stage.result', { stage: normalizedStage, outcome });
 }
 
-export function recordProviderAttempt({ provider, model, durationMs, outcome, errorCode, fallback = false }) {
+const tokenUsageByModel = new Map();
+
+export function recordProviderTokens({ provider, model, inputTokens = 0, outputTokens = 0 }) {
+  const p = provider || 'unknown';
+  const m = model || 'unknown';
+  const key = `${p}:${m}`;
+  const current = tokenUsageByModel.get(key) || {
+    provider: p,
+    model: m,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    requests: 0,
+    lastUsedAt: null
+  };
+  current.inputTokens += Number(inputTokens) || 0;
+  current.outputTokens += Number(outputTokens) || 0;
+  current.totalTokens = current.inputTokens + current.outputTokens;
+  current.requests += 1;
+  current.lastUsedAt = new Date().toISOString();
+  tokenUsageByModel.set(key, current);
+}
+
+export function getModelTokenUsage() {
+  return [...tokenUsageByModel.values()];
+}
+
+export function recordProviderAttempt({ provider, model, durationMs, outcome, errorCode, fallback = false, inputTokens = 0, outputTokens = 0 }) {
   const labels = {
     provider: provider || 'unknown', model: model || 'unknown',
     outcome: outcome || 'unknown', error_code: errorCode || undefined,
@@ -160,6 +187,9 @@ export function recordProviderAttempt({ provider, model, durationMs, outcome, er
   };
   recordMetric('provider_requests_total', 1, labels);
   recordMetric('provider_latency_ms', durationMs, labels, { kind: 'histogram' });
+  if (outcome === 'success') {
+    recordProviderTokens({ provider, model, inputTokens, outputTokens });
+  }
   addTraceEvent('provider.attempt', { provider, model, outcome, error_code: errorCode, fallback });
 }
 
@@ -243,6 +273,7 @@ export function getObservabilitySnapshot({ includeTraces = true } = {}) {
     mode: exporter ? 'exporter' : 'local-no-export',
     retention: { maxSpans: MAX_SPANS, processLocal: true, sampling: 'all-local-spans' },
     metrics: [...metrics.values()].map(metric => ({ ...metric })),
+    tokenUsage: getModelTokenUsage(),
     traces: includeTraces ? spans.map(span => ({ ...span, events: [...span.events] })) : undefined,
     alerts: evaluateOperationalAlerts(),
     generatedAt: new Date().toISOString()
@@ -252,5 +283,6 @@ export function getObservabilitySnapshot({ includeTraces = true } = {}) {
 export function resetObservabilityForTesting() {
   spans.length = 0;
   metrics.clear();
+  tokenUsageByModel.clear();
   exporter = null;
 }

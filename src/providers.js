@@ -113,7 +113,9 @@ export async function runWithFallback(prompt, {
           model: provider.model,
           durationMs: Date.now() - attemptStarted,
           outcome: 'success',
-          fallback: errors.length > 0
+          fallback: errors.length > 0,
+          inputTokens: result?.inputTokens || 0,
+          outputTokens: result?.outputTokens || 0
         });
         return {
           ...result,

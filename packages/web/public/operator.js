@@ -433,14 +433,21 @@ document.addEventListener("DOMContentLoaded", function() {
       '</div>';
     }).join('');
 
+    var tokenStats = (data && data.status && data.status.models && data.status.models.observability && data.status.models.observability.tokenUsage) || [];
+
     var providerRowsHtml = activeProviders.map(function(p) {
       var stBg = p.ready ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.2)';
       var stCol = p.ready ? '#4ade80' : '#9ca3af';
+      var usage = tokenStats.find(function(t) { return t.provider === p.id && t.model === p.model; }) || {
+        inputTokens: 0, outputTokens: 0, totalTokens: 0, requests: 0
+      };
       return '<tr style="border-bottom:1px solid #1c211b;">' +
         '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;text-transform:uppercase;">' + p.id + '</td>' +
         '<td style="padding:10px 8px;color:#52b788;font-family:monospace;">' + p.model + '</td>' +
         '<td style="padding:10px 8px;color:#e1e7de;">' + p.cost + '</td>' +
         '<td style="padding:10px 8px;"><span style="background:' + stBg + ';color:' + stCol + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">' + (p.ready ? 'ACTIVE (READY)' : 'NO KEY') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#e1e7de;font-weight:600;">' + usage.inputTokens.toLocaleString() + ' in / ' + usage.outputTokens.toLocaleString() + ' out</td>' +
+        '<td style="padding:10px 8px;color:#52b788;font-weight:700;">' + usage.totalTokens.toLocaleString() + ' tokens (' + usage.requests + ' reqs)</td>' +
         '<td style="padding:10px 8px;color:#858f82;">' + p.role + '</td>' +
       '</tr>';
     }).join('');
@@ -516,6 +523,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 '<th style="padding:8px;">ACTIVE MODEL</th>' +
                 '<th style="padding:8px;">COST TIER</th>' +
                 '<th style="padding:8px;">STATUS</th>' +
+                '<th style="padding:8px;">TOKEN I/O (IN / OUT)</th>' +
+                '<th style="padding:8px;">TOTAL TOKENS (REQUESTS)</th>' +
                 '<th style="padding:8px;">PIPELINE ROLE</th>' +
               '</tr>' +
             '</thead>' +

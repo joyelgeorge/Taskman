@@ -210,3 +210,30 @@ test('API routes: /api/bounties/candidates handles listing, retrieval and review
   assert.equal(patchRes.body.candidate.submissionMetadata.prUrl, 'https://github.com/acme/lib/pull/42');
 });
 
+test('Bounty Payout: cleared bounty is bookable as a verified settlement (Issue #196)', async () => {
+  const { recordSettlement, SETTLEMENT_STATUS, getRailState, setRailState } = await import('../src/money-ledger.js');
+  await setRailState('bounties', 'PROBATION');
+
+  // Algora releases payout via Stripe Express, identifiable by payment intent / transfer reference
+  const settlement = await recordSettlement({
+    rail: 'bounties',
+    source: 'stripe',
+    externalRef: 'pi_algora_bounty_issue_99',
+    grossCents: 15000,
+    feeCents: 450,
+    status: SETTLEMENT_STATUS.CLEARED,
+    verification: {
+      platform: 'algora',
+      payoutMethod: 'stripe_express',
+      issueNumber: 99,
+      repo: 'algora-partner/repo'
+    }
+  });
+
+  assert.equal(settlement.source, 'stripe');
+  assert.equal(settlement.status, SETTLEMENT_STATUS.CLEARED);
+  assert.equal(settlement.netCents, 14550);
+  assert.equal(settlement.externalRef, 'pi_algora_bounty_issue_99');
+});
+
+

@@ -69,20 +69,33 @@ export const DEFAULT_STREAMS = [
      */
     streamKey: 'payout-audit-direct',
     title: 'Payout reconciliation, sold directly from the free audit',
-    mechanism: 'Buyer runs the free check, sees a named missing payout, pays by Stripe payment '
-      + 'link for the full period. Stripe clears to the bank and revenue-check reconciles it.',
-    requires: 'A Stripe account (identity-verified, ~30 minutes, no approval queue) and someone '
+    mechanism: 'Buyer runs the free check, sees a named missing payout, pays by PayPal or Stripe payment '
+      + 'link for the full period. Processor clears funds and revenue-check reconciles it.',
+    requires: 'A PayPal or Stripe payment link (live on https://taskman-operator.web.app) and someone '
       + 'who has run the free check and wants the rest. The delivery itself needs no human.',
-    nextAction: 'Create the Stripe account, make a payment link, set OFFER.contact and the link in '
-      + 'packages/web/public/audit/index.html, publish the page.',
+    nextAction: 'Market the live audit tool to potential audit clients to drive first paid settlement.',
     unblockedBy: 'human',
-    state: 'BLOCKED',
-    stateReason: 'Blocked only on a payment account. Every other part of this lane exists and is '
-      + 'tested — this is the shortest distance between the system and a first settlement.',
+    state: 'TESTING',
+    stateReason: 'Deployed live with PayPal (paypal.me/joyelgt/20USD). Testing traffic and settlement acquisition.',
     testCostHours: 1,
     proofCents: 2000
   },
   {
+    streamKey: 'github-paid-bounties',
+    title: 'Algora & GitHub Open-Source Bounties',
+    mechanism: 'Platform (Algora) escrows bounty funds; human reviews candidate, posts /claim or /attempt, '
+      + 'and submits PR. Maintainer merges, and Algora releases payout via Stripe Express (KYC required) in 1-3 days.',
+    requires: 'Stripe Express account with KYC on Algora platform, and human-in-the-loop review/submission (#194). '
+      + 'Note: PayPal does NOT unlock Algora; each bounty platform requires its own payout rail and identity verification.',
+    nextAction: 'Complete Algora GitHub OAuth and Stripe Express KYC setup; run bounty triage (#195) to produce reviewable candidates.',
+    unblockedBy: 'human',
+    state: 'BLOCKED',
+    stateReason: 'Awaiting human-owned Algora Stripe Express setup with KYC. Payouts clear 1-3 days post-merge.',
+    testCostHours: 2,
+    proofCents: 5000
+  },
+  {
+
     streamKey: 'ephemeral-attention-dataset',
     title: 'Longitudinal dataset of attention that is never archived',
     mechanism: 'Licence the accumulated series — one-off extract or a recurring feed — to teams who '

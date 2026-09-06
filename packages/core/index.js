@@ -61,3 +61,8 @@ export {
   MARKET_CONTINGENCY_RATES, DEFAULT_CONTINGENCY_PERCENT, contingencyFee, worthBilling, discoverIncomeStreams, DETECTORS,
   detectOpenedVenues, detectMaturingSeries, detectRecurringDemand, detectUnattributedSettlements
 } from './income/index.js';
+
+export {
+  calculateArbitrageNetProfit, evaluateLiquidationOpportunity, SUPPORTED_CHAINS
+} from './crypto/scanner.js';
+

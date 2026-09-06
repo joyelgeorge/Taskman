@@ -33,8 +33,9 @@ import {
 function authorized(req) {
   const expected = process.env.TASKMAN_API_TOKEN;
   if (!expected) return true;
-  const header = req.headers.authorization || '';
-  return header === `Bearer ${expected}`;
+  const header = (req.headers.authorization || '').trim();
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] === expected : false;
 }
 
 const notFound = { status: 404, body: { error: 'not found' } };

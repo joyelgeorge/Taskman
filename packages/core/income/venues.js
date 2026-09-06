@@ -165,3 +165,35 @@ export function venueOptions({ country = 'IN' } = {}) {
     summary: `${open.length} of ${assessed.length} venue(s) can pay an individual in ${country}.`
   };
 }
+
+/**
+ * Sources tried for finding people who have this problem, and why they failed.
+ *
+ * Recorded rather than deleted, so the same searches are not run again in a
+ * month and mistaken for a new idea.
+ */
+export const DISPROVEN_PROSPECT_SOURCES = Object.freeze([
+  {
+    source: 'GitHub issue search',
+    tried: '2026-09-06',
+    queries: ['payout + missing/discrepancy', 'reconciliation + mismatch', 'settlement + discrepancy'],
+    result: 'Wrong population. GitHub issues are developers building payout features — '
+      + '"Payouts: Scheduled payouts", "Payout recording" — not sellers whose money did not '
+      + 'arrive. Broad queries additionally match unrelated software senses of "settlement" and '
+      + '"mismatch": GNSS odometry, sqlite column counts. 4,263 hits, effectively none of them a '
+      + 'prospect.',
+    conclusion: 'Not a prospect source. The people with this problem are small operators, and '
+      + 'they complain where sellers gather — which is not openly searchable.'
+  },
+  {
+    source: 'Agent-economy marketplaces (dealwork.ai, opentask.ai, and similar)',
+    tried: '2026-09-06',
+    result: 'Same category as taskforce and moltjobs, which were measured at effectively zero '
+      + 'settled volume. Payment is in USDC/SOL/NEAR rather than a rail that reaches an Indian '
+      + 'individual, and independent measurement of this market found 73.2% of open agent '
+      + 'bounties to be prompt-exfiltration honeypots with roughly 2-5 of 232 listings genuinely '
+      + 'doable.',
+    conclusion: 'Not re-opened without evidence of real settled volume reaching this country. '
+      + 'A new platform name is not new evidence.'
+  }
+]);

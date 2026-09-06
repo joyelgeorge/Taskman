@@ -57,6 +57,7 @@ export {
   resetIncomeMemory, STREAM_STATES, STREAM_ORIGINS, registerDataProduct, refreshDataProducts,
   listDataProducts, appraise, resetDataProductMemory, seedIncomeStreams, incomeReport,
   DEFAULT_STREAMS, DEFAULT_DATA_PRODUCTS, VENUES, PAYOUT_COST, netOf, venueOptions,
-  minimumViableTicket, isReachable, discoverIncomeStreams, DETECTORS,
+  minimumViableTicket, isReachable, DISPROVEN_PROSPECT_SOURCES, PRICING_MODEL,
+  MARKET_CONTINGENCY_RATES, DEFAULT_CONTINGENCY_PERCENT, contingencyFee, worthBilling, discoverIncomeStreams, DETECTORS,
   detectOpenedVenues, detectMaturingSeries, detectRecurringDemand, detectUnattributedSettlements
 } from './income/index.js';

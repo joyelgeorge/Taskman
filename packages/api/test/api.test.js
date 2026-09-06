@@ -21,6 +21,15 @@ const get = async (base, path) => {
 };
 
 async function reset() {
+  // Auth state is process-global, and several tests here set TASKMAN_API_TOKEN
+  // and clear it in a finally. node:test runs top-level tests in a file
+  // concurrently, so one test's token was visible to another that expected an
+  // open endpoint — which is why "mutations require the token" failed roughly
+  // one run in nineteen (#188), and why adding two unrelated test files was
+  // enough to make finance/report/history fail with 401 instead of 200 every
+  // time. Starting each test from a known auth state removes the race rather
+  // than reducing its odds.
+  delete process.env.TASKMAN_API_TOKEN;
   await resetCronMemory(); await resetAlertMemory(); await resetDroneMemory(); await resetSignalMemory();
   await resetScanMemory(); await resetFinanceMemory(); await resetLedgerMemory(); await resetGovernorMemory();
 }

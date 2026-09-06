@@ -12,7 +12,12 @@ export {
 } from './data-products.js';
 export { DEFAULT_STREAMS } from './defaults.js';
 export {
-  VENUES, PAYOUT_COST, CONFIDENCE, netOf, isReachable, venueOptions, minimumViableTicket
+  PRICING_MODEL, MARKET_CONTINGENCY_RATES, DEFAULT_CONTINGENCY_PERCENT,
+  contingencyFee, worthBilling
+} from './pricing.js';
+export {
+  VENUES, PAYOUT_COST, CONFIDENCE, netOf, isReachable, venueOptions, minimumViableTicket,
+  DISPROVEN_PROSPECT_SOURCES
 } from './venues.js';
 export {
   discoverIncomeStreams, DETECTORS, detectOpenedVenues, detectMaturingSeries,

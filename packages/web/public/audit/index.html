@@ -134,6 +134,13 @@
    */
   const OFFER = {
     contact: 'https://paypal.me/joyelgt/20USD',
+    // Contingency, not a flat fee. Every established operator doing this exact
+    // job charges a share of what is recovered and nothing up front — TrueOps
+    // 10%, Refully 18%, GETIDA 25%. The reason is the objection this page
+    // cannot otherwise answer: a stranger is being asked to open their bank
+    // export for someone with no track record. At a flat $20 the question is
+    // "why would I trust you"; at 20% of a recovery there is nothing to trust.
+    contingencyPercent: 20,
     price: '$20',
     scope: 'your last 12 months, every order and every deposit'
   };
@@ -208,11 +215,13 @@
         <strong>Want ${esc(OFFER.scope)} checked?</strong>
         <p>This compared what you pasted. The full check covers every order and deposit, finds
         duplicated references, checks whether your fee rate was consistent, flags payouts that took
-        unusually long, and comes back as a saved report you can take to your platform —
-        ${esc(OFFER.price)}.</p>
+        unusually long, and comes back as a saved report you can take to your platform.</p>
+        <p><strong>You pay nothing unless you recover something.</strong> If the full check finds
+        money and your platform pays it back, the fee is ${esc(OFFER.contingencyPercent)}% of what
+        you actually recover — not of what the report finds. Nothing recovered, nothing owed.</p>
         ${OFFER.contact
           ? (OFFER.contact.startsWith('http')
-              ? `<p><a href="${esc(OFFER.contact)}" target="_blank" rel="noopener noreferrer" style="font-weight:600;display:inline-block;margin-top:6px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">Order Full Period Audit via PayPal (${esc(OFFER.price)}) &rarr;</a></p>`
+              ? `<p><a href="${esc(OFFER.contact)}" target="_blank" rel="noopener noreferrer" style="font-weight:600;display:inline-block;margin-top:6px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">Start the full check &rarr;</a></p>`
               : `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`)
           : ''}
       </div>

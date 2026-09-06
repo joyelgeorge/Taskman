@@ -79,3 +79,12 @@ export {
   updateBountyCandidateStatus, resetBountyCandidatesMemory,
   CANDIDATE_STATUS
 } from './bounties/candidate-store.js';
+
+export {
+  triageBountyListing, extractBountyReward, TRIAGE_VERDICT, TRIAGE_GATE
+} from './bounties/triage.js';
+
+export {
+  triageAndRecordBounty, listTriageRecords, getBountyYieldReport, resetTriageMemory
+} from './bounties/triage-store.js';
+

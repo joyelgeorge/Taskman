@@ -23,8 +23,10 @@ import {
   listOutreachDrafts, getOutreachDraft, updateOutreachDraftStatus
 } from '../../src/transforms/outreach-draft.js';
 import {
-  listBountyCandidates, getBountyCandidate, updateBountyCandidateStatus
+  listBountyCandidates, getBountyCandidate, updateBountyCandidateStatus,
+  listTriageRecords, getBountyYieldReport
 } from '@taskman/core';
+
 import { providerStatus } from '../../src/providers.js';
 import { getObservabilitySnapshot } from '../../src/observability.js';
 
@@ -434,7 +436,20 @@ export async function route(req, url, readBody) {
     }
   }
 
+  // ---- bounty triage & yield reporting (Issue #195) -------------------------
+  if (method === 'GET' && pathname === '/api/bounties/triage/report') {
+    return { status: 200, body: await getBountyYieldReport() };
+  }
+
+  if (method === 'GET' && pathname === '/api/bounties/triage') {
+    const verdict = url.searchParams.get('verdict');
+    const repoFilter = url.searchParams.get('repo');
+    const records = await listTriageRecords({ verdict, repo: repoFilter });
+    return { status: 200, body: { records } };
+  }
+
   // ---- money-making opportunities & streams ---------------------------------
+
 
   if (method === 'GET' && pathname === '/api/money/opportunities') {
     const [report, streams] = await Promise.all([

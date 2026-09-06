@@ -5,7 +5,7 @@ import { databaseEnabled, query } from '../src/db.js';
 import { STREAM_STATES, STREAM_ORIGINS } from '@taskman/core';
 import { SETTLEMENT_STATUS, VERIFIED_SOURCES } from '../src/money-ledger.js';
 import { LEAD_SOURCE, LEAD_STATUS } from '@taskman/core/marketing/store.js';
-import { EXPENSE_CATEGORIES, CANDIDATE_STATUS } from '@taskman/core';
+import { EXPENSE_CATEGORIES, CANDIDATE_STATUS, TRIAGE_VERDICT } from '@taskman/core';
 
 /**
  * The values the code can write must be values the schema will accept.
@@ -50,7 +50,8 @@ const cases = [
   ['leads', 'source', Object.values(LEAD_SOURCE)],
   ['leads', 'status', Object.values(LEAD_STATUS)],
   ['expenses', 'category', Object.values(EXPENSE_CATEGORIES)],
-  ['bounty_candidates', 'status', Object.values(CANDIDATE_STATUS)]
+  ['bounty_candidates', 'status', Object.values(CANDIDATE_STATUS)],
+  ['bounty_triage_records', 'verdict', Object.values(TRIAGE_VERDICT)]
 ];
 
 for (const [table, column, codeValues] of cases) {
@@ -73,7 +74,7 @@ test('every table the code writes to actually exists', dbOnly, async () => {
     'income_streams', 'data_products', 'settlements', 'rail_attempts', 'rail_state',
     'observation_sources', 'observations', 'observation_rollups', 'outreach_drafts',
     'leads', 'campaigns', 'expenses', 'cron_runs', 'cron_expectations', 'drones', 'signals',
-    'bounty_candidates'
+    'bounty_candidates', 'bounty_triage_records'
   ];
   const { rows } = await query(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`);
@@ -81,4 +82,5 @@ test('every table the code writes to actually exists', dbOnly, async () => {
   const missing = required.filter(t => !present.has(t));
   assert.deepEqual(missing, [], `missing tables: ${missing.join(', ')}`);
 });
+
 

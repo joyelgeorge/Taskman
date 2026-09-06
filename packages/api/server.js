@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
+import { databaseEnabled } from '@taskman/db';
 import { route } from './routes.js';
 
 const port = Number(process.env.API_PORT || process.env.PORT || 3100);
@@ -12,9 +13,40 @@ const CORS = {
   'access-control-allow-headers': 'content-type,authorization'
 };
 
+/**
+ * Every response says which storage it came from.
+ *
+ * Without DATABASE_URL every store falls back to an in-process Map, and this API
+ * will serve those numbers exactly as if they were real — including revenue. A
+ * dashboard reading it then shows cleared settlements and a revenue figure that
+ * exist in no database, persist nowhere, and vanish when the process restarts.
+ * That is the worst failure this system has, because unlike a crash it looks
+ * like success: the operator sees money that is not there.
+ *
+ * The crons already refuse to run this way (packages/crons/cli.js). The API did
+ * not, so it says so on every single response instead, where a reader cannot
+ * miss it and a UI can surface it.
+ */
+const STORAGE_MODE = databaseEnabled ? 'postgres' : 'memory';
+
 function send(res, status, body) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', ...CORS });
-  res.end(JSON.stringify(body));
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'x-taskman-storage': STORAGE_MODE,
+    ...CORS
+  });
+  const envelope = (body && typeof body === 'object' && !Array.isArray(body))
+    ? {
+        ...body,
+        storage: STORAGE_MODE,
+        ...(databaseEnabled ? {} : {
+          warning: 'DATABASE_URL is not set. These figures come from in-process memory, persist '
+            + 'nowhere, and are lost when this process restarts. Any revenue shown here is not '
+            + 'money — treat it as a local fixture, never as a settlement.'
+        })
+      }
+    : body;
+  res.end(JSON.stringify(envelope));
 }
 
 export function createServer() {
@@ -42,5 +74,11 @@ export function createServer() {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  createServer().listen(port, () => console.log(`Taskman API listening on :${port}`));
+  createServer().listen(port, () => {
+    console.log(`Taskman API listening on :${port} (storage: ${STORAGE_MODE})`);
+    if (!databaseEnabled) {
+      console.warn('[api] DATABASE_URL is not set. Every figure this serves — revenue included — '
+        + 'is in-process memory that persists nowhere. Do not read it as money.');
+    }
+  });
 }

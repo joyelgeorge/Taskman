@@ -37,7 +37,7 @@ const providers = [
     }
   },
   {
-    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'deepseek/deepseek-r1:free',
+    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
     async call(prompt, key, { signal } = {}) {
       return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key, signal);
     }

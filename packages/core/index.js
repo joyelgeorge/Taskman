@@ -56,6 +56,7 @@ export {
   registerStream, setStreamState, markStreamSettled, listStreams, streamPortfolio,
   resetIncomeMemory, STREAM_STATES, STREAM_ORIGINS, registerDataProduct, refreshDataProducts,
   listDataProducts, appraise, resetDataProductMemory, seedIncomeStreams, incomeReport,
-  DEFAULT_STREAMS, DEFAULT_DATA_PRODUCTS, discoverIncomeStreams, DETECTORS,
+  DEFAULT_STREAMS, DEFAULT_DATA_PRODUCTS, VENUES, PAYOUT_COST, netOf, venueOptions,
+  minimumViableTicket, isReachable, discoverIncomeStreams, DETECTORS,
   detectOpenedVenues, detectMaturingSeries, detectRecurringDemand, detectUnattributedSettlements
 } from './income/index.js';

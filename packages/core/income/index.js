@@ -1,6 +1,7 @@
 import { registerStream, listStreams, streamPortfolio } from './streams.js';
 import { registerDataProduct, refreshDataProducts } from './data-products.js';
 import { DEFAULT_STREAMS } from './defaults.js';
+import { venueOptions } from './venues.js';
 
 export {
   registerStream, setStreamState, markStreamSettled, listStreams, streamPortfolio,
@@ -10,6 +11,9 @@ export {
   registerDataProduct, refreshDataProducts, listDataProducts, appraise, resetDataProductMemory
 } from './data-products.js';
 export { DEFAULT_STREAMS } from './defaults.js';
+export {
+  VENUES, PAYOUT_COST, CONFIDENCE, netOf, isReachable, venueOptions, minimumViableTicket
+} from './venues.js';
 export {
   discoverIncomeStreams, DETECTORS, detectOpenedVenues, detectMaturingSeries,
   detectRecurringDemand, detectUnattributedSettlements
@@ -82,12 +86,24 @@ export async function seedIncomeStreams() {
  * One honest answer to "is this earning, and if not what is the cheapest next
  * test" — the question the whole portfolio exists to keep answerable.
  */
-export async function incomeReport({ now = new Date() } = {}) {
+export async function incomeReport({ now = new Date(), country = 'IN' } = {}) {
   await seedIncomeStreams();
   const portfolio = await streamPortfolio();
   const products = await refreshDataProducts({ now });
+  // Which venues can actually pay this operator, and what each rail costs. A
+  // lane whose money cannot reach the person running it is not an opportunity,
+  // however much work it lists — and that is decided by country and entity type,
+  // not by effort.
+  const venues = venueOptions({ country });
+
   return {
     ...portfolio,
+    venues: {
+      country: venues.country,
+      summary: venues.summary,
+      open: venues.open.map(v => ({ key: v.key, takeRatePct: v.takeRatePct, note: v.note })),
+      closed: venues.closed.map(v => ({ key: v.key, blockers: v.blockers }))
+    },
     dataProducts: products.map(p => ({
       productKey: p.productKey,
       observationDays: p.observationDays,

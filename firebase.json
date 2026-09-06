@@ -1,0 +1,20 @@
+{
+  "hosting": {
+    "//": "packages/web/public, matching netlify.toml — not the root public/ directory. Root public/ has no audit/ page, so publishing it deploys a site with nothing to sell.",
+    "public": "packages/web/public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/audit", "destination": "/audit/index.html" }
+    ],
+    "headers": [
+      {
+        "//": "The audit runs client-side and is edited often; a cached copy would keep serving an old price or a dead payment link.",
+        "source": "**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      }
+    ]
+  }
+}

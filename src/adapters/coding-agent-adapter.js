@@ -1,5 +1,7 @@
 import { databaseEnabled, query, truncateForTesting } from '../db.js';
 import { stableErrorCode } from '../errors.js';
+import { checkRepoAiPolicy } from '../../packages/core/bounties/policy.js';
+import { createBountyCandidate, CANDIDATE_STATUS } from '../../packages/core/bounties/candidate-store.js';
 
 const runsMemoryStore = new Map(); // id -> run
 
@@ -100,7 +102,49 @@ export async function dispatchCodingAgentWork({
     runRecord.testOutput = scrubSecrets(backendResult.testOutput || '');
     runRecord.headSha = backendResult.headSha || null;
 
-    // 2. Gate: Test evidence is mandatory before PR creation
+    // Issue #194 Invariant: External / bounty repositories MUST NEVER be auto-submitted.
+    // Algora terms prohibit robotic access and maintainers ban AI PRs.
+    // Instead, prepare a candidate for human review.
+    const isInternalTaskmanRepo = repo === (process.env.TASKMAN_REPO || 'joyelgeorge/Taskman') || repo === 'test/repo';
+    const isExternalRepo = workPackage.isExternal === true || workPackage.isBounty === true || (!isInternalTaskmanRepo && workPackage.isInternal !== true);
+    
+    // Check AI policy if contributing files or text provided
+    const policyResult = checkRepoAiPolicy({
+      contributingText: workPackage.contributingText || '',
+      repo
+    });
+
+
+    if (!policyResult.allowed) {
+      runRecord.status = 'POLICY_REFUSED';
+      runRecord.error = `AI PR refused: ${policyResult.reason} (Policy excerpt: "${policyResult.policyRef}")`;
+      if (recordRun) await saveExecutionRun(runRecord);
+
+      await createBountyCandidate({
+        repo,
+        issueNumber,
+        title,
+        branchName,
+        status: CANDIDATE_STATUS.REFUSED_POLICY_BAN,
+        policyVerdict: policyResult.verdict,
+        policyReason: policyResult.reason,
+        policyRef: policyResult.policyRef,
+        disclosureText: null,
+        proposedChanges: backendResult.proposedChanges || null,
+        testOutput: runRecord.testOutput
+      });
+
+      return {
+        ok: false,
+        status: 'POLICY_REFUSED',
+        reason: runRecord.error,
+        policyVerdict: policyResult.verdict,
+        policyRef: policyResult.policyRef,
+        runId
+      };
+    }
+
+    // 2. Gate: Test evidence is mandatory before candidate preparation or PR creation
     if (!backendResult.testsPassed) {
       runRecord.status = 'FAILED_TESTS';
       runRecord.error = scrubSecrets(backendResult.testError || 'Automated tests failed');
@@ -114,7 +158,41 @@ export async function dispatchCodingAgentWork({
       };
     }
 
-    // 3. Create or update PR via backend or GitHub client
+    if (isExternalRepo) {
+      // Create candidate for human review — DO NOT open PR
+      const candidate = await createBountyCandidate({
+        repo,
+        issueNumber,
+        title,
+        branchName,
+        status: CANDIDATE_STATUS.READY_FOR_REVIEW,
+        policyVerdict: policyResult.verdict,
+        policyReason: policyResult.reason,
+        policyRef: policyResult.policyRef,
+        disclosureText: policyResult.disclosureText,
+        proposedChanges: backendResult.proposedChanges || backendResult.patch || `Branch: ${branchName}`,
+        testOutput: runRecord.testOutput
+      });
+
+      runRecord.status = 'CANDIDATE_PREPARED';
+      if (recordRun) await saveExecutionRun(runRecord);
+
+      return {
+        ok: true,
+        status: 'CANDIDATE_PREPARED',
+        runId,
+        candidateId: candidate.id,
+        branch: branchName,
+        headSha: runRecord.headSha,
+        disclosureText: policyResult.disclosureText,
+        policyVerdict: policyResult.verdict,
+        testResults: { passed: true, output: runRecord.testOutput },
+        modelMetadata: { provider: runRecord.provider, model: runRecord.model },
+        tokenUsage: runRecord.tokenUsage
+      };
+    }
+
+    // 3. For own internal repository, create or update PR via backend or GitHub client
     const prResult = await backend.createOrUpdatePr({
       repo,
       issueNumber,
@@ -143,6 +221,7 @@ export async function dispatchCodingAgentWork({
 
     return {
       ok: true,
+
       status: 'PR_OPENED',
       runId,
       branch: branchName,

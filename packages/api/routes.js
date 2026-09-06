@@ -22,8 +22,12 @@ import { getJob, cronNames } from '../crons/registry.js';
 import {
   listOutreachDrafts, getOutreachDraft, updateOutreachDraftStatus
 } from '../../src/transforms/outreach-draft.js';
+import {
+  listBountyCandidates, getBountyCandidate, updateBountyCandidateStatus
+} from '@taskman/core';
 import { providerStatus } from '../../src/providers.js';
 import { getObservabilitySnapshot } from '../../src/observability.js';
+
 
 
 /**
@@ -400,7 +404,38 @@ export async function route(req, url, readBody) {
     }
   }
 
+  // ---- bounty candidates review (Issue #194) --------------------------------
+  // Human-gated: external bounty PRs are never auto-submitted.
+  // Candidates are prepared here with disclosure text and test evidence.
+  if (method === 'GET' && pathname === '/api/bounties/candidates') {
+    const repoFilter = url.searchParams.get('repo');
+    const status = url.searchParams.get('status');
+    const candidates = await listBountyCandidates({ repo: repoFilter, status });
+    return { status: 200, body: { candidates } };
+  }
+
+  const bountyCandidateMatch = pathname.match(/^\/api\/bounties\/candidates\/([^/]+)$/);
+  if (method === 'GET' && bountyCandidateMatch) {
+    const candidate = await getBountyCandidate(decodeURIComponent(bountyCandidateMatch[1]));
+    return candidate ? { status: 200, body: { candidate } } : notFound;
+  }
+
+  if (method === 'PATCH' && bountyCandidateMatch) {
+    const body = await readBody();
+    if (!body.status) return { status: 400, body: { error: 'status is required' } };
+    try {
+      const id = decodeURIComponent(bountyCandidateMatch[1]);
+      const updatedCandidate = await updateBountyCandidateStatus(id, body.status, {
+        submissionMetadata: body.submissionMetadata || null
+      });
+      return { status: 200, body: { candidate: updatedCandidate } };
+    } catch (error) {
+      return { status: 400, body: { error: String(error.message || error) } };
+    }
+  }
+
   // ---- money-making opportunities & streams ---------------------------------
+
   if (method === 'GET' && pathname === '/api/money/opportunities') {
     const [report, streams] = await Promise.all([
       incomeReport(),

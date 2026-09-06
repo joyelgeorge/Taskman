@@ -70,4 +70,12 @@ export {
   profileHardwareForInference, INFERENCE_NETWORK_PROFILES
 } from './crypto/inference-profiler.js';
 
+export {
+  checkRepoAiPolicy, AI_POLICY_VERDICT, STANDARD_DISCLOSURE_TEXT
+} from './bounties/policy.js';
 
+export {
+  createBountyCandidate, getBountyCandidate, listBountyCandidates,
+  updateBountyCandidateStatus, resetBountyCandidatesMemory,
+  CANDIDATE_STATUS
+} from './bounties/candidate-store.js';

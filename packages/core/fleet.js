@@ -8,6 +8,58 @@
  */
 export const DEFAULT_FLEET = [
   {
+    /**
+     * The only drone in this fleet that watches paid work.
+     *
+     * The other three watch Hacker News, which publishes news. Six hundred and
+     * sixty-four signals were collected from them and a hundred and nineteen
+     * promoted, and not one could ever have become money, because nobody on the
+     * HN front page is offering to pay for anything. A discovery pipeline aimed
+     * at news finds news.
+     *
+     * GitHub's search API is public, documented and unauthenticated for this
+     * query, and returns issues whose maintainers have attached a bounty label —
+     * work that someone has already said they will pay for. That is the
+     * difference between a signal and a job.
+     *
+     * Rate limits are the reason for the six-hour interval: unauthenticated
+     * search allows ten requests a minute, and one call every six hours sits far
+     * beneath it. Fifty per run, newest first.
+     */
+    id: 'github-bounties',
+    kind: 'http_json',
+    name: 'GitHub — issues carrying a bounty',
+    targetUrl: 'https://api.github.com/search/issues'
+      + '?q=label:%22%F0%9F%92%8E+Bounty%22+state:open&sort=created&order=desc&per_page=50',
+    intervalSeconds: 21600,
+    config: {
+      itemsPath: 'items',
+      idField: 'id',
+      titleField: 'title',
+      urlField: 'html_url',
+      kind: 'bounty',
+      limit: 50
+    },
+    /**
+     * Raw bounty-label search is noisy, and the noise is specific.
+     *
+     * A live run returned a benchmark fork of cal.com, a repo literally called
+     * agent-playground asking to "Calculate the exact value of PI", and several
+     * mirrors — none of which is work anyone will pay for. The label is easy to
+     * attach and costs the attacher nothing, so it is evidence of intent to pay
+     * and nothing more.
+     *
+     * These exclusions drop what has been observed rather than what might exist:
+     * playgrounds, benchmarks and test scaffolding. staleAfterHours is generous
+     * because a bounty stays open for weeks, unlike a news story.
+     */
+    rules: {
+      exclude: ['playground', 'bench', 'sandbox', 'test-repo', 'demo-repo', 'mirror'],
+      threshold: 0.3,
+      staleAfterHours: 336
+    }
+  },
+  {
     id: 'hn-new-stories',
     kind: 'http_json',
     name: 'Hacker News — new stories',

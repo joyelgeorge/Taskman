@@ -133,3 +133,36 @@ test('dispatch flies every due drone and reports an aggregate', async () => {
   assert.equal(result.newSignals, 2);
   assert.equal((await droneRunHistory('a')).length, 1);
 });
+
+// ---- the fleet looks for paid work, not news --------------------------------
+
+test('the fleet includes a drone that watches work someone will pay for', async () => {
+  const { DEFAULT_FLEET } = await import('../fleet.js');
+  // Three drones watched Hacker News, which publishes news. 664 signals were
+  // collected and 119 promoted, and none could ever have become money, because
+  // nobody on the HN front page is offering to pay for anything. A discovery
+  // pipeline aimed at news finds news.
+  const bounty = DEFAULT_FLEET.find(d => d.config?.kind === 'bounty');
+  assert.ok(bounty, 'at least one drone must look at paid work');
+  assert.match(bounty.targetUrl, /^https:\/\/api\.github\.com\/search\/issues/);
+  assert.ok(bounty.intervalSeconds >= 3600,
+    'unauthenticated GitHub search allows ten requests a minute; stay far beneath it');
+});
+
+test('bounty rules reject the noise a live run actually returned', async () => {
+  const { DEFAULT_FLEET } = await import('../fleet.js');
+  const { scoreSignal } = await import('../signals/processor.js');
+  const bounty = DEFAULT_FLEET.find(d => d.config?.kind === 'bounty');
+  const now = new Date().toISOString();
+  // Observed in a live run: a benchmark fork of cal.com and a repo called
+  // agent-playground asking to "Calculate the exact value of PI". The label is
+  // free to attach, so it proves intent to pay and nothing else.
+  for (const junk of [
+    'feat: 2fa backup codes https://github.com/x/calcom-cal-com-woostack-bench/pull/2',
+    'Calculate the exact value of PI https://github.com/y/agent-playground/issues/17'
+  ]) {
+    assert.equal(scoreSignal({ title: junk, observedAt: now }, bounty.rules).passed, false, junk);
+  }
+  const real = 'Handle Out-Of-Disk gracefully https://github.com/qdrant/qdrant/issues/337';
+  assert.equal(scoreSignal({ title: real, observedAt: now }, bounty.rules).passed, true);
+});

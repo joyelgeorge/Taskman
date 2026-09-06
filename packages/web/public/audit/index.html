@@ -133,7 +133,7 @@
    * the finding is.
    */
   const OFFER = {
-    contact: '',                 // e.g. 'you@example.com'
+    contact: 'https://paypal.me/joyelgt/20USD',
     price: '$20',
     scope: 'your last 12 months, every order and every deposit'
   };
@@ -211,7 +211,9 @@
         unusually long, and comes back as a saved report you can take to your platform —
         ${esc(OFFER.price)}.</p>
         ${OFFER.contact
-          ? `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`
+          ? (OFFER.contact.startsWith('http')
+              ? `<p><a href="${esc(OFFER.contact)}" target="_blank" rel="noopener noreferrer" style="font-weight:600;display:inline-block;margin-top:6px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;">Order Full Period Audit via PayPal (${esc(OFFER.price)}) &rarr;</a></p>`
+              : `<p><a href="mailto:${esc(OFFER.contact)}?subject=Payout%20audit">Email ${esc(OFFER.contact)}</a></p>`)
           : ''}
       </div>
     `;

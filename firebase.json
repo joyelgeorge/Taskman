@@ -1,18 +1,19 @@
 {
   "hosting": {
-    "//": "packages/web/public, matching netlify.toml — not the root public/ directory. Root public/ has no audit/ page, so publishing it deploys a site with nothing to sell.",
-    "public": "packages/web/public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/audit", "destination": "/audit/index.html" }
+    "//": "dist/audit-site, not packages/web/public. That directory's index.html is the operator console — an internal telemetry dashboard — and publishing it would put the console at the root of a public site with the thing that actually sells buried at /audit. dist/audit-site is exactly the audit page and its two modules, nothing else.",
+    "public": "dist/audit-site",
+    "predeploy": [
+      "npm run build:audit-site"
     ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
       {
-        "//": "The audit runs client-side and is edited often; a cached copy would keep serving an old price or a dead payment link.",
+        "//": "The page carries a price and a payment link. A cached copy keeps serving an old one long after it changes.",
         "source": "**",
         "headers": [
           { "key": "Cache-Control", "value": "no-store" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" }
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
         ]
       }
     ]

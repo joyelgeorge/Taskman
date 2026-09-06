@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { AUDIT_ASSETS } from './sync-audit-assets.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const source = join(root, 'packages', 'web', 'public', 'audit');
+const sourceDir = join(root, 'packages', 'web', 'public', 'audit');
 export const outDir = join(root, 'dist', 'audit-site');
 
 export async function buildAuditSite() {
@@ -25,10 +25,21 @@ export async function buildAuditSite() {
   await mkdir(outDir, { recursive: true });
 
   const files = ['index.html', ...AUDIT_ASSETS];
-  for (const name of files) await copyFile(join(source, name), join(outDir, name));
+  for (const name of files) await copyFile(join(sourceDir, name), join(outDir, name));
 
   // Static host, no build step, no framework — say so where the next person looks.
   await writeFile(join(outDir, '.nojekyll'), '');
+
+  // Verify the copy rather than assume it. A build that silently produced a stale
+  // or partial page is how a deploy went out with no payment link in it: the
+  // source had been wired up, dist/ had not, and nothing said so.
+  for (const name of files) {
+    const [source, copy] = await Promise.all([
+      readFile(join(sourceDir, name), 'utf8'),
+      readFile(join(outDir, name), 'utf8')
+    ]);
+    if (source !== copy) throw new Error(`${name} did not copy faithfully into dist/audit-site/`);
+  }
 
   const html = await readFile(join(outDir, 'index.html'), 'utf8');
   const contactSet = !/contact:\s*''/.test(html);

@@ -13,6 +13,22 @@ export const STREAM_STATES = Object.freeze({
 
 const UNBLOCKED_BY = Object.freeze(['machine', 'human']);
 
+/**
+ * Where a stream came from. Checked here so an unknown value is a clear error
+ * rather than a 500 out of a database constraint.
+ *
+ * The console's POST route defaulted to an origin the schema did not allow, and
+ * the failure surfaced as "violates check constraint income_streams_origin_check"
+ * with a 500 — a message that tells the person who typed the form nothing, and
+ * which memory mode hid entirely because it enforces no constraints.
+ *
+ *   seed         declared in code (packages/core/income/defaults.js)
+ *   discovered   proposed by a detector from recorded evidence
+ *   operator_ui  a person, through the API
+ *   local_entry  a person, through the operator console
+ */
+export const STREAM_ORIGINS = Object.freeze(['seed', 'discovered', 'operator_ui', 'local_entry']);
+
 const normalize = (row = {}) => ({
   streamKey: row.streamKey ?? row.stream_key,
   title: row.title,
@@ -54,6 +70,9 @@ export async function registerStream({
     throw new Error(`${streamKey}: unblockedBy must be one of ${UNBLOCKED_BY.join(', ')} — say who can move this`);
   }
   if (!STREAM_STATES[state]) throw new Error(`${streamKey}: unknown state ${state}`);
+  if (!STREAM_ORIGINS.includes(origin)) {
+    throw new Error(`${streamKey}: unknown origin "${origin}" — must be one of ${STREAM_ORIGINS.join(', ')}`);
+  }
 
   const row = {
     streamKey, title, mechanism, requires, nextAction, unblockedBy,

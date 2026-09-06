@@ -54,7 +54,7 @@ export {
 
 export {
   registerStream, setStreamState, markStreamSettled, listStreams, streamPortfolio,
-  resetIncomeMemory, STREAM_STATES, registerDataProduct, refreshDataProducts,
+  resetIncomeMemory, STREAM_STATES, STREAM_ORIGINS, registerDataProduct, refreshDataProducts,
   listDataProducts, appraise, resetDataProductMemory, seedIncomeStreams, incomeReport,
   DEFAULT_STREAMS, DEFAULT_DATA_PRODUCTS, discoverIncomeStreams, DETECTORS,
   detectOpenedVenues, detectMaturingSeries, detectRecurringDemand, detectUnattributedSettlements

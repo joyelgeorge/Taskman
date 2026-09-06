@@ -159,3 +159,32 @@ test('the report states plainly that nothing has settled', async () => {
   assert.ok(report.actionable.length >= 1, 'at least one lane must be machine-actionable tonight');
   assert.ok(report.waitingOnHuman.length >= 1);
 });
+
+// ---- origin provenance -------------------------------------------------------
+
+test('a stream created through the console is a valid origin', async () => {
+  await reset();
+  // Migration 025 allowed only seed and discovered. The operator console then
+  // added a third way for a stream to exist — a person typing one in — and the
+  // constraint rejected it, so the POST route returned 500 against PostgreSQL
+  // while passing in memory mode, which enforces nothing.
+  for (const origin of ['operator_ui', 'local_entry']) {
+    const created = await registerStream({
+      streamKey: `s-${origin}`, title: 't', mechanism: 'm', requires: 'r',
+      nextAction: 'n', unblockedBy: 'human', origin
+    });
+    assert.equal(created.streamKey, `s-${origin}`);
+  }
+  assert.equal((await listStreams({})).length, 2);
+});
+
+test('an unknown origin fails with a message, not a database constraint', async () => {
+  await reset();
+  await assert.rejects(
+    () => registerStream({
+      streamKey: 's1', title: 't', mechanism: 'm', requires: 'r',
+      nextAction: 'n', unblockedBy: 'human', origin: 'whatever'
+    }),
+    /unknown origin "whatever" — must be one of/
+  );
+});

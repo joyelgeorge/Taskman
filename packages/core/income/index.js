@@ -4,7 +4,7 @@ import { DEFAULT_STREAMS } from './defaults.js';
 
 export {
   registerStream, setStreamState, markStreamSettled, listStreams, streamPortfolio,
-  resetIncomeMemory, STREAM_STATES
+  resetIncomeMemory, STREAM_STATES, STREAM_ORIGINS
 } from './streams.js';
 export {
   registerDataProduct, refreshDataProducts, listDataProducts, appraise, resetDataProductMemory

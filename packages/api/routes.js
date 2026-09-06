@@ -22,6 +22,8 @@ import { getJob, cronNames } from '../crons/registry.js';
 import {
   listOutreachDrafts, getOutreachDraft, updateOutreachDraftStatus
 } from '../../src/transforms/outreach-draft.js';
+import { providerStatus } from '../../src/providers.js';
+import { getObservabilitySnapshot } from '../../src/observability.js';
 
 
 /**
@@ -76,6 +78,10 @@ export async function route(req, url, readBody) {
           clearedCents: rails.reduce((s, r) => s + r.clearedCents, 0),
           spendCents: rails.reduce((s, r) => s + r.spendCents, 0),
           rails: rails.length
+        },
+        models: {
+          providers: providerStatus(),
+          observability: getObservabilitySnapshot({ includeTraces: false })
         },
         topImprovements: improvements.map(i => ({ id: i.id, title: i.title, score: i.score })),
         asOf: new Date().toISOString()

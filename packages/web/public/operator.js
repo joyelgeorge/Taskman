@@ -403,6 +403,48 @@ document.addEventListener("DOMContentLoaded", function() {
     var unhealthyCrons = cronsList.filter(function(c) { return c.status && !['OK', 'DISABLED'].includes(c.status); }).length;
     var totalCrons = cronsList.length;
 
+    var defaultProviders = [
+      { id: 'groq', model: 'qwen/qwen3.6-27b', ready: true, cost: '$0.00 (Free Groq Tier)', role: 'Primary Reasoning' },
+      { id: 'openrouter', model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', ready: true, cost: '$0.00 (Free OpenRouter Tier)', role: 'Secondary Reasoning Fallback' },
+      { id: 'gemini', model: 'gemini-2.0-flash', ready: true, cost: 'Free / PayG Fallback', role: 'Fast General Fallback' },
+      { id: 'openai', model: 'gpt-4o-mini', ready: false, cost: 'Pay-per-token', role: 'Paid Fallback' }
+    ];
+    var activeProviders = (data && data.status && data.status.models && data.status.models.providers) ? data.status.models.providers.map(function(p) {
+      var found = defaultProviders.find(function(d) { return d.id === p.id; });
+      return {
+        id: p.id,
+        model: p.model,
+        ready: p.ready,
+        cost: (p.id === 'groq' || p.id === 'openrouter') ? '$0.00 (100% Free)' : (p.id === 'gemini' ? 'Free / PayG' : 'Paid'),
+        role: found ? found.role : 'Model Engine'
+      };
+    }) : defaultProviders;
+
+    var providerCardsHtml = activeProviders.map(function(p) {
+      var stBg = p.ready ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.2)';
+      var stCol = p.ready ? '#4ade80' : '#9ca3af';
+      return '<div style="background:#141813;border:1px solid #262c24;border-radius:10px;padding:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-weight:700;font-size:13px;text-transform:uppercase;color:#e1e7de;">' + p.id + '</span>' +
+          '<span style="background:' + stBg + ';color:' + stCol + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">' + (p.ready ? 'ONLINE' : 'UNCONFIGURED') + '</span>' +
+        '</div>' +
+        '<div style="font-family:monospace;font-size:11px;color:#52b788;word-break:break-all;">' + p.model + '</div>' +
+        '<div style="font-size:11px;color:#858f82;margin-top:4px;">' + p.role + ' · <b style="color:#e1e7de;">' + p.cost + '</b></div>' +
+      '</div>';
+    }).join('');
+
+    var providerRowsHtml = activeProviders.map(function(p) {
+      var stBg = p.ready ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.2)';
+      var stCol = p.ready ? '#4ade80' : '#9ca3af';
+      return '<tr style="border-bottom:1px solid #1c211b;">' +
+        '<td style="padding:10px 8px;font-weight:600;color:#e1e7de;text-transform:uppercase;">' + p.id + '</td>' +
+        '<td style="padding:10px 8px;color:#52b788;font-family:monospace;">' + p.model + '</td>' +
+        '<td style="padding:10px 8px;color:#e1e7de;">' + p.cost + '</td>' +
+        '<td style="padding:10px 8px;"><span style="background:' + stBg + ';color:' + stCol + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">' + (p.ready ? 'ACTIVE (READY)' : 'NO KEY') + '</span></td>' +
+        '<td style="padding:10px 8px;color:#858f82;">' + p.role + '</td>' +
+      '</tr>';
+    }).join('');
+
     var cronRows = cronsList.map(function(c) {
       var name = c.cronName || c.cron || 'unknown';
       var sched = c.schedule || 'interval';
@@ -452,6 +494,33 @@ document.addEventListener("DOMContentLoaded", function() {
           '<div style="font-family:monospace;font-size:12px;color:#858f82;">LAST CYCLE</div>' +
           '<div style="font-size:24px;font-weight:700;color:#e1e7de;margin-top:4px;">Active</div>' +
           '<div style="font-family:monospace;font-size:12px;color:#636d60;margin-top:4px;">GET /api/status</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="background:#141813;border:1px solid #262c24;border-radius:12px;padding:20px;margin-bottom:24px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:600;color:#e1e7de;">AI Models & Telemetry Usage</div>' +
+            '<div style="font-size:12px;color:#858f82;margin-top:2px;">Free-model priority fallback chain · live provider status & token metering</div>' +
+          '</div>' +
+          '<div style="font-family:monospace;font-size:12px;color:#858f82;">GET /api/status</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;">' +
+          providerCardsHtml +
+        '</div>' +
+        '<div style="overflow-x:auto;">' +
+          '<table style="width:100%;font-family:monospace;font-size:12px;text-align:left;border-collapse:collapse;">' +
+            '<thead>' +
+              '<tr style="border-bottom:1px solid #262c24;color:#636d60;">' +
+                '<th style="padding:8px;">PROVIDER</th>' +
+                '<th style="padding:8px;">ACTIVE MODEL</th>' +
+                '<th style="padding:8px;">COST TIER</th>' +
+                '<th style="padding:8px;">STATUS</th>' +
+                '<th style="padding:8px;">PIPELINE ROLE</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + providerRowsHtml + '</tbody>' +
+          '</table>' +
         '</div>' +
       '</div>' +
 

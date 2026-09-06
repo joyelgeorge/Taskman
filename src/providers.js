@@ -6,6 +6,18 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 
 const providers = [
   {
+    id: 'groq', env: 'GROQ_API_KEY', model: 'qwen/qwen3.6-27b',
+    async call(prompt, key, { signal } = {}) {
+      return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key, signal, { max_tokens: 1024 });
+    }
+  },
+  {
+    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    async call(prompt, key, { signal } = {}) {
+      return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key, signal);
+    }
+  },
+  {
     id: 'gemini',
     env: 'GEMINI_API_KEY',
     model: 'gemini-2.0-flash',
@@ -28,18 +40,6 @@ const providers = [
     id: 'openai', env: 'OPENAI_API_KEY', model: 'gpt-4o-mini',
     async call(prompt, key, { signal } = {}) {
       return openAICompatible('https://api.openai.com/v1/chat/completions', this.model, prompt, key, signal);
-    }
-  },
-  {
-    id: 'groq', env: 'GROQ_API_KEY', model: 'qwen/qwen3.6-27b',
-    async call(prompt, key, { signal } = {}) {
-      return openAICompatible('https://api.groq.com/openai/v1/chat/completions', this.model, prompt, key, signal, { max_tokens: 1024 });
-    }
-  },
-  {
-    id: 'openrouter', env: 'OPENROUTER_API_KEY', model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-    async call(prompt, key, { signal } = {}) {
-      return openAICompatible('https://openrouter.ai/api/v1/chat/completions', this.model, prompt, key, signal);
     }
   }
 ];

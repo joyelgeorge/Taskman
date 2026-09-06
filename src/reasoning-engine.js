@@ -47,8 +47,14 @@ export class ReasoningEngine {
     // Parse JSON
     let parsed;
     try {
-      // Clean potential code block wrapping
-      const cleaned = result.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      // Clean potential reasoning tags and code block wrapping
+      let cleaned = result.text.trim();
+      if (cleaned.includes('</think>')) {
+        cleaned = cleaned.split('</think>').pop().trim();
+      } else {
+        cleaned = cleaned.replace(/^<think>[\s\S]*?<\/think>/i, '').trim();
+      }
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       parsed = JSON.parse(cleaned);
     } catch {
       return { ok: false, error: 'MODEL_OUTPUT_INVALID' };

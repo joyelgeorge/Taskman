@@ -66,3 +66,8 @@ export {
   calculateArbitrageNetProfit, evaluateLiquidationOpportunity, SUPPORTED_CHAINS
 } from './crypto/scanner.js';
 
+export {
+  profileHardwareForInference, INFERENCE_NETWORK_PROFILES
+} from './crypto/inference-profiler.js';
+
+

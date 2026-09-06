@@ -56,7 +56,22 @@ export function settlementLagFor(rail) {
   return SETTLEMENT_LAG_DAYS[String(rail || '').toLowerCase()] ?? DEFAULT_SETTLEMENT_LAG_DAYS;
 }
 
-export const VERIFIED_SOURCES = Object.freeze(['stripe', 'bank', 'manual_receipt']);
+/**
+ * Where a settlement can come from and still count as money.
+ *
+ * The test is not which company processed it — it is whether an outside system
+ * holds a record this one can be checked against. A PayPal transaction id meets
+ * that as squarely as a Stripe payment intent: it is issued by the processor,
+ * appears in both parties' history, and can be reconciled against a bank credit
+ * later.
+ *
+ * It is listed explicitly rather than folded into manual_receipt, which exists
+ * for cash and cheques — the weakest category, where the only record is one the
+ * operator wrote themselves. Booking a real processor payment there would
+ * understate how verifiable it is, and the whole point of this list is that the
+ * category matches the strength of the evidence.
+ */
+export const VERIFIED_SOURCES = Object.freeze(['stripe', 'paypal', 'bank', 'manual_receipt']);
 
 /**
  * The four states a rail moves through. See src/rail-governor.js for the

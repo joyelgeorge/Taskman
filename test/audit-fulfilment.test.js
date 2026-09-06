@@ -36,7 +36,7 @@ test('a paid order produces the deliverable, the settlement and the stream toget
 test('a payment this system cannot confirm outside itself is not revenue', async () => {
   await reset();
   await assert.rejects(() => fulfilAuditOrder(order({ source: 'self_reported' })),
-    /source must be one of stripe, bank, manual_receipt/);
+    /source must be one of stripe, paypal, bank, manual_receipt/);
   assert.equal((await railEconomics()).length, 0, 'nothing may be booked from an unverifiable source');
 });
 
@@ -90,4 +90,17 @@ test('the effective hourly rate is what decides whether to do this again', () =>
   // The same price against a whole afternoon is a different business.
   assert.equal(effectiveHourlyRate({ netCents: 1912, minutesSpent: 240 }), 4.78);
   assert.equal(effectiveHourlyRate({ netCents: 1912, minutesSpent: 0 }), null);
+});
+
+test('a PayPal payment books as PayPal, not as a manual receipt', async () => {
+  await reset();
+  // The audit page sells through a PayPal link, and the ledger would have refused
+  // the payment: source had to be stripe, bank or manual_receipt. Forcing a real
+  // processor payment into manual_receipt — the cash-and-cheques category, where
+  // the only record is one we wrote ourselves — understates evidence that is as
+  // strong as Stripe's.
+  const result = await fulfilAuditOrder(order({ source: 'paypal', externalRef: '8XY12345AB678901C' }));
+  assert.equal(result.settlement.source, 'paypal');
+  assert.equal(result.settlement.status, SETTLEMENT_STATUS.CLEARED);
+  assert.equal(result.stream.state, STREAM_STATES.EARNING);
 });

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-} from '../src/codebase-audit.js';
+, findPathPrefixGuard } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -55,4 +55,31 @@ test('findings are candidates and say so, never verdicts', async () => {
   for (const f of result.findings) {
     assert.ok(f.confirm, `${f.kind} must say how to settle it`);
   }
+});
+
+test('findPathPrefixGuard catches the mergeos CWE-22 prefix bug', () => {
+  const src = `
+    const requestedPath = path.normalize(path.join(clientDist, pathname));
+    if (!requestedPath.startsWith(clientDist)) { res.statusCode = 403; return; }
+  `;
+  const f = findPathPrefixGuard('server.js', src);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].kind, 'path-prefix-guard');
+});
+
+test('findPathPrefixGuard passes a guard anchored on a separator', () => {
+  const ok = `if (!requestedPath.startsWith(clientDist + path.sep)) return deny();`;
+  assert.equal(findPathPrefixGuard('server.js', ok).length, 0);
+  const ok2 = `if (!file.startsWith(publicDir + '/')) return deny();`;
+  assert.equal(findPathPrefixGuard('server.js', ok2).length, 0);
+});
+
+test('findPathPrefixGuard ignores a startsWith in a comment', () => {
+  const commented = ` * if (!requestedPath.startsWith(clientDist)) { ... }  // example`;
+  assert.equal(findPathPrefixGuard('server.js', commented).length, 0);
+});
+
+test('findPathPrefixGuard ignores non-path string checks', () => {
+  const routing = `if (url.startsWith(prefix)) route();`;
+  assert.equal(findPathPrefixGuard('router.js', routing).length, 0);
 });

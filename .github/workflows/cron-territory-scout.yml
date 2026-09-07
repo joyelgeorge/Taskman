@@ -1,0 +1,44 @@
+name: cron · territory-scout
+
+# Discovers NEW money-making territories on a schedule so the machine does not
+# stay stuck in a few known lanes. The discovery brain is a model: the run only
+# generates territories when ANTHROPIC_API_KEY is present. Without it the step
+# exits clean and says how to enable it — it never invents ideas with no brain.
+#
+# Whatever generates candidates, the deterministic gate (novelty vs the registry,
+# then scoring vs the operator's constraints) runs here, so the ranking cannot be
+# talked up. Writes a shortlist to the run summary. Submits, sends and spends
+# nothing.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Fortnightly, Mondays 07:00 UTC. New territories do not appear daily, and a
+    # model call on every tick is cost for no signal.
+    - cron: '0 7 1,15 * *'
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Scout for new territories
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/scout-territories.mjs | tee scout.out
+          {
+            echo '## Territory scout'
+            echo '```'
+            cat scout.out
+            echo '```'
+            echo '_A scored shortlist. Each is a hypothesis with a one-day experiment, not a committed lane._'
+          } >> "$GITHUB_STEP_SUMMARY"

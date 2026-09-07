@@ -26,7 +26,12 @@ Taskman is an autonomous revenue, telemetry, and execution engine designed with 
 
 5. **Live Revenue Lane (`taskman-audit-lane`)**:
    - Live reconciliation audit tool: https://taskman-operator.web.app
-   - Payment endpoint: PayPal ($20.00 USD) via `https://paypal.me/joyelgt/20USD`.
+   - Payment: **contingency, not a flat fee** — 20% of what the customer confirms they
+     recovered, nothing if they recover nothing. Every established operator in this
+     space prices this way (TrueOps 10%, Refully 18%, GETIDA 25%), because a stranger
+     will not hand their bank export to an unknown for $20 up front.
+     Collected via `https://paypal.me/joyelgt` — the /20USD suffix is a leftover from
+     the flat-fee model and should not be used for a contingency invoice.
 
 ## Essential Commands
 

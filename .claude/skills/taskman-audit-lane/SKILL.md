@@ -13,7 +13,7 @@ metadata:
 
 ## Overview
 The live payout reconciliation tool is deployed on Firebase Hosting at **https://taskman-operator.web.app**.
-It runs client-side payout audits against CSV/ledger exports and offers full recovery reports for **$20.00 USD** via PayPal (`https://paypal.me/joyelgt/20USD`).
+It runs client-side payout audits against CSV/ledger exports and offers a full recovery report on **contingency: 20% of what the customer confirms they recovered, nothing if nothing comes back**. Collected via PayPal (`https://paypal.me/joyelgt`). The flat $20 model it originally shipped with was replaced — see packages/core/income/pricing.js for why, and for the market rates it is anchored to.
 
 ## Build & Deployment Workflow
 
@@ -31,7 +31,7 @@ It runs client-side payout audits against CSV/ledger exports and offers full rec
 
 ## Settlement & Order Booking
 
-When a client pays $20 via PayPal:
+When a client confirms a recovery and pays the contingency fee via PayPal:
 1. **Fulfill & Book Order into Money Ledger**:
    ```bash
    npm run fulfil -- --order-id=<PAYPAL_TXN_ID> --gross-cents=2000

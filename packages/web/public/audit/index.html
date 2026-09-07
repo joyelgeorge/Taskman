@@ -133,7 +133,9 @@
    * the finding is.
    */
   const OFFER = {
-    contact: 'https://paypal.me/joyelgt/20USD',
+    // No amount in the link: a contingency fee is a share of a recovery, so a
+    // link that pins $20 is wrong for every order that is not exactly $100.
+    contact: 'https://paypal.me/joyelgt',
     // Contingency, not a flat fee. Every established operator doing this exact
     // job charges a share of what is recovered and nothing up front — TrueOps
     // 10%, Refully 18%, GETIDA 25%. The reason is the objection this page
@@ -141,7 +143,10 @@
     // export for someone with no track record. At a flat $20 the question is
     // "why would I trust you"; at 20% of a recovery there is nothing to trust.
     contingencyPercent: 20,
-    price: '$20',
+    // No flat price. It was $20, and every established operator in this space
+    // charges a share of what is recovered instead — the objection a flat fee
+    // cannot answer is "why would I trust you", and contingency does not have to.
+    price: null,
     scope: 'your last 12 months, every order and every deposit'
   };
 

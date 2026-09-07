@@ -332,12 +332,18 @@ export function findExposedSecret(file, text) {
   const isPlaceholder = (v) => /^(your|my|xxx+|todo|example|changeme|placeholder|\.\.\.|<|test|dummy|fake|sample)/i.test(v) || v.length < 12;
 
   for (const m of text.matchAll(/eyJ[A-Za-z0-9_-]{10,}\.(eyJ[A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}/g)) {
-    let role = '';
+    let role = '', ref = '', iss = '';
     try {
       const json = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
-      role = (JSON.parse(json).role) || '';
+      const p = JSON.parse(json);
+      role = p.role || ''; ref = p.ref || ''; iss = p.iss || '';
     } catch { continue; }
     if (role !== 'service_role') continue;
+    // The Supabase LOCAL-DEV demo key is public by design — it ships with every
+    // `supabase start`, is in Supabase's own docs, and points at 127.0.0.1. It
+    // has issuer "supabase-demo" and no project ref. A real production key always
+    // carries a project ref. Flagging the demo key is a false leak report.
+    if (iss === 'supabase-demo' || !ref) continue;
     findings.push({
       kind: 'exposed-secret',
       file, line: lineOf(text, m.index),

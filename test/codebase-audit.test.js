@@ -226,3 +226,11 @@ test('findMissingRls handles schema-qualified names and does not flag RLS-enable
     assert.match(rls[0], /payments/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test('findExposedSecret ignores the Supabase local-dev demo key (public by design)', () => {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const demo = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', iss: 'supabase-demo' })}.${'x'.repeat(43)}`;
+  const real = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', ref: 'abcdefghij', iss: 'supabase' })}.${'x'.repeat(43)}`;
+  assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${demo}"`).length, 0, 'demo key is not a leak');
+  assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${real}"`).length, 1, 'a real project key still fires');
+});

@@ -7,7 +7,7 @@ import { buildScanReport, prepareScanOrder, fulfilScanOrder, SCAN_TIERS } from '
 
 function svcJwt() {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-  return `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role' })}.${'x'.repeat(43)}`;
+  return `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', ref: 'abcdefghij', iss: 'supabase' })}.${'x'.repeat(43)}`;
 }
 async function vulnerableApp() {
   const dir = await mkdtemp(join(tmpdir(), 'scanfx-'));

@@ -96,6 +96,11 @@ export function isReachable(venue, { country }) {
   if (venue.agentPolicy === 'prohibited') {
     blockers.push('platform terms prohibit automated participation');
   }
+  // Not a blocker — the lane is open, the machine simply cannot finish it alone.
+  // Recorded so nobody later reads "open" as "automatable".
+  if (venue.agentPolicy === 'discovery-only') {
+    venue.humanStep = 'the machine may find and assess; a person reviews and submits';
+  }
   return { reachable: blockers.length === 0, blockers };
 }
 
@@ -216,6 +221,65 @@ export const VENUES = Object.freeze([
     note: 'Not opened. The only lane here that can lose money rather than just earn none — it '
       + 'requires capital at risk and pays gas on every failed attempt. Everything else in this '
       + 'system fails to nothing; this one fails to negative.'
+  },
+  {
+    /**
+     * The first venue on this list where a large ticket and a rail that reaches
+     * India coexist. Profile verified live at hackerone.com/joyelgeorge — checked
+     * against a known-bad username returning 404, so the 200 means something.
+     *
+     * The automation policy needs stating precisely, because getting it wrong
+     * here is not a terms violation, it is unauthorised access to someone else's
+     * production systems.
+     *
+     * Discovering PROGRAMS is fine: the directory is public and reading it is
+     * reading a website. Running automated scans AGAINST A TARGET is a different
+     * act entirely, and is permitted only where that program's own policy says
+     * so — many forbid it outright, and doing it anyway is illegal regardless of
+     * what this registry says. Submission is always human: a report is a claim
+     * made in someone's name.
+     *
+     * Where this system helps is between those two: reading a program's scope
+     * and saying whether the operator's actual expertise applies to it.
+     */
+    key: 'hackerone',
+    title: 'HackerOne security bounties',
+    work: 'Business-logic and reliability flaws in payout and settlement flows.',
+    rail: 'paypal:IN',
+    paysTo: ['IN'],
+    requiresBusinessEntity: false,
+    agentPolicy: 'discovery-only',
+    ticketCents: { min: 10_000, max: 1_000_000 },
+    confidence: CONFIDENCE.VERIFIED,
+    evidence: 'HackerOne pays researchers by bank transfer and PayPal with no geographic '
+      + 'restriction on participation or payment. Profile live at hackerone.com/joyelgeorge, '
+      + 'verified 2026-09-07. Known caveat: HackerOne cannot currently pay out to HDFC Bank '
+      + 'India, so use another bank or PayPal.',
+    note: 'Fintech scopes are the match. Business-logic flaws in payout and settlement flows are '
+      + 'underserved next to XSS hunters, and they are exactly what this project spent weeks '
+      + 'finding in its own ledger. Scanning a target is only permitted where that program says '
+      + 'so; submission is human, always.'
+  },
+  {
+    /**
+     * Kept alongside HackerOne rather than instead of it. Same work, different
+     * programs, and Bugcrowd settles PayPal the same day where HackerOne does
+     * not — which matters when the point is a first non-zero number.
+     */
+    key: 'bugcrowd',
+    title: 'Bugcrowd security bounties',
+    work: 'Same as HackerOne; different program inventory.',
+    rail: 'paypal:IN',
+    paysTo: ['IN'],
+    requiresBusinessEntity: false,
+    agentPolicy: 'discovery-only',
+    ticketCents: { min: 10_000, max: 500_000 },
+    confidence: CONFIDENCE.VERIFIED,
+    evidence: 'Bugcrowd supports bank transfer, PayPal and Payoneer; PayPal credits the same day '
+      + 'and bank transfers in one to two business days. Checked 2026-09-07. No account created '
+      + 'yet.',
+    note: 'Register alongside HackerOne rather than choosing between them: the programs differ, '
+      + 'and both cost one signup each.'
   },
   {
     key: 'fiverr',

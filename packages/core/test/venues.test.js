@@ -122,3 +122,44 @@ test('the crypto rail carries the tax that lands before the money is spendable',
   assert.equal(net.takeRatePct, 31);
   assert.ok(net.netCents < 2100);
 });
+
+// ---- discovery-only is not automation ---------------------------------------
+
+test('a discovery-only venue is open, and is not automatable', async () => {
+  const { VENUES, isReachable } = await import('../income/venues.js');
+  // The distinction matters more here than anywhere else in this registry.
+  // Reading a public program directory is reading a website. Running an automated
+  // scan against a target is unauthorised access to someone else's production
+  // systems unless that program's policy permits it, and no field in this file
+  // makes that legal. Submission is human because a report is a claim made in
+  // someone's name.
+  for (const key of ['hackerone', 'bugcrowd']) {
+    const venue = VENUES.find(v => v.key === key);
+    assert.equal(venue.agentPolicy, 'discovery-only', key);
+    const reach = isReachable(venue, { country: 'IN' });
+    assert.equal(reach.reachable, true, `${key} is a lane that is open`);
+    assert.match(venue.humanStep, /a person reviews and submits/,
+      'open must never be readable as automatable');
+  }
+});
+
+test('the security venues carry the payout caveat that would waste a first bounty', async () => {
+  const { VENUES } = await import('../income/venues.js');
+  // Discovering after the first payout that it cannot be delivered is an
+  // expensive way to learn this.
+  const h1 = VENUES.find(v => v.key === 'hackerone');
+  assert.match(h1.evidence, /HDFC/);
+  assert.equal(h1.paysTo.includes('IN'), true);
+  assert.equal(h1.requiresBusinessEntity, false);
+});
+
+test('security bounties carry the largest ticket of any open lane', async () => {
+  const { venueOptions } = await import('../income/venues.js');
+  const open = venueOptions({ country: 'IN' }).open;
+  const best = open.reduce((a, b) => (a.ticketCents.max > b.ticketCents.max ? a : b));
+  assert.equal(best.key, 'hackerone');
+  // Two orders of magnitude above the audit lane, which is the argument for
+  // spending the twenty minutes to register rather than deferring it again.
+  const paypal = open.find(v => v.key === 'direct-paypal');
+  assert.ok(best.ticketCents.max > paypal.ticketCents.max * 20);
+});

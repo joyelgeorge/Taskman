@@ -36,3 +36,12 @@ test('seed targets are Node.js repos with a named server subtree and a scope rea
     assert.ok(t.scope && t.scope.length > 0, 'every target states why it is in scope');
   }
 });
+
+test('a command-injection finding becomes a CWE-78 candidate', () => {
+  const { security } = classifyFindings([
+    { kind: 'command-injection', file: 'run.js', line: 12, evidence: 'exec(`x ${y}`)', confirm: 'trace y to input' }
+  ], { repo: 'a/b' });
+  assert.equal(security.length, 1);
+  assert.equal(security[0].cwe, 'CWE-78');
+  assert.equal(security[0].status, 'CANDIDATE-needs-PoC');
+});

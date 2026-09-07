@@ -114,6 +114,51 @@ export function findDateShift(file, text) {
 }
 
 /**
+ * A shell command built from a template literal or string concatenation, passed
+ * to child_process.exec/execSync. The interpolated value becomes shell syntax,
+ * so an input containing `; rm -rf ~` or `$(...)` runs as a second command. This
+ * is the class these AI/ML apps are most exposed to, because they routinely
+ * shell out to ffmpeg, git, python and pandoc with a user-supplied name, path or
+ * URL in the command line. CWE-78.
+ *
+ * Precision matters as much as recall. exec with a STATIC string is fine and is
+ * skipped. execFile/spawn with an argument array (and no `shell: true`) is the
+ * safe pattern and is skipped. Only a dynamic command handed to a shell sink is
+ * flagged, and the flag says which sink and how the value gets in.
+ */
+export function findCommandInjection(file, text) {
+  const findings = [];
+  // exec / execSync as a SHELL call — a bare/destructured exec(...) or one on a
+  // child_process alias. The negative lookbehind excludes regex.exec(str) and
+  // any other obj.exec, which are unrelated to the shell and were the bulk of
+  // the noise on a first live run (minified axios matched dozens of them).
+  const shellSink = /(?<![.\w])(exec|execSync)\s*\(|\b(?:child_process|childProcess|cp|proc)\.(exec|execSync)\s*\(/g;
+  for (const m of text.matchAll(shellSink)) {
+    const sink = m[1] || m[2];
+    // The first argument, up to the end of its line — shell commands are written
+    // on one line in practice, and this keeps the match from bleeding into the
+    // callback body that often follows.
+    const lineEnd = text.indexOf('\n', m.index);
+    const arg = text.slice(m.index, lineEnd === -1 ? m.index + 300 : lineEnd);
+    const interpolated = /`[^`]*\$\{/.test(arg);          // exec(`... ${x} ...`)
+    const concatenated = /['"]\s*\+|\+\s*['"]/.test(arg);  // exec('...' + x) / exec(x + '...')
+    if (!interpolated && !concatenated) continue;          // static command, safe
+    findings.push({
+      kind: 'command-injection',
+      file, line: lineOf(text, m.index),
+      evidence: arg.trim().slice(0, 90),
+      why: 'A shell command assembled from a ' + (interpolated ? 'template literal' : 'concatenated string')
+        + ' and run through ' + sink + '. Any shell metacharacter in the interpolated value — a semicolon, '
+        + 'backtick or $(...) — executes as an additional command. CWE-78 command injection.',
+      confirm: 'Trace the interpolated value to a request parameter, filename or URL. If it reaches this '
+        + 'line unescaped, a value like "x; id" or "$(id)" runs on the server. Prove it against a running '
+        + 'instance before reporting.'
+    });
+  }
+  return findings;
+}
+
+/**
  * A static-file path guard that anchors on a bare string prefix. Found in the
  * wild on 2026-09-07 in mergeos-bounties/mergeos frontend/server.js:248:
  *
@@ -255,6 +300,10 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       continue;
     }
     if (/\.(test|spec)\.[jt]sx?$/.test(file)) continue; // tests are not the product
+    // Vendored and minified third-party code is not this project's to fix, and a
+    // minified bundle on one line defeats line-based matching (a whole axios.min
+    // looked like dozens of exec calls). Skip it.
+    if (/\.min\.[jt]s$|[\\/](vendor|vendored|third[_-]?party|libraries|node_modules)[\\/]/i.test(file)) continue;
 
     for (const m of text.matchAll(TABLE_WRITE)) {
       const table = (m[1] || m[2] || m[3] || m[4] || '').toLowerCase();
@@ -264,7 +313,8 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
     findings.push(
       ...findSilentFallback(rel, text),
       ...findDateShift(rel, text),
-      ...findPathPrefixGuard(rel, text)
+      ...findPathPrefixGuard(rel, text),
+      ...findCommandInjection(rel, text)
     );
   }
   findings.push(...findMissingTables({ writes, creates }));

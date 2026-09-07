@@ -30,6 +30,18 @@ const TRIVIAL_DELIVERABLE = /pixel art|\bpoem\b|\bwallpaper\b|\bsticker\b|add (a
 const FARM_AMOUNT_FLOOR = 200;
 
 /**
+ * Work that can only be verified on hardware the operator does not have. Submitting
+ * a kernel fix you cannot run is guesswork, and these bounties pay on a passing
+ * test, not on a plausible diff. Narrow on purpose: only named accelerators and
+ * boards, never generic words like "GPU" that appear in ordinary software.
+ */
+const HARDWARE_GATES = [
+  { name: 'Tenstorrent Wormhole/Blackhole', re: /\b(wormhole|blackhole)\b/i },
+  { name: 'FPGA bitstream', re: /\b(fpga|bitstream|verilog|vhdl)\b/i },
+  { name: 'a physical robotics/embedded rig', re: /\b(oscilloscope|logic analyzer|jtag probe|dev board)\b/i }
+];
+
+/**
  * Someone else's claim on a bounty, not an offer of one. The live hunt ranked
  * "[BOUNTY CLAIM] gaussagent High-Value Bounty Request" first at $15,000 — a
  * contributor asking to be paid for work already done. Working that listing
@@ -78,6 +90,16 @@ export function disqualify(listing, { now = new Date(), minStars = 40, maxIdleDa
   if (!(idleDays <= maxIdleDays)) return `stale repo: last push ${Math.round(idleDays)} days ago`;
 
   if (ALREADY_CLAIMED.test(title)) return 'already claimed: another contributor is ahead of us';
+
+  // Winnability, learned from tenstorrent/tt-metal #55502 on 2026-09-07: a real
+  // $5,000 bounty at a real company that was nonetheless unwinnable because it
+  // was assigned, already had two solution PRs, and needed hardware we do not
+  // have. A bounty is not an opportunity until someone can actually land it.
+  if (listing.assignee) return `assigned: already claimed by @${listing.assignee}`;
+  if (listing.competingPrs >= 1)
+    return `contested: ${listing.competingPrs} solution PR(s) already open`;
+  const gate = HARDWARE_GATES.find((h) => h.re.test(text));
+  if (gate) return `hardware-gated: needs ${gate.name}, which the operator cannot test on`;
 
   const amount = extractAmount(text);
   if (amount === null) return 'no credible amount stated';

@@ -92,3 +92,35 @@ test("rejects another contributor's claim, which the live hunt ranked first at $
   }, { now: new Date('2026-09-07T00:00:00Z') });
   assert.match(reason, /already claimed/);
 });
+
+test('rejects an assigned bounty, however real — the tenstorrent lesson', () => {
+  const reason = disqualify({
+    repoFullName: 'tenstorrent/tt-metal', stars: 1661, pushedAt: '2026-09-07T00:00:00Z',
+    title: '[Bounty $5000] Fix INT_MIN correctness', body: 'pays $5000',
+    assignee: 'jasondavies'
+  }, { now: new Date('2026-09-07T00:00:00Z') });
+  assert.match(reason, /assigned: already claimed by @jasondavies/);
+});
+
+test('rejects a contested bounty that already has solution PRs', () => {
+  const reason = disqualify({
+    repoFullName: 'acme/x', stars: 500, pushedAt: '2026-09-07T00:00:00Z',
+    title: 'Fix bug', body: 'pays $400', competingPrs: 2
+  }, { now: new Date('2026-09-07T00:00:00Z') });
+  assert.match(reason, /contested: 2 solution/);
+});
+
+test('rejects a bounty gated on hardware the operator cannot test', () => {
+  const reason = disqualify({
+    repoFullName: 'acme/x', stars: 500, pushedAt: '2026-09-07T00:00:00Z',
+    title: 'Fix kernel', body: 'INT_MIN on Wormhole and Blackhole LLK. pays $5000'
+  }, { now: new Date('2026-09-07T00:00:00Z') });
+  assert.match(reason, /hardware-gated: needs Tenstorrent/);
+});
+
+test('a normal software bounty with no assignee, no PRs, no hardware still passes', () => {
+  assert.equal(disqualify({
+    repoFullName: 'acme/x', stars: 500, pushedAt: '2026-09-07T00:00:00Z',
+    title: 'Add retry on 429', body: 'we will pay $300 via paypal', assignee: null, competingPrs: 0
+  }, { now: new Date('2026-09-07T00:00:00Z') }), null);
+});

@@ -23,9 +23,22 @@ for (const it of issues.values()) {
     try { repos.set(repoFullName, await api(`/repos/${repoFullName}`)); } catch { repos.set(repoFullName, null); }
   }
   const r = repos.get(repoFullName);
+  // A linked timeline entry of type "cross-referenced" from a PR, or an
+  // assignee, is how we tell a live-and-claimable bounty from a swarmed one.
+  const assignee = it.assignee?.login || null;
+  let competingPrs = 0;
+  if (!assignee) {
+    // Count open PRs in the same repo whose title names this issue number.
+    try {
+      const num = it.number;
+      const linked = await api(`/search/issues?q=${encodeURIComponent(`repo:${repoFullName} is:pr is:open ${num}`)}&per_page=20`);
+      competingPrs = (linked.items || []).filter((pr) => new RegExp(`\\b${num}\\b`).test(pr.title)).length;
+    } catch { /* leave at 0 */ }
+  }
   listings.push({
     repoFullName, stars: r?.stargazers_count ?? 0,
     pushedAt: r?.pushed_at ?? '1970-01-01T00:00:00Z',
+    assignee, competingPrs,
     title: it.title, body: (it.body || '').slice(0, 8000), url: it.html_url
   });
 }

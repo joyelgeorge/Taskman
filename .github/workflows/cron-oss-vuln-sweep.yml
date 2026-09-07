@@ -1,0 +1,42 @@
+name: cron · oss-vuln-sweep
+
+# Sweeps in-scope Node.js OSS targets for security candidates the scanner can
+# detect, and writes them to the run summary for a human to PoC. Never submits
+# anything, and every hit still needs the running-instance proof before it is a
+# report. Read-only: shallow public clones, static analysis, no live scanning.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'Single owner/repo to sweep (blank = all seed targets)'
+        required: false
+        default: ''
+  schedule:
+    # Weekly, Mondays 06:00 UTC. Candidates are reviewed by a person, so there is
+    # no value in running this more often than the targets meaningfully change.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Run the sweep
+        run: |
+          node scripts/hunt-oss-vulns.js "${{ github.event.inputs.repo }}" | tee sweep.out
+          {
+            echo '## OSS vuln sweep'
+            echo '```'
+            cat sweep.out
+            echo '```'
+            echo '_Each hit is a CANDIDATE. Prove it with a running-instance PoC before reporting to a bounty program._'
+          } >> "$GITHUB_STEP_SUMMARY"

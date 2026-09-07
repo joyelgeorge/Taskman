@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard } from '../src/codebase-audit.js';
+, findPathPrefixGuard, findCommandInjection, findSSRF } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -61,6 +61,7 @@ test('findPathPrefixGuard catches the mergeos CWE-22 prefix bug', () => {
   const src = `
     const requestedPath = path.normalize(path.join(clientDist, pathname));
     if (!requestedPath.startsWith(clientDist)) { res.statusCode = 403; return; }
+    createReadStream(requestedPath).pipe(res);
   `;
   const f = findPathPrefixGuard('server.js', src);
   assert.equal(f.length, 1);
@@ -82,4 +83,84 @@ test('findPathPrefixGuard ignores a startsWith in a comment', () => {
 test('findPathPrefixGuard ignores non-path string checks', () => {
   const routing = `if (url.startsWith(prefix)) route();`;
   assert.equal(findPathPrefixGuard('router.js', routing).length, 0);
+});
+
+test('findPathPrefixGuard ignores a URL/auth whitelist check (Flowise false positive)', () => {
+  // Real code from FlowiseAI/Flowise src/index.ts: an auth whitelist, not a file guard.
+  const src = `
+    const fs = require('fs');
+    const isWhitelisted = whitelistURLs.some((url) => req.path.startsWith(url));
+  `;
+  assert.equal(findPathPrefixGuard('index.ts', src).length, 0);
+});
+
+test('findPathPrefixGuard requires the file to actually touch the filesystem', () => {
+  const noFs = `if (!requestedPath.startsWith(clientDist)) deny();`;
+  assert.equal(findPathPrefixGuard('router.js', noFs).length, 0, 'no fs sink => not a served-file escape');
+  const withFs = `const p = path.join(dir, x);\nif (!requestedPath.startsWith(clientDist)) deny();\nfs.createReadStream(p);`;
+  assert.equal(findPathPrefixGuard('server.js', withFs).length, 1);
+});
+
+test('findPathPrefixGuard ignores a require.cache hot-reload filter (n8n false positive)', () => {
+  // Real code from n8n load-nodes-and-credentials.ts: filters require.cache keys
+  // for hot reload. A path check, but nothing is served and no input is involved.
+  const src = `
+    const p = path.join(customNodesRoot, entry.name);
+    const modules = Object.keys(require.cache).filter((module) => module.startsWith(watchPath));
+  `;
+  assert.equal(findPathPrefixGuard('loader.ts', src).length, 0);
+});
+
+test('findCommandInjection flags exec built by interpolation and concatenation', () => {
+  assert.equal(findCommandInjection('a.js', 'exec(`convert ${userFile} out.png`)').length, 1);
+  assert.equal(findCommandInjection('a.js', "execSync('git clone ' + repoUrl)").length, 1);
+  assert.equal(findCommandInjection('a.js', 'child_process.exec(`ffmpeg -i ${src}`)').length, 1);
+});
+
+test('findCommandInjection leaves safe shell usage alone', () => {
+  assert.equal(findCommandInjection('a.js', "exec('ls -la /tmp')").length, 0, 'static command');
+  assert.equal(findCommandInjection('a.js', "execFile('git', ['clone', repoUrl])").length, 0, 'array args, no shell');
+  assert.equal(findCommandInjection('a.js', "spawn('ffmpeg', args)").length, 0, 'spawn without shell');
+});
+
+test('findCommandInjection ignores regex.exec — the minified-axios false positive', () => {
+  assert.equal(findCommandInjection('axios.js', 'const m = /ab${x}/.exec(str)').length, 0);
+  assert.equal(findCommandInjection('p.js', "pattern.exec('x' + y)").length, 0);
+});
+
+test('the scanner skips vendored and minified third-party code', async () => {
+  // A .min.js with an interpolated exec must not be reported — not ours to fix,
+  // and one-line bundles defeat line matching.
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'vend-'));
+  try {
+    await writeFile(join(dir, 'vendor.min.js'), 'exec(`rm ${x}`)');
+    const { auditCodebase } = await import('../src/codebase-audit.js');
+    const r = await auditCodebase(dir);
+    const f = (r.findings || r).filter((x) => x.kind === 'command-injection');
+    assert.equal(f.length, 0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('findSSRF flags a server request whose URL comes from request data', () => {
+  assert.equal(findSSRF('a.js', 'await fetch(req.body.webhook)').length, 1);
+  assert.equal(findSSRF('a.js', 'axios.get(`${req.query.url}/data`)').length, 1);
+  const nearby = 'const url = req.body.url;\n  const r = await fetch(url);';
+  assert.equal(findSSRF('a.js', nearby).length, 1);
+});
+
+test('findSSRF does not flag a request to a configured provider endpoint', () => {
+  // The anything-llm false positives: dynamic URL, but a configured destination,
+  // no request data in sight.
+  assert.equal(findSSRF('a.js', 'fetch(this.CATALOG_URL, { headers })').length, 0);
+  assert.equal(findSSRF('a.js', 'fetch(`${baseURL}/images/edits`, {})').length, 0);
+  assert.equal(findSSRF('a.js', 'const r = await fetch(url)').length, 0, 'dynamic url, no request source');
+});
+
+test('findSSRF leaves a static literal URL alone', () => {
+  assert.equal(findSSRF('a.js', "fetch('https://api.stripe.com/v1/charges')").length, 0);
 });

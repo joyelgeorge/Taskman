@@ -114,6 +114,108 @@ export function findDateShift(file, text) {
 }
 
 /**
+ * A server-side HTTP request whose destination is built from what looks like
+ * external input. If an attacker controls the URL, they can make the server
+ * reach internal-only hosts — cloud metadata at 169.254.169.254, localhost
+ * admin ports, other services on the private network. CWE-918 SSRF, and these
+ * AI/ML apps are full of it: "summarise this URL", "import from webhook",
+ * "load avatar from link" all take a URL from the user and fetch it.
+ *
+ * The hard part is precision. Almost every app calls fetch/axios with a dynamic
+ * URL to reach a KNOWN API, which is not SSRF. So a bare dynamic URL is not
+ * enough — the destination must look attacker-influenced: either the URL token
+ * is named like external input (url, endpoint, target, webhook, callback,
+ * redirect, imageUrl, ...) or a request object is referenced close by. A URL
+ * that is a plain string literal is skipped outright.
+ */
+export function findSSRF(file, text) {
+  const findings = [];
+  // Server-side request sinks. node-fetch/fetch, axios (and its verbs), got,
+  // needle, superagent, and raw http(s).get/request.
+  const sink = /\b(fetch|got|needle|superagent)\s*\(|\baxios(?:\.(?:get|post|put|delete|request|head))?\s*\(|\b(?:https?|http|https)\.(?:get|request)\s*\(/g;
+  // Case-insensitive so camelCase tails match (targetUrl, imageUrl, fetchUrl),
+  // and deliberately NOT matching the sink verb itself (fetch/get) — only the
+  // destination noun. A URL argument named for external input is the SSRF tell.
+  const INPUT_SHAPED = /url|uri|endpoint|\bwebhook|callback|redirect|href|\blink\b|\btarget|\bremote\b|\bhost\b|\baddress\b|avatar|proxy/i;
+  const REQUEST_SOURCE = /\b(req|request|ctx)\.(query|params|body|headers)\b|\breq\.(url|originalUrl)\b/;
+  for (const m of text.matchAll(sink)) {
+    const lineEnd = text.indexOf('\n', m.index);
+    const arg = text.slice(m.index, lineEnd === -1 ? m.index + 200 : lineEnd);
+    // A static string URL (no interpolation, no bare variable) is not SSRF.
+    const dynamic = /`[^`]*\$\{/.test(arg) || /\(\s*[A-Za-z_$][\w$.]*\s*[,)]/.test(arg);
+    if (!dynamic) continue;
+    // The destination must be tied to request data. A dynamic URL alone is not
+    // SSRF — apps fetch configured provider endpoints (CATALOG_URL, baseURL) all
+    // day, and a variable merely named `url` matched 34 of those in anything-llm
+    // on a first run. The tell is a request source (req.query/body/params) close
+    // to the call; INPUT_SHAPED only raises confidence, it does not qualify.
+    const window = text.slice(Math.max(0, m.index - 240), m.index + 240);
+    const nearRequest = REQUEST_SOURCE.test(window);
+    if (!nearRequest) continue;
+    const inputNamed = INPUT_SHAPED.test(arg);
+    findings.push({
+      kind: 'ssrf',
+      file, line: lineOf(text, m.index),
+      evidence: arg.trim().slice(0, 90),
+      why: 'A server-side HTTP request whose destination is tied to request data'
+        + (inputNamed ? ' and named like an external URL' : '')
+        + '. If the URL is attacker-controlled and unvalidated, the server can be made to reach '
+        + 'internal hosts — cloud metadata (169.254.169.254), localhost admin ports, private '
+        + 'services. CWE-918 server-side request forgery.',
+      confirm: 'Trace the URL to its source. If it reaches this call without an allowlist or a '
+        + 'block on private/link-local ranges, point it at http://169.254.169.254/ or '
+        + 'http://127.0.0.1:<port>/ against a running instance and check the server fetches it.'
+    });
+  }
+  return findings;
+}
+
+/**
+ * A shell command built from a template literal or string concatenation, passed
+ * to child_process.exec/execSync. The interpolated value becomes shell syntax,
+ * so an input containing `; rm -rf ~` or `$(...)` runs as a second command. This
+ * is the class these AI/ML apps are most exposed to, because they routinely
+ * shell out to ffmpeg, git, python and pandoc with a user-supplied name, path or
+ * URL in the command line. CWE-78.
+ *
+ * Precision matters as much as recall. exec with a STATIC string is fine and is
+ * skipped. execFile/spawn with an argument array (and no `shell: true`) is the
+ * safe pattern and is skipped. Only a dynamic command handed to a shell sink is
+ * flagged, and the flag says which sink and how the value gets in.
+ */
+export function findCommandInjection(file, text) {
+  const findings = [];
+  // exec / execSync as a SHELL call — a bare/destructured exec(...) or one on a
+  // child_process alias. The negative lookbehind excludes regex.exec(str) and
+  // any other obj.exec, which are unrelated to the shell and were the bulk of
+  // the noise on a first live run (minified axios matched dozens of them).
+  const shellSink = /(?<![.\w])(exec|execSync)\s*\(|\b(?:child_process|childProcess|cp|proc)\.(exec|execSync)\s*\(/g;
+  for (const m of text.matchAll(shellSink)) {
+    const sink = m[1] || m[2];
+    // The first argument, up to the end of its line — shell commands are written
+    // on one line in practice, and this keeps the match from bleeding into the
+    // callback body that often follows.
+    const lineEnd = text.indexOf('\n', m.index);
+    const arg = text.slice(m.index, lineEnd === -1 ? m.index + 300 : lineEnd);
+    const interpolated = /`[^`]*\$\{/.test(arg);          // exec(`... ${x} ...`)
+    const concatenated = /['"]\s*\+|\+\s*['"]/.test(arg);  // exec('...' + x) / exec(x + '...')
+    if (!interpolated && !concatenated) continue;          // static command, safe
+    findings.push({
+      kind: 'command-injection',
+      file, line: lineOf(text, m.index),
+      evidence: arg.trim().slice(0, 90),
+      why: 'A shell command assembled from a ' + (interpolated ? 'template literal' : 'concatenated string')
+        + ' and run through ' + sink + '. Any shell metacharacter in the interpolated value — a semicolon, '
+        + 'backtick or $(...) — executes as an additional command. CWE-78 command injection.',
+      confirm: 'Trace the interpolated value to a request parameter, filename or URL. If it reaches this '
+        + 'line unescaped, a value like "x; id" or "$(id)" runs on the server. Prove it against a running '
+        + 'instance before reporting.'
+    });
+  }
+  return findings;
+}
+
+/**
  * A static-file path guard that anchors on a bare string prefix. Found in the
  * wild on 2026-09-07 in mergeos-bounties/mergeos frontend/server.js:248:
  *
@@ -139,8 +241,19 @@ export function findPathPrefixGuard(file, text) {
     const lineStart = text.lastIndexOf('\n', m.index) + 1;
     const linePrefix = text.slice(lineStart, m.index).trimStart();
     if (linePrefix.startsWith('*') || linePrefix.startsWith('//')) continue;
-    // A path guard names paths: dir, root, base, dist, path, resolved, requested.
-    if (!/dir|root|base|dist|path|resolv|request|allow/i.test(subject + boundary)) continue;
+    // This must be a FILESYSTEM boundary, not a URL/route/auth check. Flowise
+    // compares req.path against an auth whitelist with startsWith — same syntax,
+    // not a traversal. A URL subject or a route/whitelist boundary is excluded,
+    // and the file must actually touch the filesystem for a served-file escape
+    // to be possible at all.
+    if (/^(req|request|url|route|origin|referer|host|ctx)\b/i.test(subject)) continue;
+    if (/url|route|endpoint|prefix|whitelist|allowlist|origin|host|domain/i.test(boundary)) continue;
+    if (!/dir|root|base|dist|path|resolv|request|file|folder/i.test(subject + boundary)) continue;
+    // A served-file escape needs the guarded path to reach a read-or-serve sink.
+    // n8n uses module.startsWith(watchPath) to filter require.cache keys for hot
+    // reload — a path check with no file served and no attacker input, so the
+    // bare presence of path.join is not enough. Require an actual serve/read sink.
+    if (!/\b(sendFile|FileResponse|createReadStream|readFileSync|readFile|res\.download|sendfile)\b/.test(text)) continue;
     // Already anchored on a separator (startsWith(dir + '/') or dir + sep)? Safe.
     const tail = text.slice(m.index, m.index + 80);
     if (/\+\s*(['"`]\/|path\.sep|sep\b)/.test(tail)) continue;
@@ -244,6 +357,10 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       continue;
     }
     if (/\.(test|spec)\.[jt]sx?$/.test(file)) continue; // tests are not the product
+    // Vendored and minified third-party code is not this project's to fix, and a
+    // minified bundle on one line defeats line-based matching (a whole axios.min
+    // looked like dozens of exec calls). Skip it.
+    if (/\.min\.[jt]s$|[\\/](vendor|vendored|third[_-]?party|libraries|node_modules)[\\/]/i.test(file)) continue;
 
     for (const m of text.matchAll(TABLE_WRITE)) {
       const table = (m[1] || m[2] || m[3] || m[4] || '').toLowerCase();
@@ -253,7 +370,9 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
     findings.push(
       ...findSilentFallback(rel, text),
       ...findDateShift(rel, text),
-      ...findPathPrefixGuard(rel, text)
+      ...findPathPrefixGuard(rel, text),
+      ...findCommandInjection(rel, text),
+      ...findSSRF(rel, text)
     );
   }
   findings.push(...findMissingTables({ writes, creates }));

@@ -70,5 +70,15 @@ export const NODE_OSS_TARGETS = [
   { repo: 'FlowiseAI/Flowise', subdir: 'packages/server', scope: 'LLM flow builder, file + credential handling' },
   { repo: 'danny-avila/LibreChat', subdir: 'api', scope: 'chat platform, upload/download endpoints' },
   { repo: 'lobehub/lobe-chat', subdir: 'src/server', scope: 'chat platform, server actions' },
-  { repo: 'janhq/jan', subdir: 'core', scope: 'local AI app, filesystem extension surface' }
+  { repo: 'janhq/jan', subdir: 'core', scope: 'local AI app, filesystem extension surface' },
+  // Added 2026-09-07 after verifying each: language TypeScript, actively pushed,
+  // not archived, and the named subtree exists (checked via the GitHub contents
+  // API). Scope note is the reason each is believed eligible for an OSS bounty;
+  // the operator confirms the specific program and its rules before submitting.
+  { repo: 'labring/FastGPT', subdir: 'projects/app/src', scope: 'RAG/LLM platform, file upload + dataset ingestion' },
+  { repo: 'huggingface/chat-ui', subdir: 'src', scope: 'chat UI, upload and file-serving routes' },
+  { repo: 'langfuse/langfuse', subdir: 'web/src', scope: 'LLM observability, media upload + export endpoints' },
+  { repo: 'continuedev/continue', subdir: 'core', scope: 'AI coding assistant, local filesystem + context providers' },
+  { repo: 'n8n-io/n8n', subdir: 'packages/cli', scope: 'automation platform with AI nodes, large file-handling surface' },
+  { repo: 'activepieces/activepieces', subdir: 'packages/server', scope: 'automation + AI, file storage and flow endpoints' }
 ];

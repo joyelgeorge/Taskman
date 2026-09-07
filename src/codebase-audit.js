@@ -139,8 +139,15 @@ export function findPathPrefixGuard(file, text) {
     const lineStart = text.lastIndexOf('\n', m.index) + 1;
     const linePrefix = text.slice(lineStart, m.index).trimStart();
     if (linePrefix.startsWith('*') || linePrefix.startsWith('//')) continue;
-    // A path guard names paths: dir, root, base, dist, path, resolved, requested.
-    if (!/dir|root|base|dist|path|resolv|request|allow/i.test(subject + boundary)) continue;
+    // This must be a FILESYSTEM boundary, not a URL/route/auth check. Flowise
+    // compares req.path against an auth whitelist with startsWith — same syntax,
+    // not a traversal. A URL subject or a route/whitelist boundary is excluded,
+    // and the file must actually touch the filesystem for a served-file escape
+    // to be possible at all.
+    if (/^(req|request|url|route|origin|referer|host|ctx)\b/i.test(subject)) continue;
+    if (/url|route|endpoint|prefix|whitelist|allowlist|origin|host|domain/i.test(boundary)) continue;
+    if (!/dir|root|base|dist|path|resolv|request|file|folder/i.test(subject + boundary)) continue;
+    if (!/\b(path\.(join|resolve|normalize)|fs\.|readFile|createReadStream|sendFile|FileResponse)\b/.test(text)) continue;
     // Already anchored on a separator (startsWith(dir + '/') or dir + sep)? Safe.
     const tail = text.slice(m.index, m.index + 80);
     if (/\+\s*(['"`]\/|path\.sep|sep\b)/.test(tail)) continue;

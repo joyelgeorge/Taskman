@@ -83,3 +83,19 @@ test('findPathPrefixGuard ignores non-path string checks', () => {
   const routing = `if (url.startsWith(prefix)) route();`;
   assert.equal(findPathPrefixGuard('router.js', routing).length, 0);
 });
+
+test('findPathPrefixGuard ignores a URL/auth whitelist check (Flowise false positive)', () => {
+  // Real code from FlowiseAI/Flowise src/index.ts: an auth whitelist, not a file guard.
+  const src = `
+    const fs = require('fs');
+    const isWhitelisted = whitelistURLs.some((url) => req.path.startsWith(url));
+  `;
+  assert.equal(findPathPrefixGuard('index.ts', src).length, 0);
+});
+
+test('findPathPrefixGuard requires the file to actually touch the filesystem', () => {
+  const noFs = `if (!requestedPath.startsWith(clientDist)) deny();`;
+  assert.equal(findPathPrefixGuard('router.js', noFs).length, 0, 'no fs sink => not a served-file escape');
+  const withFs = `const p = path.join(dir, x);\nif (!requestedPath.startsWith(clientDist)) deny();\nfs.createReadStream(p);`;
+  assert.equal(findPathPrefixGuard('server.js', withFs).length, 1);
+});

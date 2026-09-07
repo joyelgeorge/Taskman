@@ -1,0 +1,38 @@
+name: cron · vibe-lead-sweep
+
+# Weekly cold-drone pass: generate genuine-business vibe-coded candidates
+# (Supabase + Stripe), scan their PUBLIC source, and list the ones that are both
+# a real business AND have a confirmed finding. Read-only. Submits and sends
+# nothing — a human reviews the leads and does any disclosure. This is the
+# LOW-YIELD background funnel; warm-lead-scout is the primary engine.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'   # Mondays 08:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Hunt genuine-business leads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/hunt-vibe-leads.mjs | tee leads.out
+          {
+            echo '## Vibe-coded lead sweep'
+            echo '```'
+            grep -E 'LEAD|=== ' leads.out || echo 'no confirmed leads this run'
+            echo '```'
+            echo '_A lead is a genuine business with a confirmed finding. Each still needs the PoC gate and a human, disclosure-first message before any outreach._'
+          } >> "$GITHUB_STEP_SUMMARY"

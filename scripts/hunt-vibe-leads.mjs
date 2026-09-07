@@ -62,8 +62,29 @@ async function scanRepo(repo) {
   }
 }
 
+async function generateCandidates() {
+  // Genuine-business signal: Supabase paired with a payments integration.
+  const queries = [
+    'supabase stripe language:TypeScript stars:5..400 pushed:>2026-06-01',
+    'supabase stripe saas language:TypeScript pushed:>2026-07-01',
+    'supabase stripe subscription language:JavaScript stars:3..300 pushed:>2026-06-01'
+  ];
+  const seen = new Set();
+  for (const q of queries) {
+    try {
+      const { stdout } = await run('gh', ['api', '-X', 'GET', 'search/repositories',
+        '--raw-field', `q=${q}`, '-f', 'sort=stars', '-f', 'per_page=25',
+        '--jq', '.items[] | select(.archived==false and .fork==false) | .full_name'], { timeout: 25000 });
+      for (const line of stdout.trim().split('\n')) if (line) seen.add(line);
+    } catch {}
+  }
+  return [...seen];
+}
+
 const listFile = process.argv[2];
-const repos = (await import('node:fs')).readFileSync(listFile, 'utf8').trim().split('\n').filter(Boolean);
+const repos = listFile
+  ? (await import('node:fs')).readFileSync(listFile, 'utf8').trim().split('\n').filter(Boolean)
+  : await generateCandidates();
 const leads = [];
 for (const repo of repos) {
   const r = await scanRepo(repo);

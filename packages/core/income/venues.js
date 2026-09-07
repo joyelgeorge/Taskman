@@ -274,12 +274,22 @@ export const VENUES = Object.freeze([
     requiresBusinessEntity: false,
     agentPolicy: 'discovery-only',
     ticketCents: { min: 10_000, max: 500_000 },
-    confidence: CONFIDENCE.VERIFIED,
-    evidence: 'Bugcrowd supports bank transfer, PayPal and Payoneer; PayPal credits the same day '
-      + 'and bank transfers in one to two business days. Checked 2026-09-07. No account created '
-      + 'yet.',
-    note: 'Register alongside HackerOne rather than choosing between them: the programs differ, '
-      + 'and both cost one signup each.'
+    // The payout rails are verified. The account is not, and cannot be from here.
+    confidence: CONFIDENCE.ASSUMED,
+    evidence: 'Rails verified: Bugcrowd supports bank transfer, PayPal and Payoneer, with PayPal '
+      + 'crediting the same day and bank transfers in one to two business days.\n'
+      + 'Account reported at bugcrowd.com/h/joyelgeorgecb1e11 on 2026-09-07 and NOT '
+      + 'independently confirmed. Bugcrowd renders profiles client-side, so a real handle and an '
+      + 'invented one return byte-identical 5,996-byte responses, the username appears nowhere '
+      + 'in the body, and the .json path does not discriminate either. The same control that '
+      + 'proved the HackerOne profile — a known-bad handle returning 404 — returns 200 here, so '
+      + 'the status code carries no information.\n'
+      + 'Treated as the operator\'s report, which is good enough to act on and not good enough '
+      + 'to call verified.',
+    note: 'Registered alongside HackerOne rather than instead of it: the programs differ and '
+      + 'each costs one signup. Confirmation that the account exists will come from the first '
+      + 'submission or the first payout, not from the outside — which is the ordinary case for '
+      + 'anything behind a login, and the reason confidence here is assumed rather than verified.'
   },
   {
     key: 'fiverr',

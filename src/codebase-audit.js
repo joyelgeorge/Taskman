@@ -400,6 +400,31 @@ export function findOpenCors(file, text) {
   return findings;
 }
 
+/**
+ * Missing Row-Level Security on a Supabase table — the single most common
+ * vibe-coded catastrophe. A table created in supabase/migrations that never gets
+ * ENABLE ROW LEVEL SECURITY is readable and writable by anyone holding the anon
+ * key, which ships in the browser by design. Gated to the supabase/ path so a
+ * normal server-side Postgres schema (where no-RLS is fine) is not flagged.
+ */
+export function findMissingRls({ supabaseCreates = [], rlsEnabled = new Set() }) {
+  const findings = [];
+  for (const c of supabaseCreates) {
+    if (rlsEnabled.has(c.table)) continue;
+    findings.push({
+      kind: 'missing-rls',
+      file: c.file, line: c.line,
+      evidence: `create table ${c.table} (no ENABLE ROW LEVEL SECURITY)`,
+      why: `Supabase table "${c.table}" is created without Row-Level Security. With RLS off, anyone `
+        + 'holding the anon key — which ships in the client bundle by design — can read and write every '
+        + 'row via the public REST API. This is the most common vibe-coded data breach. CWE-284 broken access control.',
+      confirm: `Call the REST endpoint /rest/v1/${c.table} with only the anon key. If rows come back (or a `
+        + 'write succeeds), RLS is off. Fix: ALTER TABLE ' + c.table + ' ENABLE ROW LEVEL SECURITY plus explicit policies.'
+    });
+  }
+  return findings;
+}
+
 export function findMissingTables({ writes, creates }) {
   const created = new Set(creates.map(c => c.table));
   const seen = new Set();
@@ -430,6 +455,8 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
   const divergences = [];
   const writes = [];
   const creates = [];
+  const supabaseCreates = [];
+  const rlsEnabled = new Set();
 
   for (const file of files) {
     let text = '';
@@ -442,6 +469,12 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
 
     if (file.endsWith('.sql')) {
       for (const m of text.matchAll(TABLE_CREATE)) creates.push({ table: m[1].toLowerCase() });
+      // Supabase migrations: track table creates and which tables enable RLS, so
+      // findMissingRls can flag the ones left world-accessible via the anon key.
+      if (/supabase/i.test(rel)) {
+        for (const m of text.matchAll(TABLE_CREATE)) supabaseCreates.push({ table: m[1].toLowerCase(), file: rel, line: lineOf(text, m.index) });
+        for (const m of text.matchAll(/ALTER\s+TABLE\s+(?:ONLY\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi)) rlsEnabled.add(m[1].toLowerCase());
+      }
       continue;
     }
     if (/\.(test|spec)\.[jt]sx?$/.test(file)) continue; // tests are not the product
@@ -466,6 +499,7 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
     );
   }
   findings.push(...findMissingTables({ writes, creates }));
+  findings.push(...findMissingRls({ supabaseCreates, rlsEnabled }));
 
   // One finding, not one per branch. A hundred and thirty-five of these is not a
   // list of defects, it is a description of the architecture — and reporting it

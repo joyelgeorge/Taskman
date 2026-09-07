@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors } from '../src/codebase-audit.js';
+, findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors, findMissingRls } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -190,4 +190,18 @@ test('findOpenCors flags credentialed wildcard/reflect, not a plain public wildc
   assert.equal(findOpenCors('s.js', 'cors({ origin: "*", credentials: true })').length, 1);
   assert.equal(findOpenCors('s.js', 'cors({ origin: req.headers.origin, credentials: true })').length, 1);
   assert.equal(findOpenCors('s.js', 'cors({ origin: "*" })').length, 0);
+});
+
+test('findMissingRls flags a Supabase table with no RLS, not one that enables it', () => {
+  const creates = [
+    { table: 'profiles', file: 'supabase/migrations/001.sql', line: 1 },
+    { table: 'payments', file: 'supabase/migrations/001.sql', line: 2 }
+  ];
+  const found = findMissingRls({ supabaseCreates: creates, rlsEnabled: new Set(['profiles']) });
+  assert.equal(found.length, 1);
+  assert.match(found[0].evidence, /payments/);
+});
+
+test('findMissingRls says nothing when there are no supabase creates', () => {
+  assert.equal(findMissingRls({ supabaseCreates: [], rlsEnabled: new Set() }).length, 0);
 });

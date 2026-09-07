@@ -23,7 +23,7 @@ export const EXPLORED_TERRITORIES = [
   { key: 'audit-tool-contingency', verdict: VERDICT.ACTIVE,
     note: 'Payout-reconciliation audit tool, 20% contingency. Live and priced. Bottleneck is inbound demand, not code.' },
   { key: 'huntr-oss', verdict: VERDICT.ACTIVE,
-    note: 'huntr open-source vuln bounties. Profile verified, payout via Stripe Connect Express (India assumed-reachable).' },
+    note: 'huntr open-source vuln bounties. Profile verified, payout via Stripe Connect Express (reaches most countries).' },
   { key: 'fiverr-ai-debug-gig', verdict: VERDICT.ACTIVE,
     note: 'Fiverr gig: find production bugs in AI-written apps. Operator-run; needs human KYC and delivery.' },
   { key: 'hackerone-bugcrowd-source-scope', verdict: VERDICT.UNPROVEN,
@@ -35,7 +35,7 @@ export const EXPLORED_TERRITORIES = [
   { key: 'agent-economy-marketplaces', verdict: VERDICT.KILLED,
     note: 'Measured 73% prompt-exfiltration honeypots, ~2-5 of 232 listings real, crypto-only rails.' },
   { key: 'algora-bounties', verdict: VERDICT.KILLED,
-    note: 'Payout via Stripe Express KYC AND terms prohibit robotic access. Closed for an autonomous India operator.' },
+    note: 'Terms prohibit robotic/automated access. That is the kill, and it holds regardless of country — the rail (Stripe Express) is fine almost everywhere.' },
   { key: 'taskforce-moltjobs', verdict: VERDICT.KILLED,
     note: 'Effectively zero settled volume measured. Shipped DISABLED.' }
 ];

@@ -30,13 +30,21 @@ test('toKey normalises names so topical variants compare equal', () => {
   assert.equal(toKey('DeFi Arbitrage!'), 'defi-arbitrage');
 });
 
-test('a rail that cannot reach India caps the score however good otherwise', () => {
+test('only a genuinely closed rail caps the score; broad rails do not', () => {
   const r = scoreTerritory({ scores: {
-    timeToFirstDollar: 'days', railFitIndia: 'closed', feasibilityWithAssets: 'direct',
+    timeToFirstDollar: 'days', payoutReach: 'closed', feasibilityWithAssets: 'direct',
     saturation: 'underserved', distribution: 'buyers_already_searching'
   } });
   assert.ok(r.capped);
   assert.ok(r.score <= 0.2);
+
+  // A card processor (Stripe/Wise/Payoneer) reaches most countries — viable,
+  // not fatal. Lifting the old India assumption must not cap this.
+  const card = scoreTerritory({ scores: {
+    timeToFirstDollar: 'weeks', payoutReach: 'card_processor', feasibilityWithAssets: 'small_build',
+    saturation: 'moderate', distribution: 'buyers_already_searching'
+  } });
+  assert.ok(!card.capped, 'card processor is not a fatal rail');
 });
 
 test('an unknown score label is treated pessimistically, not ignored', () => {
@@ -45,8 +53,8 @@ test('an unknown score label is treated pessimistically, not ignored', () => {
 });
 
 test('rankTerritories sorts best-first and drops sub-floor candidates', () => {
-  const good = { title: 'a', scores: { timeToFirstDollar: 'weeks', railFitIndia: 'paypal_or_bank', feasibilityWithAssets: 'direct', saturation: 'underserved', distribution: 'buyers_already_searching' } };
-  const weak = { title: 'b', scores: { timeToFirstDollar: 'unclear', railFitIndia: 'closed', feasibilityWithAssets: 'none', saturation: 'swarmed', distribution: 'must_create_demand' } };
+  const good = { title: 'a', scores: { timeToFirstDollar: 'weeks', payoutReach: 'paypal_or_bank', feasibilityWithAssets: 'direct', saturation: 'underserved', distribution: 'buyers_already_searching' } };
+  const weak = { title: 'b', scores: { timeToFirstDollar: 'unclear', payoutReach: 'closed', feasibilityWithAssets: 'none', saturation: 'swarmed', distribution: 'must_create_demand' } };
   const ranked = rankTerritories([weak, good]);
   assert.equal(ranked[0].title, 'a');
   assert.ok(!ranked.some((t) => t.title === 'b'), 'capped weak candidate dropped by floor');

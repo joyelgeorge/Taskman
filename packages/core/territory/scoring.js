@@ -13,10 +13,13 @@
 export const DIMENSIONS = {
   // How fast a first real dollar is plausible. This week beats this quarter.
   timeToFirstDollar: { weight: 0.25, values: { days: 1, weeks: 0.6, months: 0.3, unclear: 0.1 } },
-  // Can the money actually reach an India individual? PayPal/bank yes; a
-  // Stripe-Express-only or invite-only rail is fatal; crypto is discounted for
-  // the 30% VDA + 1% TDS drag.
-  railFitIndia: { weight: 0.25, values: { paypal_or_bank: 1, crypto: 0.5, stripe_express: 0.4, closed: 0 }, fatalAt: 0 },
+  // Can the money actually land, anywhere? Not an India question — PayPal alone
+  // reaches ~200 countries and bank/wire is universal, so most rails are fine.
+  // Card processors (Stripe, Wise, Payoneer) reach 40-190 countries: broadly
+  // usable, lightly discounted only for setup/KYC friction. Crypto reaches
+  // everywhere but carries tax and volatility drag. Only a genuinely closed or
+  // invite-only-with-no-path rail is fatal — and that is now rare.
+  payoutReach: { weight: 0.25, values: { paypal_or_bank: 1, card_processor: 0.85, crypto: 0.6, closed: 0 }, fatalAt: 0 },
   // How much can the machine as it stands today actually do — drones, scanner,
   // reconciliation edge-case expertise, honeypot detector, an LLM.
   feasibilityWithAssets: { weight: 0.2, values: { direct: 1, small_build: 0.6, large_build: 0.3, none: 0.1 } },

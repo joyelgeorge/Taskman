@@ -240,6 +240,23 @@ export async function pruneRawObservations({ retentionDays = RAW_RETENTION_DAYS,
   return { cutoff, removed: result.rowCount };
 }
 
+/**
+ * Formats a DATE column back to the calendar day it actually holds.
+ *
+ * node-postgres parses a DATE at *local* midnight, so toISOString converts it to
+ * UTC and moves the day backwards for every timezone east of Greenwich — a
+ * rollup written for the 6th reads back as the 5th in IST. The identical bug was
+ * fixed in packages/core/finance/store.js and survived here, which is how the
+ * codebase scanner found it: it looks for the shape rather than remembering
+ * where it was already fixed.
+ */
+const calendarDay = value => {
+  if (typeof value === 'string') return value.slice(0, 10);
+  if (!(value instanceof Date)) return String(value || '');
+  const pad = n => String(n).padStart(2, '0');
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+};
+
 export async function listRollups({ seriesKey = null, limit = 90 } = {}) {
   if (!databaseEnabled) {
     return mem.rollups
@@ -256,7 +273,7 @@ export async function listRollups({ seriesKey = null, limit = 90 } = {}) {
   );
   return result.rows.map(r => ({
     seriesKey: r.series_key,
-    bucketDate: typeof r.bucket_date === 'string' ? r.bucket_date : r.bucket_date.toISOString().slice(0, 10),
+    bucketDate: calendarDay(r.bucket_date),
     sampleCount: Number(r.sample_count),
     valueMin: r.value_min == null ? null : Number(r.value_min),
     valueMax: r.value_max == null ? null : Number(r.value_max),

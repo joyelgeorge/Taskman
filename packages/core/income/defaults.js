@@ -25,11 +25,15 @@ export const DEFAULT_STREAMS = [
   },
   {
     streamKey: 'fiverr-bookkeeping',
-    title: 'Fiverr bookkeeping and reconciliation gigs',
+    title: 'Fiverr gigs — AI-code debugging first, bookkeeping second',
     mechanism: 'Buyer pays Fiverr, Fiverr clears the payout to a bank account after delivery.',
     requires: 'A human-owned seller account, because Fiverr requires identity verification and '
       + 'forbids fully automated account operation. The work itself is AI-doable.',
-    nextAction: 'A person creates the seller account and publishes the first gig (docs/FIVERR_LANE.md).',
+    nextAction: 'A person creates the seller account and publishes the AI-code debugging gig '
+      + '(docs/AI_DEBUG_LANE.md). That gig, not the bookkeeping one: the bookkeeping demand '
+      + 'search found no stated budgets and a free incumbent feature, while the debugging '
+      + 'search found a Fiverr category, live gigs at $25-50 and a provider with 15-20 repeat '
+      + 'clients.',
     unblockedBy: 'human',
     state: 'BLOCKED',
     stateReason: 'Cannot be started by the machine: account creation and identity verification are '

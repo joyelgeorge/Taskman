@@ -2,6 +2,15 @@
 
 _Lane chosen 2026-09-03 — see issue #135 for why this one and not the other two._
 
+> **Superseded 2026-09-07 by `docs/AI_DEBUG_LANE.md`.** Not because this lane is
+> wrong, but because searching for evidence that anyone pays for it found none —
+> no forum requests, no job posts, no stated budgets — while Stripe ships a Bank
+> Reconciliation report free and its NetSuite connector auto-reconciles payouts to
+> deposits. The same search found a Fiverr category, live gigs at $25-50, a $100
+> Upwork posting and a provider with 15-20 repeat clients for debugging
+> AI-generated code. Publish that gig first. This one stays here, unedited,
+> because it may still be right later and the reasoning is worth keeping.
+
 This is the operating runbook for the first rail that is meant to actually earn
 money, plus the gig listing draft to publish. Everything here assumes the
 discipline the rest of the system already enforces: sell it once by hand before

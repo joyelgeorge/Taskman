@@ -1,0 +1,84 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four bugs a 595-test suite missed</title>
+<meta name="description" content="Four production bugs found in my own AI-assisted codebase that a 595-test suite passed straight over. Every one has a public commit you can read.">
+<meta property="og:title" content="Four bugs a 595-test suite missed">
+<meta property="og:description" content="They all had the same cause: the tests ran a different storage backend than production did.">
+<style>
+  :root { --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6560; --line:#e3ded7; --card:#fff; --accent:#7a4d1d; --flag:#8a2f22; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16150f; --fg:#ece7de; --muted:#9d968b; --line:#322e26; --card:#1e1c15; --accent:#d9a05b; --flag:#e0836f; }
+  }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif}
+  main{max-width:46rem;margin:0 auto;padding:3rem 1.25rem 5rem}
+  h1{font-size:1.9rem;line-height:1.2;margin:0 0 .5rem;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:1.05rem;margin:0 0 2rem}
+  .bug{border:1px solid var(--line);border-left:3px solid var(--flag);background:var(--card);
+    border-radius:6px;padding:1rem 1.1rem;margin:0 0 1rem}
+  .bug h2{font-size:1.02rem;margin:0 0 .35rem}
+  .bug p{margin:.35rem 0;font-size:.94rem}
+  .why{color:var(--muted)}
+  code{background:var(--bg);border:1px solid var(--line);padding:.05rem .35rem;border-radius:3px;font-size:.88em}
+  .pattern{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--card);
+    border-radius:6px;padding:1rem 1.1rem;margin:2rem 0}
+  footer{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+  a{color:var(--accent)}
+</style>
+<main>
+  <h1>Four bugs a 595-test suite missed</h1>
+  <p class="lede">All four were in my own codebase. All four passed every test. All four
+  would have broken in production, and one of them silently threw away data for months.</p>
+
+  <div class="bug">
+    <h2>1 · A query that could never run</h2>
+    <p>An untyped parameter made PostgreSQL read a timestamp as an interval, so the query
+    died with <code>operator does not exist: timestamp with time zone &lt;= interval</code>.
+    The feature could never have worked in production. Not once.</p>
+    <p class="why">Why the tests missed it: in-memory mode never executes the SQL.
+    <code>git show 6780227</code></p>
+  </div>
+
+  <div class="bug">
+    <h2>2 · A table nothing ever created</h2>
+    <p>Code inserted into <code>outreach_drafts</code>. No migration created it. The insert
+    was wrapped in a catch that fell back to an in-process Map and returned
+    <code>ok: true</code> — so every record was discarded when the process exited, and the
+    caller was told it saved.</p>
+    <p class="why">Why the tests missed it: the fallback made failure look like success.
+    <code>git show 3d0da3e</code></p>
+  </div>
+
+  <div class="bug">
+    <h2>3 · A constraint the app broke on every call</h2>
+    <p>A <code>CHECK</code> allowed two values. The UI sent a third. Every request to that
+    endpoint returned 500 against a real database.</p>
+    <p class="why">Why the tests missed it: memory mode enforces no constraints.
+    <code>git show 66a3773</code></p>
+  </div>
+
+  <div class="bug">
+    <h2>4 · A date that came back a day early</h2>
+    <p><code>node-postgres</code> parses a <code>DATE</code> at <em>local</em> midnight, so
+    calling <code>toISOString()</code> shifts it backwards for every timezone east of
+    Greenwich. A record written for the 2nd read back as the 1st.</p>
+    <p class="why">Why the tests missed it: correct in UTC. Wrong for most of the world.
+    <code>git show 22a1dc2</code></p>
+  </div>
+
+  <div class="pattern">
+    <strong>All four had one cause.</strong>
+    <p>The tests exercised a different storage backend than production used. An AI writes
+    both an in-memory fallback and the real database path, and the suite only ever runs the
+    easy one — so the suite goes green while the path that ships stays unverified.</p>
+    <p>It is not a rare failure. It is the default shape of an AI-written application, and
+    no amount of additional tests against the same fallback will find it.</p>
+  </div>
+
+  <footer>
+    Every commit above is public and readable at
+    <a href="https://github.com/joyelgeorge/Taskman">github.com/joyelgeorge/Taskman</a>.
+    Check them before you take my word for any of this.
+  </footer>
+</main>

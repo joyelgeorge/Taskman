@@ -61,6 +61,7 @@ test('findPathPrefixGuard catches the mergeos CWE-22 prefix bug', () => {
   const src = `
     const requestedPath = path.normalize(path.join(clientDist, pathname));
     if (!requestedPath.startsWith(clientDist)) { res.statusCode = 403; return; }
+    createReadStream(requestedPath).pipe(res);
   `;
   const f = findPathPrefixGuard('server.js', src);
   assert.equal(f.length, 1);
@@ -98,4 +99,14 @@ test('findPathPrefixGuard requires the file to actually touch the filesystem', (
   assert.equal(findPathPrefixGuard('router.js', noFs).length, 0, 'no fs sink => not a served-file escape');
   const withFs = `const p = path.join(dir, x);\nif (!requestedPath.startsWith(clientDist)) deny();\nfs.createReadStream(p);`;
   assert.equal(findPathPrefixGuard('server.js', withFs).length, 1);
+});
+
+test('findPathPrefixGuard ignores a require.cache hot-reload filter (n8n false positive)', () => {
+  // Real code from n8n load-nodes-and-credentials.ts: filters require.cache keys
+  // for hot reload. A path check, but nothing is served and no input is involved.
+  const src = `
+    const p = path.join(customNodesRoot, entry.name);
+    const modules = Object.keys(require.cache).filter((module) => module.startsWith(watchPath));
+  `;
+  assert.equal(findPathPrefixGuard('loader.ts', src).length, 0);
 });

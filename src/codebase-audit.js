@@ -147,7 +147,11 @@ export function findPathPrefixGuard(file, text) {
     if (/^(req|request|url|route|origin|referer|host|ctx)\b/i.test(subject)) continue;
     if (/url|route|endpoint|prefix|whitelist|allowlist|origin|host|domain/i.test(boundary)) continue;
     if (!/dir|root|base|dist|path|resolv|request|file|folder/i.test(subject + boundary)) continue;
-    if (!/\b(path\.(join|resolve|normalize)|fs\.|readFile|createReadStream|sendFile|FileResponse)\b/.test(text)) continue;
+    // A served-file escape needs the guarded path to reach a read-or-serve sink.
+    // n8n uses module.startsWith(watchPath) to filter require.cache keys for hot
+    // reload — a path check with no file served and no attacker input, so the
+    // bare presence of path.join is not enough. Require an actual serve/read sink.
+    if (!/\b(sendFile|FileResponse|createReadStream|readFileSync|readFile|res\.download|sendfile)\b/.test(text)) continue;
     // Already anchored on a separator (startsWith(dir + '/') or dir + sep)? Safe.
     const tail = text.slice(m.index, m.index + 80);
     if (/\+\s*(['"`]\/|path\.sep|sep\b)/.test(tail)) continue;

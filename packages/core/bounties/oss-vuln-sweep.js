@@ -84,3 +84,28 @@ export const NODE_OSS_TARGETS = [
   { repo: 'n8n-io/n8n', subdir: 'packages/cli', scope: 'automation platform with AI nodes, large file-handling surface' },
   { repo: 'activepieces/activepieces', subdir: 'packages/server', scope: 'automation + AI, file storage and flow endpoints' }
 ];
+
+/**
+ * The moderate-maturity tier, added 2026-09-07 after a live scan proved the
+ * point: the flagships above are hardened and returned zero candidates across a
+ * full sweep, because they have security teams and years of triage behind them.
+ * Recently-shipped AI apps in the ~300-5000 star band do not, and the same
+ * detectors fire on them (this tier produced 51 raw candidates on first scan
+ * where the flagships produced none).
+ *
+ * Two honest caveats, because a candidate is not a bug and a scan target is not
+ * a customer:
+ *   - Bounty-eligibility is NOT assumed here. Most repos this size have no
+ *     bounty program; the operator confirms one per repo before submitting. Many
+ *     of these are valuable instead as the DEMAND population for a pre-launch
+ *     scan service (issue #205) — the same builders who would pay to be scanned.
+ *   - Findings from this tier still pass the PoC gate before they mean anything.
+ *     The first two candidates triaged by hand were both false positives for
+ *     exploitability (a CLI tool's own argument; a config URL near a request
+ *     read), which is exactly why the gate exists.
+ */
+export const MODERATE_AI_TARGETS = [
+  { repo: 'cyrusagents/cyrus', subdir: 'packages', scope: 'AI coding agent, git/exec plumbing (CLI inputs — gate carefully)' },
+  { repo: 'wecode-ai/Wegent', subdir: 'frontend/src', scope: 'AI chat frontend, Next.js API proxy routes' },
+  { repo: 'kitfunso/hippo-memory', subdir: 'src', scope: 'AI memory store, CLI + dashboard file serving' }
+];

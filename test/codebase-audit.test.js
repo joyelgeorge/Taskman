@@ -164,3 +164,24 @@ test('findSSRF does not flag a request to a configured provider endpoint', () =>
 test('findSSRF leaves a static literal URL alone', () => {
   assert.equal(findSSRF('a.js', "fetch('https://api.stripe.com/v1/charges')").length, 0);
 });
+
+test('findSSRF ignores a config-URL template with a request body read nearby (Wegent FP)', () => {
+  // A Next.js API proxy route: the fetch destination is a configured internal
+  // URL, and the request body is read on a nearby line as the POST payload —
+  // not the destination. This fired a false positive when the SSRF check keyed
+  // on request data appearing anywhere in the window; it must not, because the
+  // template only interpolates a config value.
+  const wegent = [
+    "const backendUrl = getInternalApiUrl()",
+    "const backendResponse = await fetch(`${backendUrl}/api/chat/cancel`, {",
+    "  method: 'POST',",
+    "  body: JSON.stringify(body),",
+    "})",
+    "const body = await request.json()"
+  ].join('\n');
+  assert.equal(findSSRF('route.ts', wegent).length, 0);
+});
+
+test('findSSRF still flags a template whose interpolation IS request-derived', () => {
+  assert.equal(findSSRF('a.js', 'axios.get(`${req.query.url}/data`)').length, 1);
+});

@@ -16,7 +16,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { auditCodebase } from '../src/codebase-audit.js';
-import { classifyFindings, NODE_OSS_TARGETS } from '../packages/core/bounties/oss-vuln-sweep.js';
+import { classifyFindings, NODE_OSS_TARGETS, MODERATE_AI_TARGETS } from '../packages/core/bounties/oss-vuln-sweep.js';
 
 const sh = promisify(execFile);
 
@@ -35,9 +35,15 @@ async function sweepOne({ repo, subdir }) {
 }
 
 const arg = process.argv[2];
-const targets = arg
-  ? [NODE_OSS_TARGETS.find((t) => t.repo === arg) || { repo: arg, subdir: '' }]
-  : NODE_OSS_TARGETS;
+// Both tiers sweep by default. The flagships are hardened and rarely yield a
+// candidate; the moderate tier is where the detectors actually fire. Pass a repo
+// slug to scan just one, or --flagships-only to restore the old flagship sweep.
+const allTargets = [...NODE_OSS_TARGETS, ...MODERATE_AI_TARGETS];
+const targets = arg === '--flagships-only'
+  ? NODE_OSS_TARGETS
+  : arg && !arg.startsWith('--')
+  ? [allTargets.find((t) => t.repo === arg) || { repo: arg, subdir: '' }]
+  : allTargets;
 
 let totalCandidates = 0;
 for (const t of targets) {

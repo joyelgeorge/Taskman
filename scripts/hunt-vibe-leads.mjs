@@ -18,6 +18,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { auditCodebase } from '../src/codebase-audit.js';
+import { qualifyLead, BUSINESS_CODE_SIGNALS } from '../packages/core/targets/lead-qualifier.js';
+import { readFileSync } from 'node:fs';
 
 const run = promisify(execFile);
 const SELLABLE = new Set(['exposed-secret', 'missing-rls', 'open-cors', 'ssrf', 'command-injection', 'path-prefix-guard']);
@@ -26,6 +28,14 @@ const CRITICAL = new Set(['exposed-secret', 'missing-rls']);
 // same false positives the OSS sweep learned to drop. Keep them only in app code.
 const NEEDS_SERVER = new Set(['command-injection', 'path-prefix-guard', 'ssrf']);
 const TOOLING = /(^|\/)(scripts?|bin|tools?|test|tests|__tests__|examples?|dist)\/|\.(config|test|spec)\.|(^|\/)(vite|webpack|rollup|esbuild|next|svelte|astro)\.config/i;
+
+async function repoMeta(repo) {
+  try {
+    const { stdout } = await run('gh', ['api', 'repos/' + repo, '--jq',
+      '{name,description,homepage,stargazers_count,forks_count,archived,fork,created_at,pushed_at,has_pages}'], { timeout: 20000 });
+    return JSON.parse(stdout);
+  } catch { return { name: repo }; }
+}
 
 async function scanRepo(repo) {
   const dir = await mkdtemp(join(tmpdir(), 'lead-'));
@@ -39,7 +49,12 @@ async function scanRepo(repo) {
       severity: CRITICAL.has(f.kind) ? 'CRITICAL' : 'HIGH',
       file: f.file, line: f.line
     }));
-    return { repo, findings: safe, error: null };
+    let pkg = '';
+    try { pkg = readFileSync(join(dir, 'package.json'), 'utf8'); } catch {}
+    const code = { hasPayments: BUSINESS_CODE_SIGNALS.payments.test(pkg), hasAuth: BUSINESS_CODE_SIGNALS.auth.test(pkg) };
+    const meta = await repoMeta(repo);
+    const qual = qualifyLead(meta, code);
+    return { repo, findings: safe, genuine: qual.genuine, qual, error: null };
   } catch (e) {
     return { repo, findings: [], error: String(e.message || e).slice(0, 80) };
   } finally {
@@ -53,8 +68,10 @@ const leads = [];
 for (const repo of repos) {
   const r = await scanRepo(repo);
   const crit = r.findings.filter((f) => f.severity === 'CRITICAL').length;
-  process.stdout.write(`${r.error ? 'skip' : (r.findings.length ? 'LEAD' : '  ok')}  ${repo}  ${r.findings.length ? `(${r.findings.length} issues, ${crit} critical)` : (r.error || '')}\n`);
-  if (r.findings.length) leads.push(r);
+  const isLead = r.findings.length && r.genuine;
+  const tag = r.error ? 'skip' : isLead ? 'LEAD' : (r.findings.length && !r.genuine) ? 'vuln·toy' : '  ok';
+  process.stdout.write(`${tag}  ${repo}  ${r.findings.length ? `(${r.findings.length} issues, ${crit} crit)` : ''}${r.findings.length && !r.genuine ? ' — not a business: ' + (r.qual.rejections[0] || 'no traction') : ''}${r.error ? ' ' + r.error : ''}\n`);
+  if (isLead) leads.push(r);
 }
 leads.sort((a, b) => b.findings.filter(f=>f.severity==='CRITICAL').length - a.findings.filter(f=>f.severity==='CRITICAL').length || b.findings.length - a.findings.length);
 await writeFile('/tmp/vibe-leads.json', JSON.stringify(leads, null, 2));

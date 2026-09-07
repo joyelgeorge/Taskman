@@ -11,6 +11,7 @@ export {
   registerDataProduct, refreshDataProducts, listDataProducts, appraise, resetDataProductMemory
 } from './data-products.js';
 export { DEFAULT_STREAMS } from './defaults.js';
+export { OSS_BOUNTY_TARGETS, isReportable } from './bounty-targets.js';
 export {
   PRICING_MODEL, MARKET_CONTINGENCY_RATES, DEFAULT_CONTINGENCY_PERCENT,
   contingencyFee, worthBilling

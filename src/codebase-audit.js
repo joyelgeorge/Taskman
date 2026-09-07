@@ -150,8 +150,35 @@ export function findSSRF(file, text) {
     // on a first run. The tell is a request source (req.query/body/params) close
     // to the call; INPUT_SHAPED only raises confidence, it does not qualify.
     const window = text.slice(Math.max(0, m.index - 240), m.index + 240);
-    const nearRequest = REQUEST_SOURCE.test(window);
-    if (!nearRequest) continue;
+    // Extract the URL argument (first arg to the sink) so we can reason about
+    // where the request data actually flows.
+    const afterParen = arg.slice(arg.indexOf('(') + 1).trimStart();
+    if (afterParen.startsWith('`')) {
+      // Template-literal URL. The request signal MUST come from inside the
+      // template's ${...} expressions, not from request data that merely sits
+      // nearby. Wegent's `${backendUrl}/api/chat/cancel` interpolates a config
+      // value (getInternalApiUrl()); the request body read on the line above is
+      // the POST payload, not the destination — that is not SSRF. Requiring a
+      // request-tied interpolation kills that false positive while keeping
+      // `${req.query.url}/data` (a genuinely request-tied destination).
+      const tpl = afterParen.slice(1, afterParen.indexOf('`', 1) === -1 ? undefined : afterParen.indexOf('`', 1));
+      const interps = [...tpl.matchAll(/\$\{([^}]*)\}/g)].map((x) => x[1]);
+      const anyInterpFromRequest = interps.some((expr) => {
+        if (REQUEST_SOURCE.test(expr)) return true;
+        // A bare identifier is request-tied only if it is assigned from a
+        // request source within the surrounding window.
+        const id = expr.trim().match(/^[A-Za-z_$][\w$]*$/)?.[0];
+        if (!id) return false;
+        const assign = new RegExp('\\b' + id + '\\s*=\\s*[^;\\n]*(req|request|ctx)\\.');
+        return assign.test(window);
+      });
+      if (!anyInterpFromRequest) continue;
+    } else {
+      // Bare-variable or direct request URL. Keep the proximity heuristic: a
+      // request source near the call is the tell that the variable came from it
+      // (e.g. `const url = req.body.url;` a line above the fetch).
+      if (!REQUEST_SOURCE.test(window)) continue;
+    }
     const inputNamed = INPUT_SHAPED.test(arg);
     findings.push({
       kind: 'ssrf',

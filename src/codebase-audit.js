@@ -114,6 +114,53 @@ export function findDateShift(file, text) {
 }
 
 /**
+ * A static-file path guard that anchors on a bare string prefix. Found in the
+ * wild on 2026-09-07 in mergeos-bounties/mergeos frontend/server.js:248:
+ *
+ *   if (!requestedPath.startsWith(clientDist)) { res.statusCode = 403; ... }
+ *
+ * clientDist "/srv/app/dist" also prefixes "/srv/app/dist-backup", so a request
+ * for "/..%2Fdist-backup%2F.env" normalises to a sibling directory the check
+ * still accepts. It only bites when the path is decoded AFTER the URL is parsed,
+ * because URL parsing would otherwise collapse the "../" — which is why the plain
+ * form looks safe and the encoded form escapes. CWE-22.
+ */
+export function findPathPrefixGuard(file, text) {
+  const findings = [];
+  // A variable compared with startsWith against another variable (not a literal),
+  // where the comparison is used as an access-control gate. Requiring both sides
+  // to be identifiers keeps ordinary string checks like startsWith('/api') out.
+  const pattern = /(\w+)\s*\.\s*startsWith\s*\(\s*(\w+)\s*\)/g;
+  for (const m of text.matchAll(pattern)) {
+    const [subject, boundary] = [m[1], m[2]];
+    // A startsWith on a comment line is documentation, not a guard — including
+    // this detector's own worked example. Skip anything whose line begins with a
+    // comment marker.
+    const lineStart = text.lastIndexOf('\n', m.index) + 1;
+    const linePrefix = text.slice(lineStart, m.index).trimStart();
+    if (linePrefix.startsWith('*') || linePrefix.startsWith('//')) continue;
+    // A path guard names paths: dir, root, base, dist, path, resolved, requested.
+    if (!/dir|root|base|dist|path|resolv|request|allow/i.test(subject + boundary)) continue;
+    // Already anchored on a separator (startsWith(dir + '/') or dir + sep)? Safe.
+    const tail = text.slice(m.index, m.index + 80);
+    if (/\+\s*(['"`]\/|path\.sep|sep\b)/.test(tail)) continue;
+    findings.push({
+      kind: 'path-prefix-guard',
+      file, line: lineOf(text, m.index),
+      evidence: m[0].slice(0, 80),
+      why: 'A filesystem access check that anchors on a bare string prefix. The intended '
+        + 'directory also prefixes any sibling whose name extends it (dist vs dist-backup), so a '
+        + 'normalised path into that sibling passes the check and escapes the sandbox. CWE-22 '
+        + 'path traversal, and it hides because the URL-decoded form is what escapes, not the '
+        + 'plain one.',
+      confirm: 'Request a path that resolves to a sibling directory sharing the prefix, e.g. '
+        + 'the URL-encoded "/..%2F<dir>-backup%2F.env", and check whether it is served.'
+    });
+  }
+  return findings;
+}
+
+/**
  * A write must look like a whole SQL statement, not just a verb followed by a
  * word. Requiring the clause that always follows — VALUES or a column list after
  * INSERT INTO, SET after UPDATE, WHERE after DELETE FROM — removes the prose
@@ -205,7 +252,8 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
     divergences.push(...findStorageDivergence(rel, text));
     findings.push(
       ...findSilentFallback(rel, text),
-      ...findDateShift(rel, text)
+      ...findDateShift(rel, text),
+      ...findPathPrefixGuard(rel, text)
     );
   }
   findings.push(...findMissingTables({ writes, creates }));

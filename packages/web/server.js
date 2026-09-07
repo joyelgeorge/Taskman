@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { join, dirname, extname, normalize } from 'node:path';
+import { join, dirname, extname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -25,7 +25,11 @@ http.createServer(async (req, res) => {
   const relative = normalize(requested === '/' ? '/index.html' : requested).replace(/^(\.\.[/\\])+/, '');
   const file = join(publicDir, relative);
 
-  if (!file.startsWith(publicDir)) {
+  // Anchor the boundary on a separator, or publicDir "/srv/pub" would also
+  // accept a sibling "/srv/pub-backup". The URL parse and leading-../ strip
+  // above already make an escape unreachable here; this keeps it that way if
+  // either of those is ever changed.
+  if (file !== publicDir && !file.startsWith(publicDir + sep)) {
     res.writeHead(403); return res.end('forbidden');
   }
 

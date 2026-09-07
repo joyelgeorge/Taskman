@@ -20,11 +20,12 @@
  * submission. So findings are split, not lumped: security candidates are what a
  * huntr PoC targets, quality findings feed the audit-tool lane instead.
  */
-export const SECURITY_KINDS = new Set(['path-prefix-guard', 'command-injection']);
+export const SECURITY_KINDS = new Set(['path-prefix-guard', 'command-injection', 'ssrf']);
 
 const KIND_CWE = {
   'path-prefix-guard': { cwe: 'CWE-22', title: 'Path traversal via prefix-boundary check' },
-  'command-injection': { cwe: 'CWE-78', title: 'OS command injection via shell interpolation' }
+  'command-injection': { cwe: 'CWE-78', title: 'OS command injection via shell interpolation' },
+  'ssrf': { cwe: 'CWE-918', title: 'Server-side request forgery via attacker-controlled URL' }
 };
 
 /**

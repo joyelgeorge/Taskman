@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard, findCommandInjection } from '../src/codebase-audit.js';
+, findPathPrefixGuard, findCommandInjection, findSSRF } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -144,4 +144,23 @@ test('the scanner skips vendored and minified third-party code', async () => {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('findSSRF flags a server request whose URL comes from request data', () => {
+  assert.equal(findSSRF('a.js', 'await fetch(req.body.webhook)').length, 1);
+  assert.equal(findSSRF('a.js', 'axios.get(`${req.query.url}/data`)').length, 1);
+  const nearby = 'const url = req.body.url;\n  const r = await fetch(url);';
+  assert.equal(findSSRF('a.js', nearby).length, 1);
+});
+
+test('findSSRF does not flag a request to a configured provider endpoint', () => {
+  // The anything-llm false positives: dynamic URL, but a configured destination,
+  // no request data in sight.
+  assert.equal(findSSRF('a.js', 'fetch(this.CATALOG_URL, { headers })').length, 0);
+  assert.equal(findSSRF('a.js', 'fetch(`${baseURL}/images/edits`, {})').length, 0);
+  assert.equal(findSSRF('a.js', 'const r = await fetch(url)').length, 0, 'dynamic url, no request source');
+});
+
+test('findSSRF leaves a static literal URL alone', () => {
+  assert.equal(findSSRF('a.js', "fetch('https://api.stripe.com/v1/charges')").length, 0);
 });

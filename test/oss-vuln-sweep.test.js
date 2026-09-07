@@ -45,3 +45,11 @@ test('a command-injection finding becomes a CWE-78 candidate', () => {
   assert.equal(security[0].cwe, 'CWE-78');
   assert.equal(security[0].status, 'CANDIDATE-needs-PoC');
 });
+
+test('an ssrf finding becomes a CWE-918 candidate', () => {
+  const { security } = classifyFindings([
+    { kind: 'ssrf', file: 'p.js', line: 3, evidence: 'fetch(req.body.url)', confirm: 'point at 169.254.169.254' }
+  ], { repo: 'a/b' });
+  assert.equal(security.length, 1);
+  assert.equal(security[0].cwe, 'CWE-918');
+});

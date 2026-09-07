@@ -312,6 +312,94 @@ const TABLE_CREATE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]
  * Found here as outreach_drafts, which had been written to for months while a
  * catch quietly redirected every row into memory.
  */
+/**
+ * Secrets that ship to the client — the bug the vibe-coded market is actually
+ * paying to fix (Lovable/Cursor/Bolt + Supabase apps). Two things, both static:
+ *
+ *  1. A Supabase service_role key hardcoded anywhere. It is a JWT whose payload
+ *     says {"role":"service_role"} and it BYPASSES Row-Level Security — full
+ *     read/write to every table. We decode the JWT payload to confirm the role
+ *     rather than guessing from the variable name, so an anon key (safe to ship)
+ *     is not flagged and a service_role key hidden in an oddly-named const is.
+ *  2. A hardcoded provider secret with an unambiguous prefix (Stripe live, AWS,
+ *     GitHub, Slack, Google, OpenAI). These are real credentials, not config.
+ *
+ * process.env references and obvious placeholders are excluded — those are the
+ * safe patterns, and flagging them would be the noise that discredits the scan.
+ */
+export function findExposedSecret(file, text) {
+  const findings = [];
+  const isPlaceholder = (v) => /^(your|my|xxx+|todo|example|changeme|placeholder|\.\.\.|<|test|dummy|fake|sample)/i.test(v) || v.length < 12;
+
+  for (const m of text.matchAll(/eyJ[A-Za-z0-9_-]{10,}\.(eyJ[A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}/g)) {
+    let role = '';
+    try {
+      const json = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+      role = (JSON.parse(json).role) || '';
+    } catch { continue; }
+    if (role !== 'service_role') continue;
+    findings.push({
+      kind: 'exposed-secret',
+      file, line: lineOf(text, m.index),
+      evidence: m[0].slice(0, 24) + '… (JWT role=service_role)',
+      why: 'A Supabase service_role key is hardcoded here. It bypasses Row-Level Security entirely, '
+        + 'granting full read/write to every table. If this file is shipped to the browser or committed '
+        + 'to a public repo, anyone can read and modify the whole database. CWE-798 / CWE-312.',
+      confirm: 'Confirm the file reaches the client bundle or a public repo. Then the key alone is enough '
+        + 'to call the REST API with service_role privileges — rotate it immediately.'
+    });
+  }
+
+  const providerKey = /(sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{32,})/g;
+  for (const m of text.matchAll(providerKey)) {
+    const val = m[1];
+    if (isPlaceholder(val)) continue;
+    const around = text.slice(Math.max(0, m.index - 40), m.index);
+    if (/process\.env\.[A-Za-z0-9_]*\s*[:=]?\s*$/.test(around)) continue;
+    findings.push({
+      kind: 'exposed-secret',
+      file, line: lineOf(text, m.index),
+      evidence: val.slice(0, 10) + '…',
+      why: 'A live provider credential is hardcoded in source. If this ships to the client or a public repo '
+        + 'it can be used directly to spend money or access accounts. CWE-798 hardcoded credentials.',
+      confirm: 'Confirm the file is client-shipped or public, then rotate the key. Secrets belong in server-side env, never in source.'
+    });
+  }
+  return findings;
+}
+
+/**
+ * A CORS policy that reflects or wildcards the origin WHILE allowing
+ * credentials. `origin: '*'` with `credentials: true` is invalid per the fetch
+ * spec, so vibe-coded backends instead reflect the request origin back, which
+ * lets any site make authenticated cross-origin calls with the victim's cookies.
+ */
+export function findOpenCors(file, text) {
+  const findings = [];
+  const hasCreds = /credentials\s*:\s*true/.test(text);
+  const patterns = [
+    { re: /origin\s*:\s*['"]\*['"]/g, kind: 'wildcard' },
+    { re: /origin\s*:\s*(req|request)\.headers\.origin/g, kind: 'reflect' },
+    { re: /['"]Access-Control-Allow-Origin['"]\s*,\s*['"]\*['"]/g, kind: 'wildcard-header' }
+  ];
+  for (const { re, kind } of patterns) {
+    for (const m of text.matchAll(re)) {
+      if (kind !== 'reflect' && !hasCreds) continue;
+      findings.push({
+        kind: 'open-cors',
+        file, line: lineOf(text, m.index),
+        evidence: m[0].slice(0, 60),
+        why: 'CORS ' + (kind === 'reflect' ? 'reflects the request origin' : 'wildcards the origin')
+          + ' while credentials are allowed. Any website the victim visits can make authenticated '
+          + 'cross-origin requests carrying their cookies/session. CWE-942 permissive CORS.',
+        confirm: 'From another origin, make a credentialed request and check the response is readable. '
+          + 'Restrict the origin to an explicit allowlist.'
+      });
+    }
+  }
+  return findings;
+}
+
 export function findMissingTables({ writes, creates }) {
   const created = new Set(creates.map(c => c.table));
   const seen = new Set();
@@ -372,7 +460,9 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       ...findDateShift(rel, text),
       ...findPathPrefixGuard(rel, text),
       ...findCommandInjection(rel, text),
-      ...findSSRF(rel, text)
+      ...findSSRF(rel, text),
+      ...findExposedSecret(rel, text),
+      ...findOpenCors(rel, text)
     );
   }
   findings.push(...findMissingTables({ writes, creates }));

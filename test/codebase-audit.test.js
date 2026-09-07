@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard, findCommandInjection, findSSRF } from '../src/codebase-audit.js';
+, findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -163,4 +163,31 @@ test('findSSRF does not flag a request to a configured provider endpoint', () =>
 
 test('findSSRF leaves a static literal URL alone', () => {
   assert.equal(findSSRF('a.js', "fetch('https://api.stripe.com/v1/charges')").length, 0);
+});
+
+
+function jwtFor(role) {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  return `eyJhbGciOiJIUzI1NiJ9.${b64({ role, iss: 'supabase', ref: 'abcd' })}.${'x'.repeat(43)}`;
+}
+
+test('findExposedSecret flags a hardcoded Supabase service_role key (bypasses RLS)', () => {
+  assert.equal(findExposedSecret('client.ts', `createClient(url, "${jwtFor('service_role')}")`).length, 1);
+});
+
+test('findExposedSecret leaves an anon key alone — it is meant to be public', () => {
+  assert.equal(findExposedSecret('client.ts', `createClient(url, "${jwtFor('anon')}")`).length, 0);
+});
+
+test('findExposedSecret flags unambiguous provider keys but not env refs or placeholders', () => {
+  assert.equal(findExposedSecret('a.js', 'const s = "sk_live_abcdef0123456789ABCDEF"').length, 1);
+  assert.equal(findExposedSecret('a.js', 'accessKeyId: "AKIAIOSFODNN7EXAMPLE"').length, 1);
+  assert.equal(findExposedSecret('a.js', 'const k = process.env.STRIPE_SECRET').length, 0);
+  assert.equal(findExposedSecret('a.js', 'apiKey: "your-api-key-here"').length, 0);
+});
+
+test('findOpenCors flags credentialed wildcard/reflect, not a plain public wildcard', () => {
+  assert.equal(findOpenCors('s.js', 'cors({ origin: "*", credentials: true })').length, 1);
+  assert.equal(findOpenCors('s.js', 'cors({ origin: req.headers.origin, credentials: true })').length, 1);
+  assert.equal(findOpenCors('s.js', 'cors({ origin: "*" })').length, 0);
 });

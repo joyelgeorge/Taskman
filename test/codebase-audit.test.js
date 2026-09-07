@@ -205,3 +205,24 @@ test('findMissingRls flags a Supabase table with no RLS, not one that enables it
 test('findMissingRls says nothing when there are no supabase creates', () => {
   assert.equal(findMissingRls({ supabaseCreates: [], rlsEnabled: new Set() }).length, 0);
 });
+
+test('findMissingRls handles schema-qualified names and does not flag RLS-enabled tables (the menerio 95-FP bug)', async () => {
+  const { mkdtemp, writeFile, mkdir, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { auditCodebase } = await import('../src/codebase-audit.js');
+  const dir = await mkdtemp(join(tmpdir(), 'rls-'));
+  await mkdir(join(dir, 'supabase', 'migrations'), { recursive: true });
+  await writeFile(join(dir, 'supabase', 'migrations', '001.sql'),
+    'create table public.profiles (id uuid);\n' +
+    'alter table public.profiles enable row level security;\n' +           // enabled -> not flagged
+    'create table public.payments (id uuid);\n' +                          // public, no RLS -> flagged
+    'create schema internal;\ncreate table internal.cron_secret (id int);\n' + // non-public -> not flagged
+    '-- create table public.ghost (id uuid) for notes\n');                 // comment -> not flagged
+  try {
+    const r = await auditCodebase(dir);
+    const rls = (r.findings || r).filter((x) => x.kind === 'missing-rls').map((x) => x.evidence);
+    assert.equal(rls.length, 1, 'only public.payments should flag');
+    assert.match(rls[0], /payments/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});

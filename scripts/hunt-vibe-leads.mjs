@@ -22,13 +22,17 @@ import { auditCodebase } from '../src/codebase-audit.js';
 const run = promisify(execFile);
 const SELLABLE = new Set(['exposed-secret', 'missing-rls', 'open-cors', 'ssrf', 'command-injection', 'path-prefix-guard']);
 const CRITICAL = new Set(['exposed-secret', 'missing-rls']);
+// Injection/traversal classes in dev/build tooling have no remote attacker — the
+// same false positives the OSS sweep learned to drop. Keep them only in app code.
+const NEEDS_SERVER = new Set(['command-injection', 'path-prefix-guard', 'ssrf']);
+const TOOLING = /(^|\/)(scripts?|bin|tools?|test|tests|__tests__|examples?|dist)\/|\.(config|test|spec)\.|(^|\/)(vite|webpack|rollup|esbuild|next|svelte|astro)\.config/i;
 
 async function scanRepo(repo) {
   const dir = await mkdtemp(join(tmpdir(), 'lead-'));
   try {
     await run('git', ['clone', '--depth', '1', '--single-branch', `https://github.com/${repo}.git`, dir], { timeout: 60000 });
     const result = await auditCodebase(dir);
-    const findings = (result.findings || result).filter((f) => SELLABLE.has(f.kind));
+    const findings = (result.findings || result).filter((f) => SELLABLE.has(f.kind) && !(NEEDS_SERVER.has(f.kind) && TOOLING.test(f.file)));
     // Never keep a secret value, even the truncated evidence. Record class + location only.
     const safe = findings.map((f) => ({
       kind: f.kind,

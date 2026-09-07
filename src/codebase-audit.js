@@ -409,8 +409,10 @@ export function findOpenCors(file, text) {
  */
 export function findMissingRls({ supabaseCreates = [], rlsEnabled = new Set() }) {
   const findings = [];
+  const seen = new Set();
   for (const c of supabaseCreates) {
-    if (rlsEnabled.has(c.table)) continue;
+    if (rlsEnabled.has(c.table) || seen.has(c.table)) continue;
+    seen.add(c.table);
     findings.push({
       kind: 'missing-rls',
       file: c.file, line: c.line,
@@ -472,8 +474,25 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       // Supabase migrations: track table creates and which tables enable RLS, so
       // findMissingRls can flag the ones left world-accessible via the anon key.
       if (/supabase/i.test(rel)) {
-        for (const m of text.matchAll(TABLE_CREATE)) supabaseCreates.push({ table: m[1].toLowerCase(), file: rel, line: lineOf(text, m.index) });
-        for (const m of text.matchAll(/ALTER\s+TABLE\s+(?:ONLY\s+)?(?:public\.)?"?([a-z_][a-z0-9_]*)"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi)) rlsEnabled.add(m[1].toLowerCase());
+        // Supabase writes schema-qualified, sometimes-quoted names:
+        //   create table public.foo (...);  alter table public."foo" enable row level security;
+        // Capture the LAST identifier (the real table), stripping an optional
+        // schema prefix and quotes on BOTH sides, or every table looks unprotected
+        // because "public" (the schema) never matches the enabled table name.
+        // Strip line comments first and require a column list "(" after the name,
+        // so "-- create table for storing X" (a comment) is not read as a table.
+        const sql = text.replace(/--[^\n]*/g, '');
+        // Only the `public` schema is exposed through Supabase's REST API, so a
+        // table in another schema (e.g. internal.cron_secret, revoked from public)
+        // is not the vulnerability — capture the schema and skip non-public ones.
+        const SB_CREATE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?([a-z_][a-z0-9_]*)"?\.)?"?([a-z_][a-z0-9_]*)"?\s*\(/gi;
+        const SB_RLS = /ALTER\s+TABLE\s+(?:ONLY\s+)?(?:"?[a-z_][a-z0-9_]*"?\.)?"?([a-z_][a-z0-9_]*)"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
+        for (const m of sql.matchAll(SB_CREATE)) {
+          const schema = (m[1] || 'public').toLowerCase();
+          if (schema !== 'public') continue; // not API-exposed
+          supabaseCreates.push({ table: m[2].toLowerCase(), file: rel, line: lineOf(text, m.index) });
+        }
+        for (const m of sql.matchAll(SB_RLS)) rlsEnabled.add(m[1].toLowerCase());
       }
       continue;
     }
@@ -488,7 +507,15 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       if (table) writes.push({ table, file: rel, line: lineOf(text, m.index) });
     }
     divergences.push(...findStorageDivergence(rel, text));
-    findings.push(
+    // Drop any finding whose own line is a // line comment or a * block-comment
+    // continuation. Commented-out code (a disabled execSync, a sample fetch) is
+    // not a live vulnerability, and matching it was inflating the lead drone.
+    const srcLines = text.split('\n');
+    const notCommented = (f) => {
+      const ln = (srcLines[f.line - 1] || '').trimStart();
+      return !ln.startsWith('//') && !ln.startsWith('*');
+    };
+    findings.push(...[
       ...findSilentFallback(rel, text),
       ...findDateShift(rel, text),
       ...findPathPrefixGuard(rel, text),
@@ -496,7 +523,7 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       ...findSSRF(rel, text),
       ...findExposedSecret(rel, text),
       ...findOpenCors(rel, text)
-    );
+    ].filter(notCommented));
   }
   findings.push(...findMissingTables({ writes, creates }));
   findings.push(...findMissingRls({ supabaseCreates, rlsEnabled }));

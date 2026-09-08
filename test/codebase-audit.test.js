@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard, findCommandInjection, findSSRF } from '../src/codebase-audit.js';
+, findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors, findMissingRls } from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -163,4 +163,74 @@ test('findSSRF does not flag a request to a configured provider endpoint', () =>
 
 test('findSSRF leaves a static literal URL alone', () => {
   assert.equal(findSSRF('a.js', "fetch('https://api.stripe.com/v1/charges')").length, 0);
+});
+
+
+function jwtFor(role) {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  return `eyJhbGciOiJIUzI1NiJ9.${b64({ role, iss: 'supabase', ref: 'abcd' })}.${'x'.repeat(43)}`;
+}
+
+test('findExposedSecret flags a hardcoded Supabase service_role key (bypasses RLS)', () => {
+  assert.equal(findExposedSecret('client.ts', `createClient(url, "${jwtFor('service_role')}")`).length, 1);
+});
+
+test('findExposedSecret leaves an anon key alone — it is meant to be public', () => {
+  assert.equal(findExposedSecret('client.ts', `createClient(url, "${jwtFor('anon')}")`).length, 0);
+});
+
+test('findExposedSecret flags unambiguous provider keys but not env refs or placeholders', () => {
+  assert.equal(findExposedSecret('a.js', 'const s = "sk_live_abcdef0123456789ABCDEF"').length, 1);
+  assert.equal(findExposedSecret('a.js', 'accessKeyId: "AKIAIOSFODNN7EXAMPLE"').length, 1);
+  assert.equal(findExposedSecret('a.js', 'const k = process.env.STRIPE_SECRET').length, 0);
+  assert.equal(findExposedSecret('a.js', 'apiKey: "your-api-key-here"').length, 0);
+});
+
+test('findOpenCors flags credentialed wildcard/reflect, not a plain public wildcard', () => {
+  assert.equal(findOpenCors('s.js', 'cors({ origin: "*", credentials: true })').length, 1);
+  assert.equal(findOpenCors('s.js', 'cors({ origin: req.headers.origin, credentials: true })').length, 1);
+  assert.equal(findOpenCors('s.js', 'cors({ origin: "*" })').length, 0);
+});
+
+test('findMissingRls flags a Supabase table with no RLS, not one that enables it', () => {
+  const creates = [
+    { table: 'profiles', file: 'supabase/migrations/001.sql', line: 1 },
+    { table: 'payments', file: 'supabase/migrations/001.sql', line: 2 }
+  ];
+  const found = findMissingRls({ supabaseCreates: creates, rlsEnabled: new Set(['profiles']) });
+  assert.equal(found.length, 1);
+  assert.match(found[0].evidence, /payments/);
+});
+
+test('findMissingRls says nothing when there are no supabase creates', () => {
+  assert.equal(findMissingRls({ supabaseCreates: [], rlsEnabled: new Set() }).length, 0);
+});
+
+test('findMissingRls handles schema-qualified names and does not flag RLS-enabled tables (the menerio 95-FP bug)', async () => {
+  const { mkdtemp, writeFile, mkdir, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { auditCodebase } = await import('../src/codebase-audit.js');
+  const dir = await mkdtemp(join(tmpdir(), 'rls-'));
+  await mkdir(join(dir, 'supabase', 'migrations'), { recursive: true });
+  await writeFile(join(dir, 'supabase', 'migrations', '001.sql'),
+    'create table public.profiles (id uuid);\n' +
+    'alter table public.profiles enable row level security;\n' +           // enabled -> not flagged
+    'create table public.payments (id uuid);\n' +                          // public, no RLS -> flagged
+    'create schema internal;\ncreate table internal.cron_secret (id int);\n' + // non-public -> not flagged
+    '-- create table public.ghost (id uuid) for notes\n');                 // comment -> not flagged
+  try {
+    const r = await auditCodebase(dir);
+    const rls = (r.findings || r).filter((x) => x.kind === 'missing-rls').map((x) => x.evidence);
+    assert.equal(rls.length, 1, 'only public.payments should flag');
+    assert.match(rls[0], /payments/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('findExposedSecret ignores the Supabase local-dev demo key (public by design)', () => {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const demo = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', iss: 'supabase-demo' })}.${'x'.repeat(43)}`;
+  const real = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', ref: 'abcdefghij', iss: 'supabase' })}.${'x'.repeat(43)}`;
+  assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${demo}"`).length, 0, 'demo key is not a leak');
+  assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${real}"`).length, 1, 'a real project key still fires');
 });

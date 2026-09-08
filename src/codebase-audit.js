@@ -312,6 +312,127 @@ const TABLE_CREATE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]
  * Found here as outreach_drafts, which had been written to for months while a
  * catch quietly redirected every row into memory.
  */
+/**
+ * Secrets that ship to the client — the bug the vibe-coded market is actually
+ * paying to fix (Lovable/Cursor/Bolt + Supabase apps). Two things, both static:
+ *
+ *  1. A Supabase service_role key hardcoded anywhere. It is a JWT whose payload
+ *     says {"role":"service_role"} and it BYPASSES Row-Level Security — full
+ *     read/write to every table. We decode the JWT payload to confirm the role
+ *     rather than guessing from the variable name, so an anon key (safe to ship)
+ *     is not flagged and a service_role key hidden in an oddly-named const is.
+ *  2. A hardcoded provider secret with an unambiguous prefix (Stripe live, AWS,
+ *     GitHub, Slack, Google, OpenAI). These are real credentials, not config.
+ *
+ * process.env references and obvious placeholders are excluded — those are the
+ * safe patterns, and flagging them would be the noise that discredits the scan.
+ */
+export function findExposedSecret(file, text) {
+  const findings = [];
+  const isPlaceholder = (v) => /^(your|my|xxx+|todo|example|changeme|placeholder|\.\.\.|<|test|dummy|fake|sample)/i.test(v) || v.length < 12;
+
+  for (const m of text.matchAll(/eyJ[A-Za-z0-9_-]{10,}\.(eyJ[A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}/g)) {
+    let role = '', ref = '', iss = '';
+    try {
+      const json = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+      const p = JSON.parse(json);
+      role = p.role || ''; ref = p.ref || ''; iss = p.iss || '';
+    } catch { continue; }
+    if (role !== 'service_role') continue;
+    // The Supabase LOCAL-DEV demo key is public by design — it ships with every
+    // `supabase start`, is in Supabase's own docs, and points at 127.0.0.1. It
+    // has issuer "supabase-demo" and no project ref. A real production key always
+    // carries a project ref. Flagging the demo key is a false leak report.
+    if (iss === 'supabase-demo' || !ref) continue;
+    findings.push({
+      kind: 'exposed-secret',
+      file, line: lineOf(text, m.index),
+      evidence: m[0].slice(0, 24) + '… (JWT role=service_role)',
+      why: 'A Supabase service_role key is hardcoded here. It bypasses Row-Level Security entirely, '
+        + 'granting full read/write to every table. If this file is shipped to the browser or committed '
+        + 'to a public repo, anyone can read and modify the whole database. CWE-798 / CWE-312.',
+      confirm: 'Confirm the file reaches the client bundle or a public repo. Then the key alone is enough '
+        + 'to call the REST API with service_role privileges — rotate it immediately.'
+    });
+  }
+
+  const providerKey = /(sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{32,})/g;
+  for (const m of text.matchAll(providerKey)) {
+    const val = m[1];
+    if (isPlaceholder(val)) continue;
+    const around = text.slice(Math.max(0, m.index - 40), m.index);
+    if (/process\.env\.[A-Za-z0-9_]*\s*[:=]?\s*$/.test(around)) continue;
+    findings.push({
+      kind: 'exposed-secret',
+      file, line: lineOf(text, m.index),
+      evidence: val.slice(0, 10) + '…',
+      why: 'A live provider credential is hardcoded in source. If this ships to the client or a public repo '
+        + 'it can be used directly to spend money or access accounts. CWE-798 hardcoded credentials.',
+      confirm: 'Confirm the file is client-shipped or public, then rotate the key. Secrets belong in server-side env, never in source.'
+    });
+  }
+  return findings;
+}
+
+/**
+ * A CORS policy that reflects or wildcards the origin WHILE allowing
+ * credentials. `origin: '*'` with `credentials: true` is invalid per the fetch
+ * spec, so vibe-coded backends instead reflect the request origin back, which
+ * lets any site make authenticated cross-origin calls with the victim's cookies.
+ */
+export function findOpenCors(file, text) {
+  const findings = [];
+  const hasCreds = /credentials\s*:\s*true/.test(text);
+  const patterns = [
+    { re: /origin\s*:\s*['"]\*['"]/g, kind: 'wildcard' },
+    { re: /origin\s*:\s*(req|request)\.headers\.origin/g, kind: 'reflect' },
+    { re: /['"]Access-Control-Allow-Origin['"]\s*,\s*['"]\*['"]/g, kind: 'wildcard-header' }
+  ];
+  for (const { re, kind } of patterns) {
+    for (const m of text.matchAll(re)) {
+      if (kind !== 'reflect' && !hasCreds) continue;
+      findings.push({
+        kind: 'open-cors',
+        file, line: lineOf(text, m.index),
+        evidence: m[0].slice(0, 60),
+        why: 'CORS ' + (kind === 'reflect' ? 'reflects the request origin' : 'wildcards the origin')
+          + ' while credentials are allowed. Any website the victim visits can make authenticated '
+          + 'cross-origin requests carrying their cookies/session. CWE-942 permissive CORS.',
+        confirm: 'From another origin, make a credentialed request and check the response is readable. '
+          + 'Restrict the origin to an explicit allowlist.'
+      });
+    }
+  }
+  return findings;
+}
+
+/**
+ * Missing Row-Level Security on a Supabase table — the single most common
+ * vibe-coded catastrophe. A table created in supabase/migrations that never gets
+ * ENABLE ROW LEVEL SECURITY is readable and writable by anyone holding the anon
+ * key, which ships in the browser by design. Gated to the supabase/ path so a
+ * normal server-side Postgres schema (where no-RLS is fine) is not flagged.
+ */
+export function findMissingRls({ supabaseCreates = [], rlsEnabled = new Set() }) {
+  const findings = [];
+  const seen = new Set();
+  for (const c of supabaseCreates) {
+    if (rlsEnabled.has(c.table) || seen.has(c.table)) continue;
+    seen.add(c.table);
+    findings.push({
+      kind: 'missing-rls',
+      file: c.file, line: c.line,
+      evidence: `create table ${c.table} (no ENABLE ROW LEVEL SECURITY)`,
+      why: `Supabase table "${c.table}" is created without Row-Level Security. With RLS off, anyone `
+        + 'holding the anon key — which ships in the client bundle by design — can read and write every '
+        + 'row via the public REST API. This is the most common vibe-coded data breach. CWE-284 broken access control.',
+      confirm: `Call the REST endpoint /rest/v1/${c.table} with only the anon key. If rows come back (or a `
+        + 'write succeeds), RLS is off. Fix: ALTER TABLE ' + c.table + ' ENABLE ROW LEVEL SECURITY plus explicit policies.'
+    });
+  }
+  return findings;
+}
+
 export function findMissingTables({ writes, creates }) {
   const created = new Set(creates.map(c => c.table));
   const seen = new Set();
@@ -342,6 +463,8 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
   const divergences = [];
   const writes = [];
   const creates = [];
+  const supabaseCreates = [];
+  const rlsEnabled = new Set();
 
   for (const file of files) {
     let text = '';
@@ -354,6 +477,29 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
 
     if (file.endsWith('.sql')) {
       for (const m of text.matchAll(TABLE_CREATE)) creates.push({ table: m[1].toLowerCase() });
+      // Supabase migrations: track table creates and which tables enable RLS, so
+      // findMissingRls can flag the ones left world-accessible via the anon key.
+      if (/supabase/i.test(rel)) {
+        // Supabase writes schema-qualified, sometimes-quoted names:
+        //   create table public.foo (...);  alter table public."foo" enable row level security;
+        // Capture the LAST identifier (the real table), stripping an optional
+        // schema prefix and quotes on BOTH sides, or every table looks unprotected
+        // because "public" (the schema) never matches the enabled table name.
+        // Strip line comments first and require a column list "(" after the name,
+        // so "-- create table for storing X" (a comment) is not read as a table.
+        const sql = text.replace(/--[^\n]*/g, '');
+        // Only the `public` schema is exposed through Supabase's REST API, so a
+        // table in another schema (e.g. internal.cron_secret, revoked from public)
+        // is not the vulnerability — capture the schema and skip non-public ones.
+        const SB_CREATE = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?([a-z_][a-z0-9_]*)"?\.)?"?([a-z_][a-z0-9_]*)"?\s*\(/gi;
+        const SB_RLS = /ALTER\s+TABLE\s+(?:ONLY\s+)?(?:"?[a-z_][a-z0-9_]*"?\.)?"?([a-z_][a-z0-9_]*)"?\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
+        for (const m of sql.matchAll(SB_CREATE)) {
+          const schema = (m[1] || 'public').toLowerCase();
+          if (schema !== 'public') continue; // not API-exposed
+          supabaseCreates.push({ table: m[2].toLowerCase(), file: rel, line: lineOf(text, m.index) });
+        }
+        for (const m of sql.matchAll(SB_RLS)) rlsEnabled.add(m[1].toLowerCase());
+      }
       continue;
     }
     if (/\.(test|spec)\.[jt]sx?$/.test(file)) continue; // tests are not the product
@@ -367,15 +513,26 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       if (table) writes.push({ table, file: rel, line: lineOf(text, m.index) });
     }
     divergences.push(...findStorageDivergence(rel, text));
-    findings.push(
+    // Drop any finding whose own line is a // line comment or a * block-comment
+    // continuation. Commented-out code (a disabled execSync, a sample fetch) is
+    // not a live vulnerability, and matching it was inflating the lead drone.
+    const srcLines = text.split('\n');
+    const notCommented = (f) => {
+      const ln = (srcLines[f.line - 1] || '').trimStart();
+      return !ln.startsWith('//') && !ln.startsWith('*');
+    };
+    findings.push(...[
       ...findSilentFallback(rel, text),
       ...findDateShift(rel, text),
       ...findPathPrefixGuard(rel, text),
       ...findCommandInjection(rel, text),
-      ...findSSRF(rel, text)
-    );
+      ...findSSRF(rel, text),
+      ...findExposedSecret(rel, text),
+      ...findOpenCors(rel, text)
+    ].filter(notCommented));
   }
   findings.push(...findMissingTables({ writes, creates }));
+  findings.push(...findMissingRls({ supabaseCreates, rlsEnabled }));
 
   // One finding, not one per branch. A hundred and thirty-five of these is not a
   // list of defects, it is a description of the architecture — and reporting it

@@ -2,6 +2,35 @@
 
 Taskman is an autonomous revenue, telemetry, and execution engine designed with strict economic verification, human gating, and deterministic safety rules.
 
+## ⚠ CRITICAL STRATEGIC FINDING (2026-09-08) — read first
+
+**The gap that kept revenue at $0: Taskman built enormous SUPPLY (detection,
+drones, scanner, scoring) and never validated DEMAND — a person demonstrably
+paying — before building. Every lane died at the payment step. Fix the flow:
+start from visible, already-paying demand, then point proven capability at it.**
+
+Consequences that now govern revenue work:
+
+- **The validated paying market is securing "vibe-coded" apps** (Lovable / Cursor
+  / Bolt / v0 / Replit on Supabase/Firebase). Proven paying: scanners at $5–29/mo,
+  Fiverr fix gigs $80–125, dedicated shops (humansfix.ai). 98% of scanned
+  vibe-coded apps had a flaw. This is CASH; OSS bounty disclosure is only a
+  CREDENTIAL (see below).
+- **The vuln class that matters is NOT server-side injection.** It is exposed
+  Supabase `service_role` keys, missing Row-Level Security, secrets in the client
+  bundle, open CORS, no-auth admin routes (CWE-284/200/312/942/798). Detectors
+  for this class: `findExposedSecret`, `findOpenCors` (PR #218), with missing-RLS
+  and no-auth-route to follow.
+- **OSS vuln bounties do not pay.** Confirmed against data: npm CWE-22/78/918
+  disclosure routes through GitHub/NVD, not paid channels; budibase and n8n (the
+  heaviest offenders) run no paid program. A confirmed OSS finding (e.g.
+  project-golem, CWE-22) is a reputation credential and scan-service proof, not
+  revenue. Do not chase OSS bounties for cash.
+- **Wedge:** the scan-only niche is crowded. Compete on FIX + verified proof at
+  the Fiverr-proven $80–125, not on being another free scanner.
+- **Active plan:** demand-first tasks #212–#217. Revenue work must not deviate
+  from the vibe-coded-app-security direction without a new demand-validation pass.
+
 ## Core Rules for Claude Code Agents
 
 1. **Verify Before Asserting (`taskman-verify`)**:

@@ -1,0 +1,9 @@
+{
+  "name": "pdf-to-sheet",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Turn a messy PDF (invoice, statement, scanned doc) into a clean spreadsheet. Fulfilment engine for the PDF-extraction gig.",
+  "bin": { "pdf-to-sheet": "cli.mjs" },
+  "scripts": { "test": "node --test" }
+}

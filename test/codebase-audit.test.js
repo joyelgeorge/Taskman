@@ -234,3 +234,14 @@ test('findExposedSecret ignores the Supabase local-dev demo key (public by desig
   assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${demo}"`).length, 0, 'demo key is not a leak');
   assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${real}"`).length, 1, 'a real project key still fires');
 });
+
+test('findSSRF ignores a config-URL template with a request body read nearby (Wegent FP)', () => {
+  const wegent = [
+    'const backendUrl = getInternalApiUrl()',
+    'const r = await fetch(`${backendUrl}/api/chat/cancel`, { method: "POST" })',
+    'const body = await request.json()'
+  ].join('\n');
+  assert.equal(findSSRF('route.ts', wegent).length, 0);
+  // and a genuinely request-derived destination still fires
+  assert.equal(findSSRF('a.js', 'axios.get(`${req.query.url}/data`)').length, 1);
+});

@@ -150,8 +150,27 @@ export function findSSRF(file, text) {
     // on a first run. The tell is a request source (req.query/body/params) close
     // to the call; INPUT_SHAPED only raises confidence, it does not qualify.
     const window = text.slice(Math.max(0, m.index - 240), m.index + 240);
-    const nearRequest = REQUEST_SOURCE.test(window);
-    if (!nearRequest) continue;
+    // Where the request data actually flows matters. A Next.js proxy route reads
+    // req.json() for the POST BODY and fetches a CONFIG url — request data is
+    // nearby, but the destination is not attacker-chosen (found live in Wegent).
+    // So for a template-literal URL the request signal must come from inside the
+    // template's ${...}; a bare-variable URL keeps the proximity rule, because
+    // `const url = req.body.url` above a fetch(url) is a real pattern.
+    const afterParen = arg.slice(arg.indexOf('(') + 1).trimStart();
+    if (afterParen.startsWith('`')) {
+      const close = afterParen.indexOf('`', 1);
+      const tpl = afterParen.slice(1, close === -1 ? undefined : close);
+      const interps = [...tpl.matchAll(/\$\{([^}]*)\}/g)].map((x) => x[1]);
+      const fromRequest = interps.some((expr) => {
+        if (REQUEST_SOURCE.test(expr)) return true;
+        const id = expr.trim().match(/^[A-Za-z_$][\w$]*$/)?.[0];
+        if (!id) return false;
+        return new RegExp('\\b' + id + '\\s*=\\s*[^;\\n]*(req|request|ctx)\\.').test(window);
+      });
+      if (!fromRequest) continue;
+    } else if (!REQUEST_SOURCE.test(window)) {
+      continue;
+    }
     const inputNamed = INPUT_SHAPED.test(arg);
     findings.push({
       kind: 'ssrf',

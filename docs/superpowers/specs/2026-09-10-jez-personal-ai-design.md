@@ -41,6 +41,7 @@ such call accumulate into an asset.
 | **Public URL, personal use** | Public endpoint, single-user allowlist auth. |
 | **Encrypted at DB and table level** | Application-level AES-256-GCM; the DB provider cannot read content. |
 | **Own private repo** | Separate blast radius from Taskman. |
+| **Full scope recall every call** | A memory hierarchy with an always-injected Core + Scope block (§8). |
 
 ## 3. Rejected: subscriptions as a backend
 
@@ -114,6 +115,7 @@ prompts, responses, or embeddings. The gateway is the single trust boundary.
 | 4 | `jez-brain` — inference via free-tier fallback chain | Gemini / Groq / Cerebras / OpenRouter / GitHub Models | $0 |
 | 5 | `jez-trainer` — periodic LoRA job | Kaggle notebooks (~30 GPU hrs/week) | $0 |
 | 6 | `jez-keys` — master key | Render secrets | $0 |
+| 7 | `jez-distiller` — batched memory extraction | free tier, separate provider bucket | $0 |
 
 **Total: $0/month.**
 
@@ -196,6 +198,11 @@ what Jez saves once it serves calls itself.
 | `exchange_id` | uuid fk | no |
 | `text` | bytea | **yes** |
 | `embedding` | bytea (float32 array) | **yes** |
+| `tier` | text — core/scope/episodic/semantic | no |
+| `valid_from` | timestamptz | no |
+| `supersedes` | uuid null | no |
+| `superseded_by` | uuid null | no |
+| `provenance` | text | no |
 | `created_at` | timestamptz | no |
 | `key_version` | int | no |
 
@@ -235,6 +242,8 @@ receive → retrieve → route → backend
    responses breaks tool-use and streaming parsers in ways that are expensive to
    diagnose.
 3. **Capture never blocks the response.** It runs after the stream closes.
+4. **Every AI call is captured.** Capture scope is AI calls only; tool, file,
+   and Taskman data events are explicitly out of scope for now.
 
 ### Fallback router (Layer 1)
 
@@ -245,16 +254,78 @@ call. Requests carrying the owner's own API keys bypass the chain.
 Provider health and remaining quota are tracked per provider so the chain
 degrades predictably rather than randomly.
 
-### Retrieval (Layer 2)
+### Memory (Layer 2)
 
-Embed the latest user turn, cosine-search the decrypted corpus, inject the top-k
-prior exchanges as a system-level `Relevant prior context` block.
+**Requirement:** every AI interaction is monitored and folded back into memory,
+so that Jez holds the whole scope on every call rather than starting cold.
 
-**Retrieval and training are different mechanisms and must not be conflated.**
-Fine-tuning teaches style, format, and behaviour; it does not reliably install
-facts and degrades the base model if pushed to try. Facts live in retrieval,
-which updates instantly on every call. This split is the single most important
-correctness decision in the design.
+**Constraint that shapes it:** "whole scope" cannot mean "send everything."
+A corpus of 50k exchanges is tens of millions of tokens; free-tier providers
+have the smallest context windows and the tightest limits. It would also not
+help if it were possible — long contexts lose their middle, and standing facts
+get buried under irrelevant ones. Scope is achieved by **distillation**, not
+volume.
+
+Flat top-k similarity is therefore insufficient on its own. It finds exchanges
+*resembling* the question, and so systematically misses standing facts that are
+always relevant and never resemble anything.
+
+#### Hierarchy
+
+| Tier | Holds | Injected |
+|---|---|---|
+| **Core** | Identity, active projects, standing preferences, hard constraints | **Always** |
+| **Scope** | Live state: open threads, recent decisions, current focus | **Always** |
+| **Episodic** | Per-session summaries | On relevance |
+| **Semantic** | Extracted facts, entities, relationships | On relevance |
+| **Archival** | Full verbatim corpus | Retrieval only |
+
+Core + Scope are what produce continuity: always present, so Jez never restarts
+cold and never re-asks what it was told last week. The rest is fetched on demand.
+
+#### Token budget
+
+Injected memory becomes input tokens on the outbound call. Data that tunnelled
+through Jez is free to *hold* — no second call is needed to fetch it — but it is
+not free to *send*. On free tiers the binding constraint is tokens-per-minute
+and requests-per-day, not money.
+
+- **Core + Scope: ~800–1500 tokens, adaptive, hard-capped**, sized to the
+  target model's window and the question.
+- Retrieved tiers are added only up to a per-request ceiling.
+- The budget is a rate-limit budget. Exceeding it costs no money and does not
+  fail loudly; it throttles, which is worse.
+
+#### Distiller
+
+After an exchange closes, `jez-distiller` extracts durable facts, updates Scope,
+and writes an episodic summary.
+
+- **Batched and idle-triggered**, never per-call, and never on the response path.
+- Runs on a **different free provider than the interactive chain**, so
+  background memory work does not consume the quota being actively used.
+- Embeddings use a **separate free endpoint** with its own quota, so retrieval
+  does not compete with inference either.
+
+#### Supersession
+
+Memory entries are **superseded, not appended**. Each carries validity,
+provenance, and a `supersedes` link. On conflict the newer fact wins and the
+older is retained as history, not as truth.
+
+This is not a refinement. Taskman's own `CLAUDE.md` records that the audit lane
+moved from a flat $20 fee to 20% contingency, with the old PayPal `/20USD` link
+explicitly marked as a leftover not to use. An append-only memory would hand a
+future model both prices with equal confidence. Without supersession Jez becomes
+less reliable the longer it runs, which inverts the purpose of the system.
+
+#### Separation of mechanisms
+
+**Retrieval and training are different and must not be conflated.** Fine-tuning
+teaches style, format, and behaviour; it does not reliably install facts, and
+degrades the base model when pushed to try. Facts live in memory, which updates
+continuously. Style lives in the adapter, trained periodically. This split is
+the single most important correctness decision in the design.
 
 ### Redaction
 
@@ -318,7 +389,7 @@ Each layer is independently useful and depends only on the one before it.
 | Layer | Delivers | Why this order |
 |---|---|---|
 | **1. Capture** | Gateway, wire compat, auth, crypto, DB, fallback router | Nothing works without a corpus; the router is required for free tiers to function |
-| **2. Retrieve** | Embeddings, encrypted in-RAM search, context injection | Jez becomes personal |
+| **2. Memory** | Tiered memory, distiller, supersession, encrypted in-RAM search, Core+Scope injection | Jez holds the whole scope on every call |
 | **3. UI** | Ask, Corpus, Spend | Inspect and correct what was captured |
 | **4. Route** | Quality-aware routing to Jez's own model | Measure what Jez can already do |
 | **5. Train** | LoRA, evals, adapter versioning | Requires accumulated data |

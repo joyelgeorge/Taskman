@@ -119,6 +119,33 @@ prompts, responses, or embeddings. The gateway is the single trust boundary.
 
 **Total: $0/month.**
 
+### Verified free-tier limits
+
+_Checked 2026-09-10. Free tiers move; re-verify before build and quarterly after._
+
+| Service | Verified limit | Consequence for Jez |
+|---|---|---|
+| **Gemini** (AI Studio) | Flash-Lite 15 RPM / 1,000 RPD; Flash 10 RPM / 250 RPD; **250k TPM shared**; Pro removed from free tier Apr 2026 | Highest token headroom → **primary for memory-heavy calls** |
+| **Groq** | 30 RPM, **6k TPM**, 14,400 RPD (no card) | TPM is the binding limit → **short calls only** |
+| **GitHub Models** | 10 RPM / 50 RPD high-tier, 150 RPD mini, **8k in / 4k out per request** | Hard context cap → **fallback, small contexts** |
+| **OpenRouter** | 20 RPM; **50 RPD unfunded** (1,000 RPD after $10 lifetime) | Too thin to be primary → **last resort** |
+| **Render** | Free web service, 750 instance-hrs/mo per workspace, spin-down at 15 min, ~1 min wake. **Free Postgres expires after 30 days** | Gateway host. **Never use Render Postgres** |
+| **Neon** | **0.5 GB storage**, 100 CU-hrs/mo, scale-to-zero at 5 min | Storage is the real corpus ceiling (§6) |
+| **Kaggle** | ~30 GPU-hrs/week, T4/P100, 12-hr sessions | Sufficient for LoRA runs |
+| **Firebase Hosting** | Free tier | UI |
+
+**Two traps found during verification:**
+
+1. **Enabling billing on a Google Cloud project destroys its free tier.** Jez's
+   Gemini project must stay billing-disabled, permanently.
+2. **Render's free Postgres self-destructs at 30 days.** It is not a database,
+   it is a demo. Neon holds the corpus.
+
+**Rate limits are not uniform, so the router must be budget-aware.** A 1,500-token
+memory block against Groq's 6k TPM allows roughly four calls per minute. The same
+block against Gemini's 250k TPM is free of concern. Provider choice is therefore a
+function of the request's token size, not just availability — see §8.
+
 ### Costs of "free", honestly
 
 1. **Cold starts.** Scale-to-zero adds ~30–60s to the first call after idle,
@@ -158,10 +185,20 @@ Encrypted embeddings rule out pgvector. The gateway loads the corpus at boot,
 decrypts once into RAM, and searches in-process.
 
 - ~50k memories ≈ 150MB RAM, single-digit-ms cosine search. Acceptable.
-- ~200k memories exceeds a free instance. At that point the search backend is
-  replaced (encrypted local index, or a paid instance). **This ceiling is
-  accepted, not solved, because reaching it is a year away and solving it now
-  would be guesswork.**
+
+**Correction from verification: RAM is not the binding ceiling — Neon's free
+0.5 GB of storage is.** At roughly 4 KB of encrypted text plus ~3 KB for a
+768-dimension float32 embedding, one exchange costs ~7 KB, so 0.5 GB is exhausted
+near **70k exchanges** — well before the RAM limit is approached.
+
+Three consequences, decided now rather than discovered at the wall:
+
+1. Store embeddings as **raw `bytea`**, never base64, which would add ~33%.
+2. Use **truncated (Matryoshka) embeddings at 256 dimensions** where the model
+   supports it, cutting embedding storage roughly threefold at minor recall cost.
+3. Adopt a **retention policy at Layer 2**: archival exchanges age out to cold
+   storage once distilled, since their extracted memory is what carries forward.
+   Distillation is what makes deletion safe.
 
 ## 7. Data model
 
@@ -250,6 +287,13 @@ receive → retrieve → route → backend
 An ordered provider chain with per-provider token buckets. On rate-limit or
 failure, Jez advances to the next provider and records which one served the
 call. Requests carrying the owner's own API keys bypass the chain.
+
+**Selection is budget-aware, not merely ordered.** Verification showed the free
+tiers differ by two orders of magnitude in tokens-per-minute (Groq 6k, Gemini
+250k) and that GitHub Models refuses anything over 8k input tokens outright. The
+router therefore estimates the request's token size — prompt plus injected
+memory — and eliminates providers that cannot serve it *before* choosing. Sending
+a memory-rich request to Groq is a guaranteed 429, not a fallback.
 
 Provider health and remaining quota are tracked per provider so the chain
 degrades predictably rather than randomly.
@@ -397,9 +441,12 @@ Each layer is independently useful and depends only on the one before it.
 
 ## 14. Open questions
 
-1. **Free-tier limits must be verified before Layer 1.** Availability and quotas
-   for Gemini, Groq, Cerebras, OpenRouter, GitHub Models, Render, Neon, and
-   Kaggle change; the design assumes them but has not confirmed them.
+1. ~~Free-tier limits must be verified.~~ **Resolved 2026-09-10** — see §5.
+   All eight services confirmed viable. Four differed materially from the
+   assumption and the design was corrected: Neon storage is the true corpus
+   ceiling, Render's free Postgres expires, OpenRouter is too thin to be
+   primary, and per-provider TPM spread forces a budget-aware router.
+   Re-verify quarterly.
 2. **Which tools will honour `ANTHROPIC_BASE_URL`?** Subscription-authenticated
    clients may refuse a third-party base URL. If most do, the corpus grows only
    from API-key traffic and Taskman's own calls, which materially weakens the
@@ -417,3 +464,57 @@ Each layer is independently useful and depends only on the one before it.
   the owner's own work.
 - **Throughout:** $0/month, and no vendor whose loss would cost more than an
   afternoon.
+
+## 16. Capability roadmap
+
+The six build layers (§13) deliver the *system*. This roadmap describes the
+**capabilities** that system is a path toward, and — more importantly — the gate
+each one has to pass before it is worth attempting.
+
+Every gate is a measurement, not a date. A capability is attempted when its
+predecessor produces evidence, not when it seems exciting.
+
+| Stage | Capability | Requires | Gate |
+|---|---|---|---|
+| **C0** | Captured intelligence — every call recorded, encrypted, attributable | Layer 1 | Calls route through Jez without added failure |
+| **C1** | Continuous recall — Jez holds the whole scope across tools and sessions | Layer 2 | Answers that depend on facts the base model could not know |
+| **C2** | Transparent self — corpus visible, correctable, deletable | Layer 3 | Owner can find and fix a wrong memory in under a minute |
+| **C3** | Economic routing — cheapest adequate model per request | Layer 4 | Measured share of calls served without a frontier vendor |
+| **C4** | Acquired voice — a LoRA that answers in the owner's idiom | Layer 5 | Adapter beats base model on a held-out set of the owner's work |
+| **C5** | Self-knowledge — Jez reports which domains it is weak in | Layer 6 | Gap report predicts real eval failures |
+| **C6** | Tool use — Jez calls tools, not just text | C1 + C3 | Multi-step task completed unaided end to end |
+| **C7** | Taskman operator — reads ledger and lanes, proposes next action | C6 | A proposal a human accepts without editing |
+| **C8** | Distillation — frontier answers become adapter training data | C4 + C5 | Adapter closes a measured gap on a named domain |
+| **C9** | Owned inference — the brain runs on infrastructure the owner controls | C8 + demand | Quality within tolerance of the free tiers it replaces |
+
+### The specialization, restated
+
+The original objective was an AI specialized in making money. That
+specialization does **not** come from prompting a model to be
+business-minded — it comes from **C7 and C8 together**: an AI whose
+training data is the owner's own revenue work, wired to the ledger that
+records whether the work paid.
+
+Taskman already holds settlements, lanes, bounty triage, and outreach.
+Jez's corpus adds the reasoning that produced them. An adapter trained on
+both is specialized in a way no general model is, because no general model
+has the data.
+
+Per `taskman-verify`: **that specialization is a hypothesis until an eval
+shows it, and revenue is zero until `settlements` has rows.** This roadmap
+describes a path, not an outcome.
+
+### What would end this project honestly
+
+Written down now, while it is cheap to be objective:
+
+- **Open Question 2 fails** — no tool will route through Jez, so the corpus
+  grows too slowly for C4 to ever have training data.
+- **C4 never passes its gate** — adapters keep losing to the base model,
+  meaning the corpus is too small or too noisy to teach anything.
+- **Free tiers close** — the $0 constraint breaks, and the project must be
+  re-justified against a real monthly cost.
+
+Reaching C3 alone would still be worth the build: a private, encrypted,
+vendor-portable record of every AI interaction, with a router that keeps it
+free. Everything past C3 is upside.

@@ -91,10 +91,15 @@ export const DEFAULT_STREAMS = [
       + 'and submits PR. Maintainer merges, and Algora releases payout via Stripe Express (KYC required) in 1-3 days.',
     requires: 'Stripe Express account with KYC on Algora platform, and human-in-the-loop review/submission (#194). '
       + 'Note: PayPal does NOT unlock Algora; each bounty platform requires its own payout rail and identity verification.',
-    nextAction: 'Complete Algora GitHub OAuth and Stripe Express KYC setup; run bounty triage (#195) to produce reviewable candidates.',
+    nextAction: 'Do NOT complete the Stripe Express KYC for this. The territory registry '
+      + 'killed algora-bounties because the TERMS prohibit robotic/automated access, and it '
+      + 'records that the rail itself "is fine almost everywhere" - so the KYC addresses the '
+      + 'one thing that was never the blocker. Reopen only if the terms change.',
     unblockedBy: 'human',
-    state: 'BLOCKED',
-    stateReason: 'Awaiting human-owned Algora Stripe Express setup with KYC. Payouts clear 1-3 days post-merge.',
+    state: 'DISPROVEN',
+    stateReason: 'Was BLOCKED on Stripe Express KYC, which contradicted the registry: '
+      + 'algora-bounties is KILLED on terms, not on the payment rail. Doing the KYC buys '
+      + 'entry to a room already measured as closed. Aligned to the registry 2026-09-11.',
     testCostHours: 2,
     proofCents: 5000
   },

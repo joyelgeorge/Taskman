@@ -16,8 +16,10 @@ export const VERDICT = {
 };
 
 export const EXPLORED_TERRITORIES = [
-  { key: 'github-bounty-hunt', verdict: VERDICT.ACTIVE,
-    note: 'Qualified GitHub bounties. Picked clean: 403 listings -> 0 winnable once assigned/contested/hardware-gated filters apply.' },
+  { key: 'github-bounty-hunt', verdict: VERDICT.KILLED,
+    note: 'Qualified GitHub bounties. Picked clean: 403 listings -> 0 winnable once assigned/contested/hardware-gated filters apply. '
+      + 'Held ACTIVE until 2026-09-11 while its own note recorded a measurement of zero - the verdict and the evidence disagreed, and the '
+      + 'evidence is the part that was checked. 403 to 0 is a result, not an absence of data.' },
   { key: 'oss-vuln-sweep', verdict: VERDICT.ACTIVE,
     note: 'Static scan of in-scope Node.js OSS for CWE-22/78/918, PoC-gated. Live drone. No payable bug yet in hardened flagships.' },
   { key: 'audit-tool-contingency', verdict: VERDICT.ACTIVE,

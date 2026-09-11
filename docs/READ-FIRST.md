@@ -101,3 +101,6 @@ same commit as whatever made it wrong; a read-first document that has drifted
 is worse than none, because it is trusted.
 
 `settlements` is empty. Everything else is commentary.
+
+For how a week of 137 commits and 26,059 lines produced none of it, see
+`docs/WHY-NO-MONEY-YET.md`.

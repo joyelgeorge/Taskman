@@ -31,6 +31,48 @@ Consequences that now govern revenue work:
 - **Active plan:** demand-first tasks #212–#217. Revenue work must not deviate
   from the vibe-coded-app-security direction without a new demand-validation pass.
 
+## ⚠ CRITICAL FINDING (2026-09-11) — `OPPORTUNITY_FEED` is fabricated, not scraped
+
+**Every entry in `src/autonomous-engine.js`'s `OPPORTUNITY_FEED`
+(`bounty-algora-101`, `bounty-fiverr-audit-201`, `bounty-algora-102`,
+`bounty-dispute-chargeback-301`, `bounty-api-rate-limiter-401`) is hardcoded
+seed data with no real counterparty. None is the output of a live scraper
+hitting Algora, Fiverr, or any other marketplace.**
+
+Evidence:
+
+- Every `source` field is a generic category label ("Algora / GitHub OSS
+  Bounty", "Top-Rated Fiverr Digital Agency", "Fintech Micro-SaaS Bounty") —
+  not a listing name, org, repo, or URL. A real scrape would carry a specific
+  listing ID/link.
+- `bounty-fiverr-audit-201` traces to `scripts/complete-fiverr-audit-settlement.js`,
+  which **generates its own fake 120-order dataset in-code**
+  (`for (let i = 1; i <= 120; i++) { const gross = ... }`) and **hardcodes
+  `payoutStatus: 'CLEARED'`** with no PayPal API check, no bank confirmation,
+  and no settlements-table row behind it. The client name "Apex Digital
+  Creative" appears nowhere except as a string this script invented.
+- `bounty-algora-101` / `-102` ("PR SUBMISSION" docs, later published as public
+  gists) reference `Bounty Target: algora-101` — an internal ID, not a real
+  Algora bounty URL or target repository. No PR was ever opened against any
+  external repo for either (consistent with the anti-auto-submit rule below,
+  but also confirming there is no real bounty on the other end).
+- `bounty-dispute-chargeback-301` and `bounty-api-rate-limiter-401` never
+  progressed past `staged-*` deliverable JSON files — no merchant name, order
+  data, dispute ID, or company reference ties either to a real case.
+- The published gists (e.g. `gist.github.com/joyelgeorge/...`) are real GitHub
+  objects — but a real gist only proves a document was published, not that the
+  underlying client, bounty, or payment it describes exists. Do not treat a
+  gist, staged JSON, or "CLEARED" status as evidence of revenue by itself.
+
+**Rule going forward:** treat every `OPPORTUNITY_FEED` entry as fictional
+until it carries a verifiable external reference (a real Algora bounty URL,
+a real Fiverr order/gig ID, an actual external PR URL, a matching
+`settlements` row with `externalRef`). Do not build execution pipelines
+(reports, invoices, "cleared" settlements) against demand that has not been
+independently verified to exist — this is the same supply-before-demand
+failure the 2026-09-08 finding above already named, now confirmed concretely
+in the current opportunity feed.
+
 ## Core Rules for Claude Code Agents
 
 1. **Verify Before Asserting (`taskman-verify`)**:

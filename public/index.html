@@ -121,6 +121,76 @@
       </div>
     </section>
 
+    <!-- Pipeline Queues & Processed Data Explorer -->
+    <section class="card pipeline-explorer-card" id="pipelineExplorerSection">
+      <div class="row">
+        <h2 class="row-heading">📊 Processed Data &amp; Pipeline Queue Explorer</h2>
+        <button id="refreshPipelineDataBtn" class="btn-compact">Refresh Data</button>
+      </div>
+      <p class="muted">Live view of candidates flowing through Discovery → 5-Gate Triage → Execution Trials → Settlement Ledger.</p>
+
+      <!-- Tab Buttons -->
+      <div class="explorer-tabs-row">
+        <button class="explorer-tab-btn active-tab" data-tab="candidatesTab">📥 Discovered Candidates (<span id="countCandidatesTab">0</span>)</button>
+        <button class="explorer-tab-btn" data-tab="validationTab">⚖️ 5-Gate Triage &amp; Validation (<span id="countValidationTab">0</span>)</button>
+        <button class="explorer-tab-btn" data-tab="outcomesTab">🚀 Staged Deliverables &amp; Outcomes (<span id="countOutcomesTab">0</span>)</button>
+        <button class="explorer-tab-btn" data-tab="economicsTab">💰 Settlement Ledger &amp; Economics</button>
+      </div>
+
+      <!-- Tab Contents -->
+      <div id="candidatesTab" class="explorer-tab-content">
+        <div id="candidatesListContent" class="explorer-items-list">Loading candidates…</div>
+      </div>
+
+      <div id="validationTab" class="explorer-tab-content" hidden>
+        <div id="validationListContent" class="explorer-items-list">Loading triage records…</div>
+      </div>
+
+      <div id="outcomesTab" class="explorer-tab-content" hidden>
+        <div id="outcomesListContent" class="explorer-items-list">Loading staged outcomes…</div>
+      </div>
+
+      <div id="economicsTab" class="explorer-tab-content" hidden>
+        <div id="economicsListContent" class="explorer-items-list">Loading economics ledger…</div>
+      </div>
+    </section>
+
+    <!-- Deliverable Inspector Modal -->
+    <div id="deliverableModal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <div class="row modal-header">
+          <h3 id="modalTitle" class="row-heading">Deliverable Inspector</h3>
+          <button id="closeModalBtn" class="btn-compact">✕ Close</button>
+        </div>
+        <div id="modalBody" class="modal-body">
+          <div class="modal-field">
+            <span class="muted">Candidate:</span>
+            <strong id="modalCandidateTitle">-</strong>
+          </div>
+          <div class="row modal-badges-row">
+            <span id="modalRewardBadge" class="pill state-pill-running">$0.00</span>
+            <span id="modalTypeBadge" class="pill">Type</span>
+            <span id="modalStatusBadge" class="pill state-pill-running">TESTED &amp; READY</span>
+          </div>
+          <div class="modal-field">
+            <span class="muted">Acceptance Criteria:</span>
+            <div id="modalCriteria" class="modal-criteria-box"></div>
+          </div>
+          <div class="modal-field">
+            <span class="muted">Instructions:</span>
+            <div id="modalInstructions" class="modal-instructions-box"></div>
+          </div>
+          <div class="modal-field">
+            <div class="row">
+              <span class="muted">Full JSON Payload:</span>
+              <button id="copyModalJsonBtn" class="btn-compact">Copy Payload</button>
+            </div>
+            <pre id="modalJsonContent" class="modal-json-pre"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- My AI Engine & Money Studio -->
     <section class="card ai-studio" id="aiStudioSection">
       <div class="row">

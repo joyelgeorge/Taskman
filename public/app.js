@@ -761,8 +761,9 @@ function renderStreamEntry(event) {
 }
 
 function renderStagedItem(item) {
+  const jsonStr = esc(JSON.stringify(item.payload || item));
   return `
-    <div class="staged-item">
+    <div class="staged-item" data-payload='${jsonStr}'>
       <div class="staged-item-title">${esc(item.title || item.id)}</div>
       <div class="staged-item-meta">
         <span>💰 Reward: $${esc(item.rewardDollars || 0)}</span>
@@ -772,12 +773,198 @@ function renderStagedItem(item) {
   `;
 }
 
+/* ==================== PIPELINE EXPLORER & MODAL LOGIC ==================== */
+
+let latestStagedItems = [];
+
+function openDeliverableModal(item) {
+  const modal = $('#deliverableModal');
+  if (!modal || !item) return;
+
+  const payload = item.payload || item;
+  $('#modalCandidateTitle').textContent = item.title || payload.title || item.id;
+  $('#modalRewardBadge').textContent = `$${payload.rewardDollars || item.rewardDollars || 0}.00`;
+  $('#modalTypeBadge').textContent = payload.solutionType || 'Deliverable';
+  $('#modalStatusBadge').textContent = payload.status || 'READY';
+  $('#modalCriteria').textContent = payload.acceptanceCriteria || 'Verified local test suite passing with zero warnings.';
+  $('#modalInstructions').textContent = payload.instructions || 'Submit candidate patch or audit statement to client.';
+  $('#modalJsonContent').textContent = JSON.stringify(payload, null, 2);
+
+  modal.hidden = false;
+}
+
+$('#closeModalBtn')?.addEventListener('click', () => {
+  const modal = $('#deliverableModal');
+  if (modal) modal.hidden = true;
+});
+
+$('#deliverableModal')?.addEventListener('click', (e) => {
+  if (e.target === $('#deliverableModal')) {
+    $('#deliverableModal').hidden = true;
+  }
+});
+
+$('#copyModalJsonBtn')?.addEventListener('click', () => {
+  const text = $('#modalJsonContent')?.textContent;
+  if (text) {
+    navigator.clipboard.writeText(text).then(() => alert('Payload JSON copied to clipboard!'));
+  }
+});
+
+function renderCandidatesList(records = []) {
+  const el = $('#candidatesListContent');
+  if (!el) return;
+  $('#countCandidatesTab').textContent = records.length;
+  if (records.length === 0) {
+    el.innerHTML = '<p class="muted">No candidates discovered in database queue yet.</p>';
+    return;
+  }
+  el.innerHTML = records.map(r => {
+    const p = r.payload || {};
+    return `
+      <div class="explorer-item-card">
+        <div class="explorer-item-header">
+          <span class="explorer-item-title">${esc(p.title || r.noveltyKey || r.id)}</span>
+          <span class="pill state-pill-running">$${esc(p.rewardDollars || r.priority || 0)}</span>
+        </div>
+        <div class="muted">
+          <span><strong>Rail:</strong> ${esc(p.rail || 'default')}</span> • 
+          <span><strong>Source:</strong> ${esc(p.source || 'Scraper')}</span> • 
+          <span><strong>Status:</strong> ${esc(r.status)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderValidationList(records = []) {
+  const el = $('#validationListContent');
+  if (!el) return;
+  $('#countValidationTab').textContent = records.length;
+  if (records.length === 0) {
+    el.innerHTML = '<p class="muted">No triage/validation records in queue yet.</p>';
+    return;
+  }
+  el.innerHTML = records.map(r => {
+    const p = r.payload || {};
+    const triage = p.triageResult || {};
+    const gates = triage.gates || {};
+    const ev = triage.expectedValue != null ? `$${triage.expectedValue.toFixed(2)}` : 'N/A';
+    const score = triage.score != null ? `${triage.score}/100` : 'N/A';
+    const isPass = r.status === 'EXECUTABLE' || r.status === 'VALIDATED';
+
+    const gateBadges = Object.keys(gates).map(k => {
+      const pass = gates[k]?.pass !== false;
+      return `<span class="gate-badge ${pass ? 'gate-badge-pass' : 'gate-badge-fail'}">${esc(k)}: ${pass ? 'PASS' : 'FAIL'}</span>`;
+    }).join(' ');
+
+    return `
+      <div class="explorer-item-card">
+        <div class="explorer-item-header">
+          <span class="explorer-item-title">${esc(p.candidateId || r.noveltyKey)}</span>
+          <span class="pill ${isPass ? 'state-pill-running' : 'state-pill-paused'}">${esc(r.status)} (Score: ${esc(score)})</span>
+        </div>
+        <div class="gate-badges">${gateBadges}</div>
+        <div class="muted">
+          <span><strong>Net EV:</strong> ${esc(ev)}</span> • 
+          <span><strong>Reason:</strong> ${esc(triage.reason || 'All gates satisfied')}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderOutcomesList(records = []) {
+  const el = $('#outcomesListContent');
+  if (!el) return;
+  $('#countOutcomesTab').textContent = records.length;
+  if (records.length === 0) {
+    el.innerHTML = '<p class="muted">No execution outcomes in queue yet.</p>';
+    return;
+  }
+  el.innerHTML = records.map(r => {
+    const p = r.payload || {};
+    const itemJson = esc(JSON.stringify(r));
+    return `
+      <div class="explorer-item-card">
+        <div class="explorer-item-header">
+          <span class="explorer-item-title">${esc(p.candidateId || r.noveltyKey)}</span>
+          <span class="pill state-pill-running">${esc(r.status)}</span>
+        </div>
+        <div class="muted">
+          <span><strong>Staged Path:</strong> ${esc(p.stagedPath || 'data/staged-deliverables')}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderEconomicsList(economics = {}) {
+  const el = $('#economicsListContent');
+  if (!el) return;
+  const rails = Array.isArray(economics.rails) ? economics.rails : [];
+  if (rails.length === 0) {
+    el.innerHTML = '<p class="muted">No rail economics recorded yet.</p>';
+    return;
+  }
+  el.innerHTML = rails.map(r => `
+    <div class="explorer-item-card">
+      <div class="explorer-item-header">
+        <span class="explorer-item-title">Rail: ${esc(r.rail)}</span>
+        <span class="pill ${r.state === 'PROVEN' ? 'state-pill-running' : 'pill'}">${esc(r.state || 'PROBATION')}</span>
+      </div>
+      <div class="muted">
+        <span><strong>Attempts:</strong> ${esc(r.attempts || 0)}</span> • 
+        <span><strong>Spend:</strong> $${((r.spendCents || 0) / 100).toFixed(2)}</span> • 
+        <span><strong>Cleared:</strong> $${((r.clearedCents || 0) / 100).toFixed(2)}</span> • 
+        <span><strong>Pending:</strong> $${((r.pendingCents || 0) / 100).toFixed(2)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function refreshPipelineExplorer() {
+  try {
+    const [candidates, validation, outcomes, economics] = await Promise.all([
+      requestJson('/api/revenue/records?queue=candidates').catch(() => ({ records: [] })),
+      requestJson('/api/revenue/records?queue=validation').catch(() => ({ records: [] })),
+      requestJson('/api/revenue/records?queue=outcomes').catch(() => ({ records: [] })),
+      requestJson('/api/money/economics').catch(() => ({ rails: [] }))
+    ]);
+
+    renderCandidatesList(candidates.records || []);
+    renderValidationList(validation.records || []);
+    renderOutcomesList(outcomes.records || []);
+    renderEconomicsList(economics);
+  } catch (err) {
+    console.warn('[Pipeline Explorer Refresh Error]', err.message);
+  }
+}
+
+// Tab Switcher
+document.querySelectorAll('.explorer-tab-btn')?.forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.explorer-tab-btn').forEach(b => b.classList.remove('active-tab'));
+    document.querySelectorAll('.explorer-tab-content').forEach(c => c.hidden = true);
+
+    btn.classList.add('active-tab');
+    const targetId = btn.getAttribute('data-tab');
+    if (targetId && $(`#${targetId}`)) {
+      $(`#${targetId}`).hidden = false;
+    }
+  });
+});
+
+$('#refreshPipelineDataBtn')?.addEventListener('click', refreshPipelineExplorer);
+
 async function refreshAutonomousEngine() {
   try {
     const [status, stagedRes] = await Promise.all([
       requestJson('/api/engine/status'),
       requestJson('/api/engine/staged')
     ]);
+
+    latestStagedItems = stagedRes.items || [];
 
     // Update state pill badge
     const badge = $('#engineStateBadge');
@@ -838,10 +1025,19 @@ async function refreshAutonomousEngine() {
       const items = stagedRes.items || [];
       if (items.length > 0) {
         stagedList.innerHTML = items.map(renderStagedItem).join('');
+        stagedList.querySelectorAll('.staged-item').forEach((el, idx) => {
+          el.addEventListener('click', () => {
+            const item = items[idx];
+            if (item) openDeliverableModal(item);
+          });
+        });
       } else {
         stagedList.innerHTML = '<p class="muted">No deliverables staged yet.</p>';
       }
     }
+
+    // Refresh pipeline queues
+    await refreshPipelineExplorer();
   } catch (err) {
     console.warn('[Engine Refresh Error]', err.message);
   }

@@ -1,6 +1,10 @@
 import { mkdir, writeFile, readFile, readdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 import { callOllama } from './adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
 import { recordDatasetEntry } from './ai-engine/dataset-collector.js';
@@ -9,6 +13,7 @@ import { upsertRevenueRecord } from './revenue-store.js';
 import { CANONICAL_QUEUES } from './orchestration-profiles.js';
 import { registerStream } from '@taskman/core';
 import { instantAudit } from './instant-audit.js';
+import { getActionableWorkQueue, syncGitHubWork } from './github-intake.js';
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
@@ -268,11 +273,11 @@ class AutonomousEngine {
 
       // 1. Discovery / Hunting Stage
       this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: Hunting opportunities across active rails [${this.config.activeRails.join(', ')}]...`;
-      const candidate = this._huntNextOpportunity();
+      const candidate = await this._huntNextOpportunity();
 
       if (!candidate) {
-        this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: No eligible opportunities matched current filters. Sleeping for ${this.config.cycleIntervalSec}s...`;
-        this.logEvent('HUNT_IDLE', 'No candidate passed filter criteria this cycle.');
+        this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: No eligible opportunities matched current filters or pending intake. Sleeping for ${this.config.cycleIntervalSec}s...`;
+        this.logEvent('HUNT_IDLE', 'No candidate passed filter criteria or all candidates already staged.');
         return;
       }
 
@@ -399,12 +404,60 @@ class AutonomousEngine {
     }
   }
 
-  _huntNextOpportunity() {
+  async _huntNextOpportunity() {
+    // 1. If github_intake rail is active, check the live GitHub work queue for READY work items
+    if (this.config.activeRails.includes('github_intake')) {
+      try {
+        const actionableGhItems = await getActionableWorkQueue({ eligibilityStatus: 'READY' });
+        for (const ghItem of actionableGhItems) {
+          const ghCandidateId = `gh-${ghItem.repo.replace('/', '-')}-${ghItem.issueNumber}`;
+          const stagedId = `staged-${ghCandidateId}`;
+
+          // Check if already staged in memory or on disk
+          if (this.stagedDeliverables.has(stagedId) || existsSync(join(this.stagedDir, `${stagedId}.json`))) {
+            continue;
+          }
+
+          // Convert GitHub work item to engine opportunity candidate
+          const rewardDollars = Math.max(50, Math.round(ghItem.effectivePriority / 10));
+          const ev = (rewardDollars * 0.85) - 5;
+          if (rewardDollars >= this.config.minRewardDollars && ev >= this.config.minExpectedValue) {
+            return {
+              id: ghCandidateId,
+              rail: 'github_intake',
+              title: `${ghItem.repo}#${ghItem.issueNumber}: ${ghItem.title}`,
+              source: `GitHub (${ghItem.repo})`,
+              rewardDollars,
+              currency: 'USD',
+              escrow: true,
+              estimatedCostDollars: 5,
+              pSuccess: 0.85,
+              type: 'code_patch',
+              patchFile: null,
+              testFile: null,
+              requirements: `Implement solution for issue #${ghItem.issueNumber} in ${ghItem.repo}: ${ghItem.title}`,
+              acceptanceCriteria: `Verified test pass and clean PR resolving issue #${ghItem.issueNumber}`
+            };
+          }
+        }
+      } catch (err) {
+        // Fall back cleanly to opportunity feed
+      }
+    }
+
+    // 2. Query opportunity feed, filtering by active rails, thresholds, and skipping already-staged deliverables
     const matching = OPPORTUNITY_FEED.filter(opp => {
       if (!this.config.activeRails.includes(opp.rail)) return false;
       if (opp.rewardDollars < this.config.minRewardDollars) return false;
       const ev = (opp.rewardDollars * opp.pSuccess) - opp.estimatedCostDollars;
       if (ev < this.config.minExpectedValue) return false;
+
+      // Deduplication: do not re-process if already staged in this engine run
+      const stagedId = `staged-${opp.id}`;
+      if (this.stagedDeliverables.has(stagedId)) {
+        return false;
+      }
+
       return true;
     });
 
@@ -524,16 +577,11 @@ class AutonomousEngine {
         const hasPatch = patchFile ? existsSync(join(process.cwd(), patchFile)) : false;
         const hasTest = testFile ? existsSync(join(process.cwd(), testFile)) : false;
 
-        if (hasPatch && hasTest) {
-          testsPassed = true;
-          deliverableStatus = 'TESTED_AND_READY';
-        } else if (hasPatch) {
-          testsPassed = false;
-          deliverableStatus = 'UNTESTED';
-        } else {
-          testsPassed = false;
-          deliverableStatus = 'PENDING_IMPLEMENTATION';
-        }
+        // Runs the suite for real. See verifyDeliverableTests for why presence
+        // of a file is not accepted as evidence that its tests pass.
+        const verification = await verifyDeliverableTests({ patchFile, testFile });
+        testsPassed = verification.testsPassed;
+        deliverableStatus = verification.status;
 
         deliverablePayload = {
           candidateId: candidate.id,
@@ -675,6 +723,49 @@ class AutonomousEngine {
 
 // Global engine singleton instance
 let engineInstance = null;
+
+/**
+ * Decide whether a code-patch deliverable is genuinely ready to submit.
+ *
+ * The rule this enforces is BRAIN-TRANSFER.md §15: testsPassed and
+ * TESTED_AND_READY must never be set without an ACTUAL test run against a
+ * source file that exists on disk. The previous implementation checked only
+ * that the two files existed, which meant a test file that existed and FAILED
+ * still staged as TESTED_AND_READY — a status flag asserting something nobody
+ * had checked. File presence is not evidence; an exit code is.
+ *
+ * Returns { testsPassed, status, ran, output }. `ran` says whether a test
+ * process actually executed, so a caller can tell "tests failed" apart from
+ * "tests were never run".
+ */
+export async function verifyDeliverableTests({ patchFile, testFile, cwd = process.cwd(), timeoutMs = 120_000 } = {}) {
+  const notReady = (status) => ({ testsPassed: false, status, ran: false, output: '' });
+
+  if (!patchFile || !existsSync(join(cwd, patchFile))) return notReady('PENDING_IMPLEMENTATION');
+  if (!testFile || !existsSync(join(cwd, testFile))) return notReady('UNTESTED');
+
+  try {
+    // NODE_TEST_CONTEXT is set by a parent `node --test` run and changes how a
+    // child test process reports and exits. Inheriting it makes a failing
+    // suite look like a passing one whenever the engine is itself invoked from
+    // a test — the precise way a false TESTED_AND_READY could reappear.
+    const { NODE_TEST_CONTEXT, NODE_OPTIONS, ...cleanEnv } = process.env;
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath, ['--test', testFile], { cwd, timeout: timeoutMs, env: cleanEnv }
+    );
+    return { testsPassed: true, status: 'TESTED_AND_READY', ran: true, output: `${stdout}${stderr}` };
+  } catch (error) {
+    // A non-zero exit means the suite ran and failed. A spawn failure (ENOENT,
+    // timeout) means it never ran — and neither one is permission to claim a pass.
+    const ran = typeof error?.code === 'number';
+    return {
+      testsPassed: false,
+      status: ran ? 'TESTS_FAILING' : 'TEST_RUN_FAILED',
+      ran,
+      output: `${error?.stdout ?? ''}${error?.stderr ?? error?.message ?? ''}`
+    };
+  }
+}
 
 export function getAutonomousEngine(options = {}) {
   if (!engineInstance) {

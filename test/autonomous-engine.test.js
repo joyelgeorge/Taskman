@@ -150,3 +150,32 @@ test('AutonomousEngine: stages ground truth deliverables and accurately distingu
   assert.equal(rate401.testsPassed, false);
 });
 
+test('AutonomousEngine: enters idle state and prevents duplicate staging when all candidates are already staged', async () => {
+  const engine = getAutonomousEngine({
+    cycleIntervalSec: 100,
+    minRewardDollars: 10,
+    minExpectedValue: 5,
+    autoExecuteDeliverables: true
+  });
+
+  engine.start();
+  // Stage all 5 opportunities
+  for (let i = 0; i < 5; i++) {
+    await engine._runCycle();
+  }
+
+  const stagedCountAfter5 = engine.getStatus().metrics.deliverablesStaged;
+  assert.equal(stagedCountAfter5, 5);
+  const evAfter5 = engine.getStatus().metrics.totalPotentialEvDollars;
+
+  // Running 6th cycle should find nothing new and enter idle
+  await engine._runCycle();
+
+  const statusAfter6 = engine.getStatus();
+  assert.equal(statusAfter6.metrics.cyclesCompleted, 6);
+  assert.equal(statusAfter6.metrics.deliverablesStaged, 5); // Did not re-stage
+  assert.equal(statusAfter6.metrics.totalPotentialEvDollars, evAfter5); // Did not falsely inflate EV
+  assert.ok(statusAfter6.currentActivity.includes('Sleeping'));
+  assert.equal(statusAfter6.history[0].type, 'HUNT_IDLE');
+});
+

@@ -17,6 +17,7 @@ import { getActionableWorkQueue, syncGitHubWork } from './github-intake.js';
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
+import { normalizeCandidate, EVIDENCE_TIER } from './evidence-tier.js';
 
 export const ENGINE_STATE = Object.freeze({
   RUNNING: 'RUNNING',
@@ -538,7 +539,20 @@ class AutonomousEngine {
     };
   }
 
-  async _executeDeliverableTrial(candidate, triageResult) {
+  async _executeDeliverableTrial(candidateInput, triageResult) {
+    // Type the candidate honestly before anything is written. A candidate with
+    // no verifiable reference is NOT rejected - it keeps its place in the
+    // pipeline as a HYPOTHESIS, it simply loses the right to assert escrow, a
+    // precise reward, or a calibrated probability it has not earned. See
+    // src/evidence-tier.js for why the gate is on assertion, not exploration.
+    const { candidate, tier: evidenceTier, stripped } = normalizeCandidate(candidateInput);
+    if (stripped.length) {
+      this.logEvent(
+        'EVIDENCE_DOWNGRADED',
+        `"${candidate.title}" has no verifiable external reference; dropped unearned ${stripped.join(', ')}`,
+        { candidateId: candidate.id, evidenceTier, stripped, reason: candidate.evidenceReason }
+      );
+    }
     try {
       await mkdir(this.stagedDir, { recursive: true });
       const stagedId = `staged-${candidate.id}`;
@@ -587,6 +601,8 @@ class AutonomousEngine {
           candidateId: candidate.id,
           title: candidate.title,
           rewardDollars: candidate.rewardDollars,
+          unverifiedRewardEstimateDollars: candidate.unverifiedRewardEstimateDollars ?? null,
+          rewardBasis: candidate.rewardBasis ?? 'referenced',
           payoutLink: 'https://paypal.me/joyelgt',
           paymentRecipient: 'paypal.me/joyelgt',
           solutionType: candidate.type,
@@ -596,11 +612,24 @@ class AutonomousEngine {
           testsPassed,
           status: deliverableStatus,
           generatedAt: new Date().toISOString(),
-          instructions: testsPassed
-            ? 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
-            : 'Candidate requires code implementation and verified test suite before external submission.'
+          // Passing tests say the work is sound. They say nothing about there
+          // being anyone to submit it to - that needs a real reference.
+          instructions: !testsPassed
+            ? 'Candidate requires code implementation and a verified test suite before external submission.'
+            : evidenceTier === EVIDENCE_TIER.HYPOTHESIS
+              ? `Work is tested and sound, but no verifiable external reference exists for this opportunity (${candidate.evidenceReason}). Find a real listing or requester before submitting or invoicing.`
+              : `Submit PR / deliverable to the issuer at ${candidate.evidenceReference} with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.`
         };
       }
+
+      // Stamped for every deliverable regardless of branch, so an audit report
+      // and a code patch cannot disagree about how well-evidenced they are.
+      deliverablePayload = {
+        ...deliverablePayload,
+        evidenceTier,
+        evidenceReference: candidate.evidenceReference ?? null,
+        evidenceReason: candidate.evidenceReason ?? null
+      };
 
       const filePath = join(this.stagedDir, `${stagedId}.json`);
       await writeFile(filePath, JSON.stringify(deliverablePayload, null, 2), 'utf-8');
@@ -643,6 +672,10 @@ class AutonomousEngine {
         candidateId: candidate.id,
         title: candidate.title,
         rewardDollars: candidate.rewardDollars,
+        unverifiedRewardEstimateDollars: candidate.unverifiedRewardEstimateDollars ?? null,
+        rewardBasis: candidate.rewardBasis ?? 'referenced',
+        evidenceTier,
+        evidenceReference: candidate.evidenceReference ?? null,
         filePath,
         payload: deliverablePayload,
         createdAt: new Date().toISOString()
@@ -680,7 +713,11 @@ class AutonomousEngine {
             id: file.replace('.json', ''),
             candidateId: parsed.candidateId || 'unknown',
             title: parsed.title || file,
-            rewardDollars: parsed.rewardDollars || 0,
+            rewardDollars: parsed.rewardDollars ?? null,
+            unverifiedRewardEstimateDollars: parsed.unverifiedRewardEstimateDollars ?? null,
+            rewardBasis: parsed.rewardBasis ?? 'referenced',
+            evidenceTier: parsed.evidenceTier ?? null,
+            evidenceReference: parsed.evidenceReference ?? null,
             filePath: join(this.stagedDir, file),
             payload: parsed,
             createdAt: parsed.generatedAt || new Date().toISOString()

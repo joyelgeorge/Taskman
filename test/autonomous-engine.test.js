@@ -86,7 +86,13 @@ test('AutonomousEngine: runs a complete autonomous hunting, triage, and staging 
   const staged = await engine.listStagedDeliverables();
   assert.ok(staged.length >= 1);
   assert.ok(staged[0].title);
-  assert.ok(staged[0].rewardDollars > 0);
+  // Changed deliberately: the feed's entries carry a generic source label and no
+  // resolvable reference, so rewardDollars is no longer asserted as a fact. The
+  // figure survives as a clearly-labelled estimate. See src/evidence-tier.js.
+  assert.equal(staged[0].evidenceTier, 'HYPOTHESIS');
+  assert.equal(staged[0].rewardDollars, null, 'an unreferenced reward is not a fact');
+  assert.ok(staged[0].unverifiedRewardEstimateDollars > 0, 'the estimate is kept, not destroyed');
+  assert.equal(staged[0].rewardBasis, 'unverified_estimate');
 });
 
 test('AutonomousEngine: filters out opportunities below reward or EV threshold', async () => {

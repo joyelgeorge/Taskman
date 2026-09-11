@@ -93,12 +93,20 @@ underlying claims split into two different failure modes:
 genuine asset in the feed — real, tested code that could be submitted as an
 actual PR if a human operator finds a matching live bounty (per the
 anti-auto-submit rule below). `bounty-dispute-chargeback-301` and
-`bounty-api-rate-limiter-401` are worse than unverified demand: they assert
-`testsPassed: true` for code that does not exist in the repository at all.
-Any staging script that can set `testsPassed: true` without a corresponding
-source file and a real test run is a bug — trace and fix the script that
-produced these two before trusting its output again (likely a sibling of
-`scripts/execute-fiverr-audit.js`).
+`bounty-api-rate-limiter-401` were worse than unverified demand: they
+asserted `testsPassed: true` for code that does not exist in the repository
+at all.
+
+**Fixed 2026-09-11:** `AutonomousEngine._executeDeliverableTrial` in
+`src/autonomous-engine.js` no longer hardcodes `testsPassed: true`. The two
+real candidates now carry `sourceFile`/`testFile` and the engine runs
+`node --test <testFile>` for real before claiming `TESTED_AND_READY`; a
+candidate with no `sourceFile` now stages as `status: 'NO_IMPLEMENTATION'`,
+`testsPassed: false`, `patchFile: null`. The 40 stale staged-deliverable
+files that asserted the fabricated `TESTED_AND_READY` claim for
+`bounty-dispute-chargeback-301` and `bounty-api-rate-limiter-401` have been
+deleted from `data/staged-deliverables/`. `data/staged-deliverables/*.json`
+is gitignored going forward, so new runs won't re-pollute the tree.
 
 ## Core Rules for Claude Code Agents
 

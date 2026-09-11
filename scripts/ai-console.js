@@ -115,7 +115,7 @@ async function runBenchmark(iterations = 3) {
 async function runDatasetExport(format = 'alpaca', outPath = 'data/training-dataset.jsonl') {
   await printHeader();
   console.log(`[*] Exporting dataset in ${format.toUpperCase()} format to ${outPath}...`);
-  const rawEntries = getDatasetEntries();
+  const rawEntries = getDatasetEntries({ filePath: 'data/runtime/execution-dataset.jsonl' });
   const formatted = convertDatasetFormat(rawEntries, format);
   const res = writeDatasetJsonl(outPath, formatted);
   console.log(`[✓] Wrote ${res.count} instruction pairs to ${res.filePath}`);

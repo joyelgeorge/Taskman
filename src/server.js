@@ -604,7 +604,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/ai/status') {
       const health = await checkOllamaHealth();
       const models = await listOllamaModels();
-      const dataset = getDatasetEntries();
+      const dataset = getDatasetEntries({ filePath: 'data/runtime/execution-dataset.jsonl' });
       return json(res, 200, {
         ok: true,
         health,
@@ -638,7 +638,8 @@ const server = http.createServer(async (req, res) => {
         prompt: userPrompt,
         response: aiRes.text,
         outcomeScore: evaluation.ok ? 0.95 : 0.4,
-        metadata: { model, durationMs }
+        metadata: { model, durationMs },
+        filePath: 'data/runtime/execution-dataset.jsonl'
       });
       return json(res, 200, {
         ok: true,
@@ -650,9 +651,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/ai/dataset') {
       const format = url.searchParams.get('format') || 'alpaca';
+      const dataset = getDatasetEntries({ filePath: 'data/runtime/execution-dataset.jsonl' });
       return json(res, 200, {
-        total: getDatasetEntries().length,
-        dataset: exportFineTuningDataset({ format })
+        total: dataset.length,
+        dataset: exportFineTuningDataset({ format, filePath: 'data/runtime/execution-dataset.jsonl' })
       });
     }
     if (req.method === 'GET' && url.pathname === '/api/ai/modelfile') {

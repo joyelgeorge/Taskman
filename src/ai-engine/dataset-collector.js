@@ -1,5 +1,7 @@
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+
+export const DEFAULT_DATASET_PATH = 'data/runtime/execution-dataset.jsonl';
 
 /**
  * In-memory dataset buffer for continuous learning.
@@ -15,6 +17,7 @@ export function recordDatasetEntry({
   systemPrompt = '',
   prompt,
   response,
+  rejectedResponse = null,
   metadata = {},
   outcomeScore = 1.0, // 0.0 to 1.0 based on real execution outcome
   verifiedSettlement = null,
@@ -27,6 +30,7 @@ export function recordDatasetEntry({
     systemPrompt,
     prompt,
     response,
+    rejectedResponse,
     metadata,
     outcomeScore,
     verifiedSettlement
@@ -48,10 +52,24 @@ export function recordDatasetEntry({
 }
 
 /**
- * Returns recorded dataset items matching criteria.
+ * Returns recorded dataset items matching criteria, loading from disk if available.
  */
-export function getDatasetEntries({ minOutcomeScore = 0.0, domain = null } = {}) {
-  return datasetMemoryStore.filter(item => {
+export function getDatasetEntries({ minOutcomeScore = 0.0, domain = null, filePath = null } = {}) {
+  const allEntries = [...datasetMemoryStore];
+
+  if (filePath && existsSync(filePath)) {
+    try {
+      const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+      for (const line of lines) {
+        const parsed = JSON.parse(line);
+        if (!allEntries.some(e => e.id === parsed.id)) {
+          allEntries.push(parsed);
+        }
+      }
+    } catch (e) {}
+  }
+
+  return allEntries.filter(item => {
     if (item.outcomeScore < minOutcomeScore) return false;
     if (domain && item.domain !== domain) return false;
     return true;

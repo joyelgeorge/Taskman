@@ -8,6 +8,10 @@ export const CANONICAL_QUEUES = Object.freeze({
 });
 
 export const LEGACY_QUEUE_ALIASES = Object.freeze({
+  candidates: CANONICAL_QUEUES.candidates,
+  validation: CANONICAL_QUEUES.validation,
+  execution: CANONICAL_QUEUES.execution,
+  outcomes: CANONICAL_QUEUES.outcomes,
   revenue_exploration_queue: CANONICAL_QUEUES.candidates,
   revenue_opportunity_deepdives: CANONICAL_QUEUES.validation,
   revenue_execution_results: CANONICAL_QUEUES.outcomes,

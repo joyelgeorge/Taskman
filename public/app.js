@@ -926,15 +926,15 @@ function renderEconomicsList(economics = {}) {
 async function refreshPipelineExplorer() {
   try {
     const [candidates, validation, outcomes, economics] = await Promise.all([
-      requestJson('/api/revenue/records?queue=candidates').catch(() => ({ records: [] })),
-      requestJson('/api/revenue/records?queue=validation').catch(() => ({ records: [] })),
-      requestJson('/api/revenue/records?queue=outcomes').catch(() => ({ records: [] })),
+      requestJson('/api/revenue/queues/candidates').catch(() => []),
+      requestJson('/api/revenue/queues/validation').catch(() => []),
+      requestJson('/api/revenue/queues/outcomes').catch(() => []),
       requestJson('/api/money/economics').catch(() => ({ rails: [] }))
     ]);
 
-    renderCandidatesList(candidates.records || []);
-    renderValidationList(validation.records || []);
-    renderOutcomesList(outcomes.records || []);
+    renderCandidatesList(Array.isArray(candidates) ? candidates : (candidates.records || []));
+    renderValidationList(Array.isArray(validation) ? validation : (validation.records || []));
+    renderOutcomesList(Array.isArray(outcomes) ? outcomes : (outcomes.records || []));
     renderEconomicsList(economics);
   } catch (err) {
     console.warn('[Pipeline Explorer Refresh Error]', err.message);

@@ -325,6 +325,12 @@ ${section('Fees worth querying', recoveryBlock)}
 ${section('Duplicates', dupBlock)}
 ${section('Timing', latencyBlock)}
 
+<div class="settlement-invoice" style="margin-top: 2rem; padding: 1.2rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+  <h3 style="margin: 0 0 0.4rem; color: #15803d;">💳 Audit Deliverable Settlement</h3>
+  <p style="margin: 0 0 0.8rem; font-size: 0.95rem; color: #166534;">To settle this forensic audit invoice or contingency recovery fee, submit payment directly via PayPal:</p>
+  <a href="https://paypal.me/joyelgt" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #059669; color: #ffffff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 0.95rem;">Pay via PayPal (paypal.me/joyelgt) &rarr;</a>
+</div>
+
 <h2>How this was read</h2>
 <p class="note">Earnings columns: <code>${esc(Object.values(report.columnsUsed.earnings).join(', '))}</code>.
 Deposit columns: <code>${esc(Object.values(report.columnsUsed.deposits).join(', '))}</code>.

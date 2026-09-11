@@ -1,0 +1,12 @@
+{
+  "candidateId": "bounty-algora-101",
+  "title": "Stripe Webhook Idempotency Mutex Lock in Node.js",
+  "rewardDollars": 150,
+  "solutionType": "code_patch",
+  "patchFile": "solutions/bounty-algora-101.js",
+  "acceptanceCriteria": "Unit tests verifying duplicate simultaneous webhook events are deduplicated cleanly without double billing.",
+  "testsPassed": true,
+  "status": "TESTED_AND_READY",
+  "generatedAt": "2026-09-11T08:49:23.710Z",
+  "instructions": "Submit PR / deliverable to bounty issuer with verified test suite passes."
+}

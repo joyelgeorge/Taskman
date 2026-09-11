@@ -1,0 +1,11 @@
+{
+  "candidateId": "fiverr-audit-201",
+  "title": "Digital Studio Payout Reconciliation & Fee Leakage Audit",
+  "rewardDollars": 220,
+  "client": "Apex Digital Creative",
+  "reportPath": "/Users/joyelgeorge/Documents/anti-grav/Taskman/data/reports/fiverr-audit-201-report.html",
+  "executiveSummary": "{\n  \"totalLeakageUsd\": 152.00,\n  \"confidence\": 90,\n  \"recoverableItems\": [\n    {\n      \"id\": \"FO-2026-1097\",\n      \"type\": \"missingPayout\",\n      \"amountUsd\": 76.00,\n      \"evidence\": \"Payout not found in bank file for order FO-2026-1097, earned on 2026-08-14.\"\n    },\n    {\n      \"id\": \"FO-2026-1113\",\n      \"type\": \"missingPayout\",\n      \"amountUsd\": 76.00,\n      \"evidence\": \"Payout not found in bank file for order FO-2026-1113, earned on 2026-08-02.\"\n    }\n  ],\n  \"recommendations\": [\n    \"Ask your platform about 2 payout(s) totalling $152.00 that do not appear in the bank file.\",\n    \"Query $42.00 of fees charged above your own median across 4 order(s) — most likely interchange downgrade or unexplained.\",\n    \"Confirm 59 identical same-day credit(s) are genuinely two payouts.\"\n  ]\n}",
+  "status": "COMPLETED_AND_DELIVERED",
+  "payoutStatus": "CLEARED",
+  "completedAt": "2026-09-11T09:09:55.158Z"
+}

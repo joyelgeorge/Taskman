@@ -493,10 +493,12 @@ class AutonomousEngine {
           candidateId: candidate.id,
           title: candidate.title,
           rewardDollars: candidate.rewardDollars,
+          payoutLink: 'https://paypal.me/joyelgt',
+          paymentRecipient: 'paypal.me/joyelgt',
           auditSummary: auditData,
           status: 'TESTED_AND_READY',
           generatedAt: new Date().toISOString(),
-          instructions: 'Send generated fee audit report and reconciliation statement to client for immediate contingency fee claim.'
+          instructions: 'Send generated fee audit report and reconciliation statement to client with payout link https://paypal.me/joyelgt for immediate contingency fee settlement.'
         };
       } else {
         // Code patch deliverable
@@ -504,13 +506,15 @@ class AutonomousEngine {
           candidateId: candidate.id,
           title: candidate.title,
           rewardDollars: candidate.rewardDollars,
+          payoutLink: 'https://paypal.me/joyelgt',
+          paymentRecipient: 'paypal.me/joyelgt',
           solutionType: candidate.type,
           patchFile: `solutions/${candidate.id}.js`,
           acceptanceCriteria: candidate.acceptanceCriteria,
           testsPassed: true,
           status: 'TESTED_AND_READY',
           generatedAt: new Date().toISOString(),
-          instructions: 'Submit PR / deliverable to bounty issuer with verified test suite passes.'
+          instructions: 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
         };
       }
 

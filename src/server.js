@@ -108,6 +108,7 @@ import { cronStatuses, listCronRuns, listStreams, registerStream, incomeReport }
 import { checkOllamaHealth, listOllamaModels, callOllama } from './adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
 import { recordDatasetEntry, getDatasetEntries, exportFineTuningDataset, generateOllamaModelfile } from './ai-engine/dataset-collector.js';
+import { getAutonomousEngine } from './autonomous-engine.js';
 
 // Money-ledger routes (/api/money/*) live on the separate packages/api service
 // now — see docs/AUTONOMOUS_SYSTEM.md — rather than duplicated onto this legacy
@@ -705,6 +706,32 @@ const server = http.createServer(async (req, res) => {
         outputTokens: aiRes.outputTokens,
         durationMs
       });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/engine/status') {
+      const engine = getAutonomousEngine();
+      return json(res, 200, engine.getStatus());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/engine/start') {
+      const engine = getAutonomousEngine();
+      return json(res, 200, engine.start());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/engine/pause') {
+      const engine = getAutonomousEngine();
+      return json(res, 200, engine.pause());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/engine/stop') {
+      const engine = getAutonomousEngine();
+      return json(res, 200, engine.stop());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/engine/tweak') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const engine = getAutonomousEngine();
+      return json(res, 200, engine.tweak(body));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/engine/staged') {
+      const engine = getAutonomousEngine();
+      const staged = await engine.listStagedDeliverables();
+      return json(res, 200, { ok: true, count: staged.length, items: staged });
     }
     if (req.method === 'GET' && url.pathname === '/api/commercial/wedge') {
       return json(res, 200, COMMERCIAL_WEDGE_SPEC);

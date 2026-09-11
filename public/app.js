@@ -738,16 +738,205 @@ $('#clearChatBtn')?.addEventListener('click', () => {
   }
 });
 
-refreshAiStudio();
+/* ==================== AUTONOMOUS NON-STOP ENGINE ==================== */
+
+let enginePollTimer = null;
+
+function renderStreamEntry(event) {
+  const typeClasses = {
+    ENGINE_STARTED: 'stream-entry-info',
+    ENGINE_PAUSED: 'stream-entry-info',
+    ENGINE_STOPPED: 'stream-entry-info',
+    OPPORTUNITY_DISCOVERED: 'stream-entry-hunt',
+    TRIAGE_PASSED: 'stream-entry-pass',
+    DELIVERABLE_STAGED: 'stream-entry-staged',
+    TRIAGE_REJECTED: 'stream-entry-reject',
+    HUNT_IDLE: 'stream-entry-info',
+    CONFIG_TWEAKED: 'stream-entry-info',
+    CYCLE_ERROR: 'stream-entry-reject'
+  };
+  const cls = typeClasses[event.type] || 'stream-entry-info';
+  const time = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return `<div class="stream-entry ${cls}">[${time}] <strong>${esc(event.type)}</strong>: ${esc(event.message)}</div>`;
+}
+
+function renderStagedItem(item) {
+  return `
+    <div class="staged-item">
+      <div class="staged-item-title">${esc(item.title || item.id)}</div>
+      <div class="staged-item-meta">
+        <span>💰 Reward: $${esc(item.rewardDollars || 0)}</span>
+        <span>✅ Status: ${esc(item.payload?.status || 'READY')}</span>
+      </div>
+    </div>
+  `;
+}
+
+async function refreshAutonomousEngine() {
+  try {
+    const [status, stagedRes] = await Promise.all([
+      requestJson('/api/engine/status'),
+      requestJson('/api/engine/staged')
+    ]);
+
+    // Update state pill badge
+    const badge = $('#engineStateBadge');
+    if (badge) {
+      badge.className = 'pill';
+      if (status.state === 'RUNNING') {
+        badge.classList.add('state-pill-running');
+        badge.textContent = '● RUNNING (Non-Stop)';
+      } else if (status.state === 'PAUSED') {
+        badge.classList.add('state-pill-paused');
+        badge.textContent = '⏸ PAUSED';
+      } else {
+        badge.classList.add('state-pill-stopped');
+        badge.textContent = '⏹ STOPPED';
+      }
+    }
+
+    // Update buttons disabled state
+    const isRunning = status.state === 'RUNNING';
+    const isPaused = status.state === 'PAUSED';
+    if ($('#engineStartBtn')) $('#engineStartBtn').disabled = isRunning;
+    if ($('#enginePauseBtn')) $('#enginePauseBtn').disabled = !isRunning;
+    if ($('#engineStopBtn')) $('#engineStopBtn').disabled = status.state === 'STOPPED';
+
+    // Update live activity
+    if ($('#engineActivityText')) {
+      $('#engineActivityText').textContent = status.currentActivity || 'Idle';
+    }
+
+    // Update metrics
+    if ($('#metricCycles')) $('#metricCycles').textContent = status.metrics.cyclesCompleted || 0;
+    if ($('#metricScanned')) $('#metricScanned').textContent = status.metrics.opportunitiesScanned || 0;
+    if ($('#metricPassed')) $('#metricPassed').textContent = status.metrics.triagedPassed || 0;
+    if ($('#metricStaged')) $('#metricStaged').textContent = status.metrics.deliverablesStaged || 0;
+    if ($('#metricEv')) $('#metricEv').textContent = `$${(status.metrics.totalPotentialEvDollars || 0).toFixed(2)}`;
+
+    // Update tweak controls if not dirty
+    if (status.config) {
+      const activeEl = document.activeElement;
+      if ($('#tweakInterval') && activeEl !== $('#tweakInterval')) $('#tweakInterval').value = status.config.cycleIntervalSec;
+      if ($('#tweakMinReward') && activeEl !== $('#tweakMinReward')) $('#tweakMinReward').value = status.config.minRewardDollars;
+      if ($('#tweakMinEv') && activeEl !== $('#tweakMinEv')) $('#tweakMinEv').value = status.config.minExpectedValue;
+      if ($('#tweakAutoExecute') && activeEl !== $('#tweakAutoExecute')) $('#tweakAutoExecute').checked = status.config.autoExecuteDeliverables;
+      if ($('#railBountyScraper')) $('#railBountyScraper').checked = status.config.activeRails.includes('bounty_scraper');
+      if ($('#railFeeAudit')) $('#railFeeAudit').checked = status.config.activeRails.includes('fee_audit');
+      if ($('#railCodeBounties')) $('#railCodeBounties').checked = status.config.activeRails.includes('code_bounties');
+    }
+
+    // Update stream feed
+    const streamFeed = $('#engineStreamFeed');
+    if (streamFeed && status.history?.length) {
+      streamFeed.innerHTML = status.history.map(renderStreamEntry).join('');
+    }
+
+    // Update staged deliverables
+    const stagedList = $('#stagedDeliverablesList');
+    if (stagedList) {
+      const items = stagedRes.items || [];
+      if (items.length > 0) {
+        stagedList.innerHTML = items.map(renderStagedItem).join('');
+      } else {
+        stagedList.innerHTML = '<p class="muted">No deliverables staged yet.</p>';
+      }
+    }
+  } catch (err) {
+    console.warn('[Engine Refresh Error]', err.message);
+  }
+}
+
+// Engine Controls Event Listeners
+$('#engineStartBtn')?.addEventListener('click', async () => {
+  try {
+    $('#engineStartBtn').disabled = true;
+    await requestJson('/api/engine/start', mutationOptions({ method: 'POST' }));
+    await refreshAutonomousEngine();
+  } catch (err) {
+    alert(`Failed to start engine: ${err.message}`);
+  }
+});
+
+$('#enginePauseBtn')?.addEventListener('click', async () => {
+  try {
+    $('#enginePauseBtn').disabled = true;
+    await requestJson('/api/engine/pause', mutationOptions({ method: 'POST' }));
+    await refreshAutonomousEngine();
+  } catch (err) {
+    alert(`Failed to pause engine: ${err.message}`);
+  }
+});
+
+$('#engineStopBtn')?.addEventListener('click', async () => {
+  try {
+    $('#engineStopBtn').disabled = true;
+    await requestJson('/api/engine/stop', mutationOptions({ method: 'POST' }));
+    await refreshAutonomousEngine();
+  } catch (err) {
+    alert(`Failed to stop engine: ${err.message}`);
+  }
+});
+
+$('#toggleTweakBtn')?.addEventListener('click', () => {
+  const panel = $('#tweakOptionsPanel');
+  if (panel) panel.hidden = !panel.hidden;
+});
+
+$('#saveTweaksBtn')?.addEventListener('click', async () => {
+  try {
+    const activeRails = [];
+    if ($('#railBountyScraper')?.checked) activeRails.push('bounty_scraper');
+    if ($('#railFeeAudit')?.checked) activeRails.push('fee_audit');
+    if ($('#railCodeBounties')?.checked) activeRails.push('code_bounties');
+
+    const body = {
+      cycleIntervalSec: Number($('#tweakInterval')?.value || 10),
+      minRewardDollars: Number($('#tweakMinReward')?.value || 20),
+      minExpectedValue: Number($('#tweakMinEv')?.value || 10),
+      autoExecuteDeliverables: $('#tweakAutoExecute')?.checked !== false,
+      activeRails,
+      aiModel: $('#tweakAiModel')?.value || $('#selectLocalModel')?.value || 'taskman-ai:latest'
+    };
+
+    const res = await requestJson('/api/engine/tweak', mutationOptions({
+      method: 'POST',
+      body: JSON.stringify(body)
+    }));
+
+    alert('Engine tweak settings applied!');
+    await refreshAutonomousEngine();
+  } catch (err) {
+    alert(`Failed to save tweaks: ${err.message}`);
+  }
+});
+
+$('#refreshStagedBtn')?.addEventListener('click', refreshAutonomousEngine);
+
+// Start autonomous engine status poller (every 2.5 seconds)
+enginePollTimer = setInterval(refreshAutonomousEngine, 2500);
+
+refreshAiStudio().then(() => {
+  // Populate models into tweakAiModel dropdown
+  const tweakModelSelect = $('#tweakAiModel');
+  const mainModelSelect = $('#selectLocalModel');
+  if (tweakModelSelect && mainModelSelect) {
+    tweakModelSelect.innerHTML = mainModelSelect.innerHTML;
+    tweakModelSelect.value = mainModelSelect.value;
+  }
+});
+refreshAutonomousEngine();
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     refreshDashboard({ supersede: true });
     refreshAiStudio();
+    refreshAutonomousEngine();
   }
   scheduleRefresh();
 });
 
 refreshDashboard();
 scheduleRefresh();
+
 

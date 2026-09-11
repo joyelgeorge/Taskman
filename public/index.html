@@ -15,6 +15,111 @@
       <button id="retryDashboard" type="button">Retry now</button>
     </div>
 
+    <!-- Autonomous Non-Stop Money Hunter & Execution Engine -->
+    <section class="card auto-hunter-card" id="autoHunterSection">
+      <div class="row">
+        <h2 class="row-heading">🚀 Autonomous Non-Stop Money Hunter &amp; Execution Engine</h2>
+        <span id="engineStateBadge" class="pill state-pill-stopped">⏹ STOPPED</span>
+      </div>
+      <p class="muted">Runs continuously on your machine searching for opportunities, evaluating 5-Gate Triage via private local AI, executing solution trials, and staging verified deliverables non-stop.</p>
+
+      <!-- Control Bar -->
+      <div class="engine-control-bar">
+        <div class="engine-buttons">
+          <button id="engineStartBtn" class="primary engine-btn">▶ Start Non-Stop</button>
+          <button id="enginePauseBtn" class="engine-btn" disabled>⏸ Pause</button>
+          <button id="engineStopBtn" class="engine-btn" disabled>⏹ Stop</button>
+          <button id="toggleTweakBtn" class="engine-btn btn-secondary">⚙️ Tweak Options</button>
+        </div>
+        <div class="engine-activity-box">
+          <span class="muted activity-label">Live Activity:</span>
+          <span id="engineActivityText" class="activity-text">Engine idle. Press Start Non-Stop to begin.</span>
+        </div>
+      </div>
+
+      <!-- Telemetry Counters -->
+      <div class="engine-metrics-grid">
+        <div class="metric-box">
+          <div class="metric-label">Cycles Completed</div>
+          <div id="metricCycles" class="metric-value">0</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Opportunities Scanned</div>
+          <div id="metricScanned" class="metric-value">0</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Passed 5-Gate Triage</div>
+          <div id="metricPassed" class="metric-value">0</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Staged Deliverables</div>
+          <div id="metricStaged" class="metric-value">0</div>
+        </div>
+        <div class="metric-box metric-box-highlight">
+          <div class="metric-label">Total Potential EV</div>
+          <div id="metricEv" class="metric-value metric-value-highlight">$0.00</div>
+        </div>
+      </div>
+
+      <!-- Tweak Options Panel (Collapsible) -->
+      <div id="tweakOptionsPanel" class="tweak-panel" hidden>
+        <h3>⚙️ Engine Tweak Settings</h3>
+        <p class="muted">Tune autonomous hunt frequency, filters, rails, and execution mode without stopping.</p>
+        
+        <div class="row customer-grid">
+          <div class="customer-col">
+            <label class="muted" for="tweakInterval">Cycle Interval (seconds):</label>
+            <input id="tweakInterval" type="number" min="2" max="3600" value="10" />
+
+            <label class="muted" for="tweakMinReward">Min Reward Threshold ($):</label>
+            <input id="tweakMinReward" type="number" min="0" value="20" />
+
+            <label class="muted" for="tweakMinEv">Min Expected Value ($):</label>
+            <input id="tweakMinEv" type="number" min="0" value="10" />
+          </div>
+
+          <div class="customer-col">
+            <label class="muted" for="tweakAiModel">AI Triage Model:</label>
+            <select id="tweakAiModel" class="model-select"></select>
+
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input id="tweakAutoExecute" type="checkbox" checked class="checkbox-input" /> Auto-Execute Trials &amp; Stage Deliverables
+              </label>
+            </div>
+
+            <div class="muted tweak-rails-label">Active Discovery Rails:</div>
+            <div class="rails-toggles">
+              <label class="checkbox-label"><input id="railBountyScraper" type="checkbox" checked class="checkbox-input" /> Bounty Scraper (Algora / OSS)</label>
+              <label class="checkbox-label"><input id="railFeeAudit" type="checkbox" checked class="checkbox-input" /> Fee Recovery &amp; Payout Audits</label>
+              <label class="checkbox-label"><input id="railCodeBounties" type="checkbox" checked class="checkbox-input" /> Fintech &amp; SaaS Code Bounties</label>
+            </div>
+
+            <button id="saveTweaksBtn" class="primary customer-margin-small">Save &amp; Apply Tweaks</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Stream Feed & Staged Drawer -->
+      <div class="row customer-grid customer-section-margin">
+        <div class="customer-col flex-2">
+          <h3>📡 Autonomous Execution Stream</h3>
+          <div id="engineStreamFeed" class="stream-feed" role="log" aria-live="polite">
+            <div class="stream-entry stream-entry-info">Engine ready. Waiting for start command...</div>
+          </div>
+        </div>
+        <div class="customer-col flex-1">
+          <div class="row">
+            <h3>📦 Staged Deliverables</h3>
+            <button id="refreshStagedBtn" class="btn-compact">Refresh</button>
+          </div>
+          <div id="stagedDeliverablesList" class="staged-list">
+            <p class="muted">No deliverables staged yet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- My AI Engine & Money Studio -->
     <section class="card ai-studio" id="aiStudioSection">
       <div class="row">

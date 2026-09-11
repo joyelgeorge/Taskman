@@ -6,6 +6,7 @@ import { STREAM_STATES, STREAM_ORIGINS } from '@taskman/core';
 import { SETTLEMENT_STATUS, VERIFIED_SOURCES } from '../src/money-ledger.js';
 import { LEAD_SOURCE, LEAD_STATUS } from '@taskman/core/marketing/store.js';
 import { EXPENSE_CATEGORIES, CANDIDATE_STATUS, TRIAGE_VERDICT } from '@taskman/core';
+import { SCAN_OUTCOME } from '@taskman/core/targets/scan-memory.js';
 
 /**
  * The values the code can write must be values the schema will accept.
@@ -74,7 +75,7 @@ test('every table the code writes to actually exists', dbOnly, async () => {
     'income_streams', 'data_products', 'settlements', 'rail_attempts', 'rail_state',
     'observation_sources', 'observations', 'observation_rollups', 'outreach_drafts',
     'leads', 'campaigns', 'expenses', 'cron_runs', 'cron_expectations', 'drones', 'signals',
-    'bounty_candidates', 'bounty_triage_records'
+    'bounty_candidates', 'bounty_triage_records', 'scanned_repos'
   ];
   const { rows } = await query(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`);
@@ -83,4 +84,10 @@ test('every table the code writes to actually exists', dbOnly, async () => {
   assert.deepEqual(missing, [], `missing tables: ${missing.join(', ')}`);
 });
 
-
+test('scanned_repos.outcome accepts every outcome the sweep can record', dbOnly, async () => {
+  const allowed = await allowedValues('scanned_repos', 'outcome');
+  const rejected = Object.values(SCAN_OUTCOME).filter(v => !allowed.has(v));
+  assert.deepEqual(rejected, [],
+    `scanned_repos.outcome would reject ${JSON.stringify(rejected)} — the sweep produces these, `
+    + `the schema permits only ${JSON.stringify([...allowed])}.`);
+});

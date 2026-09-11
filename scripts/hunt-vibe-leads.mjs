@@ -19,6 +19,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { auditCodebase } from '../src/codebase-audit.js';
 import { qualifyLead, BUSINESS_CODE_SIGNALS } from '../packages/core/targets/lead-qualifier.js';
+import { persistLeads } from '../packages/core/targets/lead-persistence.js';
+import { SCAN_OUTCOME, recordScanned, selectUnscanned } from '../packages/core/targets/scan-memory.js';
+import * as marketingStore from '../packages/core/marketing/store.js';
 import { readFileSync } from 'node:fs';
 
 const run = promisify(execFile);
@@ -82,9 +85,18 @@ async function generateCandidates() {
 }
 
 const listFile = process.argv[2];
-const repos = listFile
+const requested = listFile
   ? (await import('node:fs')).readFileSync(listFile, 'utf8').trim().split('\n').filter(Boolean)
   : await generateCandidates();
+
+// Spend the clone budget on repos we have not already looked at. Without this
+// the same top-starred results come back from GitHub search every run and the
+// sweep rediscovers last week's findings instead of widening the search.
+const repos = await selectUnscanned(requested);
+const skippedAsSeen = requested.length - repos.length;
+if (skippedAsSeen > 0) {
+  console.log(`skipping ${skippedAsSeen} repo(s) scanned recently; ${repos.length} new to scan`);
+}
 const leads = [];
 for (const repo of repos) {
   const r = await scanRepo(repo);
@@ -93,9 +105,37 @@ for (const repo of repos) {
   const tag = r.error ? 'skip' : isLead ? 'LEAD' : (r.findings.length && !r.genuine) ? 'vuln·toy' : '  ok';
   process.stdout.write(`${tag}  ${repo}  ${r.findings.length ? `(${r.findings.length} issues, ${crit} crit)` : ''}${r.findings.length && !r.genuine ? ' — not a business: ' + (r.qual.rejections[0] || 'no traction') : ''}${r.error ? ' ' + r.error : ''}\n`);
   if (isLead) leads.push(r);
+
+  // Remember it either way, so the next run can spend its budget elsewhere.
+  try {
+    await recordScanned({
+      repo,
+      outcome: r.error ? SCAN_OUTCOME.ERROR
+        : isLead ? SCAN_OUTCOME.LEAD
+        : r.findings.length ? SCAN_OUTCOME.VULN_NOT_BUSINESS
+        : SCAN_OUTCOME.CLEAN,
+      findingCount: r.findings.length
+    });
+  } catch (memoryErr) {
+    console.warn(`  (could not record scan memory for ${repo}: ${memoryErr.message})`);
+  }
 }
 leads.sort((a, b) => b.findings.filter(f=>f.severity==='CRITICAL').length - a.findings.filter(f=>f.severity==='CRITICAL').length || b.findings.length - a.findings.length);
+// /tmp dies with the CI runner, so this file is a convenience for a local run,
+// never the record. The record is the leads table.
 await writeFile('/tmp/vibe-leads.json', JSON.stringify(leads, null, 2));
+
+// Persist finding CLASS only - never a path, a line or an excerpt. Leads land
+// as NEW; the disclosure-first rule still puts a human before any outreach.
+try {
+  const saved = await persistLeads(leads, { store: marketingStore });
+  console.log(`persisted: ${saved.created} new, ${saved.updated} updated, `
+    + `${saved.skipped} not leads, ${saved.failed} failed`);
+  for (const e of saved.errors) console.warn(`  persist failed ${e.repo}: ${e.message}`);
+} catch (persistErr) {
+  // A storage failure must not discard the scan output the run just paid for.
+  console.warn(`could not persist leads: ${persistErr.message}`);
+}
 console.log(`\n=== ${leads.length} LEADS (repos with confirmed findings) of ${repos.length} scanned ===`);
 for (const l of leads) {
   const kinds = [...new Set(l.findings.map(f => f.kind))].join(', ');

@@ -27,6 +27,11 @@ jobs:
       - name: Hunt genuine-business leads
         env:
           GH_TOKEN: ${{ github.token }}
+          # Without this the sweep runs in memory mode and persists to nothing -
+          # it would find leads and discard them, which is the failure this
+          # funnel was rebuilt to end. hunt-vibe-leads.mjs fails loudly in CI
+          # when it is absent rather than reporting a successful empty run.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           node scripts/hunt-vibe-leads.mjs | tee leads.out
           {

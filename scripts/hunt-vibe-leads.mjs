@@ -85,6 +85,20 @@ async function generateCandidates() {
 }
 
 const listFile = process.argv[2];
+// A sweep that cannot store what it finds is worse than no sweep: it costs the
+// clone budget and the rate limit, reports success, and leaves nothing behind.
+// That was this funnel's original bug, and a missing env var reintroduces it
+// silently - so in CI it is an error, not a warning.
+const { databaseEnabled } = await import('@taskman/db');
+if (!databaseEnabled) {
+  const message = 'DATABASE_URL is not set — leads would be written to memory and lost on exit.';
+  if (process.env.CI) {
+    console.error(`FATAL: ${message}`);
+    process.exit(1);
+  }
+  console.warn(`WARNING: ${message} Findings will print but not persist.`);
+}
+
 const requested = listFile
   ? (await import('node:fs')).readFileSync(listFile, 'utf8').trim().split('\n').filter(Boolean)
   : await generateCandidates();

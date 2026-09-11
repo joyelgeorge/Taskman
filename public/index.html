@@ -15,6 +15,82 @@
       <button id="retryDashboard" type="button">Retry now</button>
     </div>
 
+    <!-- My AI Engine & Money Studio -->
+    <section class="card ai-studio" id="aiStudioSection">
+      <div class="row">
+        <h2 class="row-heading">⚡ My AI Engine: <span id="aiModelBadge" class="pill model-pill">taskman-ai:latest</span></h2>
+        <span id="aiStatusText" class="panel-status" aria-live="polite">Checking local daemon…</span>
+        <button id="refreshAiStatus" type="button">Refresh AI</button>
+      </div>
+      <p class="muted">Private local AI powered by Ollama. Deterministic 5-Gate Triage, zero cloud API token cost, and continuous fine-tuning data collection.</p>
+
+      <div class="row customer-grid">
+        <div class="customer-col">
+          <h3>1. Local Model & Runtime</h3>
+          <div class="value-card">
+            <div class="row">
+              <label class="muted" for="selectLocalModel">Active Model:</label>
+              <select id="selectLocalModel" class="model-select"></select>
+            </div>
+            <div id="aiDaemonInfo" class="muted customer-margin-small">Daemon: connecting...</div>
+            <div id="aiDatasetStats" class="muted customer-margin-small">Training Pairs Collected: 0</div>
+          </div>
+          <div class="row ai-btn-row">
+            <button id="exportDatasetBtn" class="primary btn-compact">Export Alpaca Dataset</button>
+            <button id="downloadModelfileBtn" class="btn-compact">View Modelfile</button>
+          </div>
+        </div>
+
+        <div class="customer-col">
+          <h3>2. Interactive Opportunity & Risk Triage</h3>
+          <input id="aiTriageTitle" placeholder="Opportunity title (e.g. $100 bounty for Redis fix)" />
+          <div class="row row-compact">
+            <input id="aiTriageReward" type="number" placeholder="Reward ($)" class="input-flex" value="100" />
+            <label class="checkbox-label">
+              <input id="aiTriageEscrow" type="checkbox" checked class="checkbox-input" /> Escrow Verified
+            </label>
+          </div>
+          <textarea id="aiTriageDesc" rows="2" placeholder="Description / Scope / Requirements"></textarea>
+          <button id="runAiTriageBtn" class="primary">Evaluate with My AI</button>
+        </div>
+      </div>
+
+      <div id="aiTriageResultBox" class="customer-section-margin" hidden>
+        <h3>AI Economic Verdict & 5-Gate Analysis</h3>
+        <div id="aiTriageResultContent" class="result"></div>
+      </div>
+
+      <!-- Conversational Chat Interface -->
+      <div class="customer-section-margin chat-studio-container">
+        <div class="row">
+          <h3>💬 Chat with My AI</h3>
+          <span class="muted chat-mode-label">Persona Mode:</span>
+          <select id="chatPersonaSelect" class="chat-persona-select">
+            <option value="money">💰 Money-Making & Economic Specialist</option>
+            <option value="code">🛠️ Full-Stack Coding & Bounty Solver</option>
+            <option value="audit">📊 Financial & Fee Recovery Auditor</option>
+            <option value="general">🤖 General AI Assistant</option>
+          </select>
+          <button id="clearChatBtn" class="btn-compact">Clear Chat</button>
+        </div>
+
+        <div id="chatMessagesFeed" class="chat-feed" role="log" aria-live="polite">
+          <div class="chat-msg chat-msg-assistant">
+            <div class="chat-msg-header">
+              <span class="chat-sender">⚡ Taskman AI</span>
+              <span class="chat-time">Ready</span>
+            </div>
+            <div class="chat-msg-body">Hello! I am your private local AI. Ask me anything, evaluate a money-making strategy, audit a contract, or write code.</div>
+          </div>
+        </div>
+
+        <div class="chat-input-bar">
+          <textarea id="chatInputText" rows="2" class="chat-textarea" placeholder="Type a prompt or instruction... (Press Ctrl+Enter to send)"></textarea>
+          <button id="chatSendBtn" class="primary chat-send-button">Send</button>
+        </div>
+      </div>
+    </section>
+
     <section class="card customer-onboarding" id="customerSection">
       <div class="row">
         <h2 class="row-heading">Client Workflow: Fiverr Payout & Reconciliation</h2>

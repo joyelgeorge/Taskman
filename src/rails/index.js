@@ -2,6 +2,7 @@ import { registerRail, getRail, listRails, setRailMode } from './registry.js';
 import { createTaskForceRail } from './taskforce.js';
 import { createDeskCrewRail } from './deskcrew.js';
 import { createTaskmarketRail } from './taskmarket.js';
+import { createBountyScraperRail } from './bounty-scraper-rail.js';
 import { evaluateExecutionGate, assertExecutionAllowed } from './execution-gate.js';
 import { getRuntimeConfig } from '../config.js';
 import { seedDeadRails } from './dead-rails.js';
@@ -24,6 +25,7 @@ export function initializeRails() {
     registerRail(createTaskForceRail());
     registerRail(createDeskCrewRail());
     registerRail(createTaskmarketRail());
+    registerRail(createBountyScraperRail());
     initialized = true;
   }
   return listRails();

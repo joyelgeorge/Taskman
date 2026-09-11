@@ -517,10 +517,237 @@ $('#coreOppSubmit')?.addEventListener('click', async () => {
   }
 });
 
+/* ==================== AI STUDIO & LOCAL LLM LOGIC ==================== */
+
+async function refreshAiStudio() {
+  const statusEl = $('#aiStatusText');
+  const badgeEl = $('#aiModelBadge');
+  const daemonInfoEl = $('#aiDaemonInfo');
+  const datasetStatsEl = $('#aiDatasetStats');
+  const modelSelect = $('#selectLocalModel');
+
+  try {
+    const data = await requestJson('/api/ai/status');
+    if (data.health?.ok) {
+      statusEl.textContent = `Online (v${data.health.version})`;
+      statusEl.style.color = '#15803d';
+      daemonInfoEl.textContent = `Daemon: Connected (${data.health.baseUrl})`;
+    } else {
+      statusEl.textContent = `Offline (${data.health?.error || 'unreachable'})`;
+      statusEl.style.color = '#b45309';
+      daemonInfoEl.textContent = `Daemon: Not responding on 127.0.0.1:11434`;
+    }
+
+    badgeEl.textContent = data.activeModel || 'taskman-ai:latest';
+    datasetStatsEl.textContent = `Training Pairs Collected: ${data.datasetCount || 0}`;
+
+    if (modelSelect && data.installedModels?.length) {
+      modelSelect.innerHTML = data.installedModels.map(m => `
+        <option value="${esc(m.name)}" ${m.name === (data.activeModel || 'taskman-ai:latest') ? 'selected' : ''}>
+          ${esc(m.name)} (${(m.size / 1e9).toFixed(1)} GB)
+        </option>
+      `).join('');
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.textContent = 'Status error';
+      statusEl.style.color = '#b45309';
+    }
+  }
+}
+
+$('#refreshAiStatus')?.addEventListener('click', refreshAiStudio);
+
+$('#runAiTriageBtn')?.addEventListener('click', async () => {
+  const btn = $('#runAiTriageBtn');
+  const title = $('#aiTriageTitle')?.value.trim();
+  const rewardUsd = Number($('#aiTriageReward')?.value) || 0;
+  const hasEscrow = $('#aiTriageEscrow')?.checked ?? true;
+  const description = $('#aiTriageDesc')?.value.trim();
+  const model = $('#selectLocalModel')?.value || 'taskman-ai:latest';
+  const resultBox = $('#aiTriageResultBox');
+  const resultContent = $('#aiTriageResultContent');
+
+  if (!title) {
+    alert('Please enter an opportunity title.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Evaluating with AI…';
+  resultBox.hidden = false;
+  resultContent.textContent = 'Sending prompt to local AI model…';
+
+  try {
+    const res = await requestJson('/api/ai/triage', mutationOptions({
+      method: 'POST',
+      body: JSON.stringify({
+        model,
+        title,
+        rewardUsd,
+        hasEscrow,
+        description
+      })
+    }));
+
+    resultContent.textContent = `Model: ${res.model} (${res.durationMs}ms)\n\nRaw Output:\n${res.raw}\n\nParsed Evaluation:\n${JSON.stringify(res.evaluation, null, 2)}`;
+    await refreshAiStudio();
+  } catch (err) {
+    resultContent.textContent = `Evaluation Error: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Evaluate with My AI';
+  }
+});
+
+$('#exportDatasetBtn')?.addEventListener('click', async () => {
+  try {
+    const res = await requestJson('/api/ai/dataset?format=alpaca');
+    const blob = new Blob([JSON.stringify(res.dataset, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'taskman-ai-training-dataset.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(`Failed to export dataset: ${err.message}`);
+  }
+});
+
+$('#downloadModelfileBtn')?.addEventListener('click', async () => {
+  try {
+    const baseModel = $('#selectLocalModel')?.value || 'llama3.2:3b';
+    const res = await requestJson(`/api/ai/modelfile?baseModel=${encodeURIComponent(baseModel)}`);
+    alert(`Modelfile contents:\n\n${res.modelfile}`);
+  } catch (err) {
+    alert(`Failed to get Modelfile: ${err.message}`);
+  }
+});
+
+/* ==================== CONVERSATIONAL CHAT LOGIC ==================== */
+
+const chatHistory = [];
+
+const PERSONA_PROMPTS = {
+  money: 'You are Taskman-AI, an elite private money-making and economic optimization assistant. Analyze opportunities, identify income streams, evaluate risk and feasibility, and formulate high-ROI strategies.',
+  code: 'You are an autonomous full-stack coding engineer. Write secure, production-grade, cleanly structured code, diagnose bugs, and fulfill software bounty requirements.',
+  audit: 'You are a specialized forensic reconciliation and financial auditor. Inspect fee withholdings, payment gateway settlement schedules, and uncover overcharges or leakage.',
+  general: 'You are a helpful, versatile, and intelligent AI pair programmer and assistant.'
+};
+
+function appendChatMessage(role, text, timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) {
+  const feed = $('#chatMessagesFeed');
+  if (!feed) return;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `chat-msg chat-msg-${role === 'user' ? 'user' : 'assistant'}`;
+
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'chat-msg-header';
+
+  const senderSpan = document.createElement('span');
+  senderSpan.className = 'chat-sender';
+  senderSpan.textContent = role === 'user' ? 'You' : `⚡ ${$('#selectLocalModel')?.value || 'Taskman AI'}`;
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'chat-time';
+  timeSpan.textContent = timeStr;
+
+  headerDiv.appendChild(senderSpan);
+  headerDiv.appendChild(timeSpan);
+
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'chat-msg-body';
+  bodyDiv.textContent = text;
+
+  msgDiv.appendChild(headerDiv);
+  msgDiv.appendChild(bodyDiv);
+
+  feed.appendChild(msgDiv);
+  feed.scrollTop = feed.scrollHeight;
+  return msgDiv;
+}
+
+async function sendUserChatMessage() {
+  const input = $('#chatInputText');
+  const sendBtn = $('#chatSendBtn');
+  const text = input?.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  appendChatMessage('user', text);
+  chatHistory.push({ role: 'user', content: text });
+
+  const personaKey = $('#chatPersonaSelect')?.value || 'money';
+  const systemPrompt = PERSONA_PROMPTS[personaKey] || PERSONA_PROMPTS.money;
+  const model = $('#selectLocalModel')?.value || 'taskman-ai:latest';
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Thinking…';
+
+  const placeholder = appendChatMessage('assistant', 'Thinking…', 'Now');
+
+  try {
+    const res = await requestJson('/api/ai/chat', mutationOptions({
+      method: 'POST',
+      body: JSON.stringify({
+        model,
+        messages: chatHistory,
+        systemPrompt
+      })
+    }));
+
+    if (placeholder) placeholder.remove();
+    const assistantText = res.message?.content || 'No response';
+    appendChatMessage('assistant', assistantText, `${res.durationMs}ms`);
+    chatHistory.push({ role: 'assistant', content: assistantText });
+    await refreshAiStudio();
+  } catch (err) {
+    if (placeholder) placeholder.remove();
+    appendChatMessage('assistant', `Error: ${err.message}`, 'Failed');
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send';
+    input?.focus();
+  }
+}
+
+$('#chatSendBtn')?.addEventListener('click', sendUserChatMessage);
+
+$('#chatInputText')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    sendUserChatMessage();
+  }
+});
+
+$('#clearChatBtn')?.addEventListener('click', () => {
+  chatHistory.length = 0;
+  const feed = $('#chatMessagesFeed');
+  if (feed) {
+    feed.innerHTML = `
+      <div class="chat-msg chat-msg-assistant">
+        <div class="chat-msg-header">
+          <span class="chat-sender">⚡ Taskman AI</span>
+          <span class="chat-time">Ready</span>
+        </div>
+        <div class="chat-msg-body">Chat history cleared. Ready for your next prompt!</div>
+      </div>
+    `;
+  }
+});
+
+refreshAiStudio();
+
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) refreshDashboard({ supersede: true });
+  if (!document.hidden) {
+    refreshDashboard({ supersede: true });
+    refreshAiStudio();
+  }
   scheduleRefresh();
 });
 
 refreshDashboard();
 scheduleRefresh();
+

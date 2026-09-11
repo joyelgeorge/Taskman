@@ -105,6 +105,9 @@ import { getRuntimeConfig } from './config.js';
 import { handleEconomicSelectorRequest } from './economic-selector.js';
 import { runIdempotentMutation, sendIdempotentResult } from './idempotency-http.js';
 import { cronStatuses, listCronRuns, listStreams, registerStream, incomeReport } from '@taskman/core';
+import { checkOllamaHealth, listOllamaModels, callOllama } from './adapters/ollama-adapter.js';
+import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
+import { recordDatasetEntry, getDatasetEntries, exportFineTuningDataset, generateOllamaModelfile } from './ai-engine/dataset-collector.js';
 
 // Money-ledger routes (/api/money/*) live on the separate packages/api service
 // now — see docs/AUTONOMOUS_SYSTEM.md — rather than duplicated onto this legacy
@@ -597,6 +600,109 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/strategic/brief') {
       const objectiveId = url.searchParams.get('objectiveId') || null;
       return json(res, 200, await generateStrategicBrief({ objectiveId }));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/ai/status') {
+      const health = await checkOllamaHealth();
+      const models = await listOllamaModels();
+      const dataset = getDatasetEntries();
+      return json(res, 200, {
+        ok: true,
+        health,
+        activeModel: process.env.OLLAMA_MODEL || 'taskman-ai:latest',
+        installedModels: models.models || [],
+        datasetCount: dataset.length
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/ai/triage') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const model = body.model || process.env.OLLAMA_MODEL || 'taskman-ai:latest';
+      const domain = body.domain || MONEY_DOMAINS.OPPORTUNITY_TRIAGE;
+      const { systemPrompt, userPrompt } = buildMoneyPrompt({
+        domain,
+        objective: body.objective || 'Evaluate opportunity ROI, feasibility and safety gates',
+        context: body.context || body
+      });
+      const t0 = Date.now();
+      const aiRes = await callOllama({
+        prompt: userPrompt,
+        systemPrompt,
+        model,
+        format: 'json',
+        temperature: 0.1
+      });
+      const durationMs = Date.now() - t0;
+      const evaluation = evaluateMoneyAiOutput(domain, aiRes.text);
+      recordDatasetEntry({
+        domain,
+        systemPrompt,
+        prompt: userPrompt,
+        response: aiRes.text,
+        outcomeScore: evaluation.ok ? 0.95 : 0.4,
+        metadata: { model, durationMs }
+      });
+      return json(res, 200, {
+        ok: true,
+        model,
+        durationMs,
+        raw: aiRes.text,
+        evaluation
+      });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/ai/dataset') {
+      const format = url.searchParams.get('format') || 'alpaca';
+      return json(res, 200, {
+        total: getDatasetEntries().length,
+        dataset: exportFineTuningDataset({ format })
+      });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/ai/modelfile') {
+      const baseModel = url.searchParams.get('baseModel') || 'llama3.2:3b';
+      return json(res, 200, {
+        modelfile: generateOllamaModelfile({ baseModel })
+      });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/ai/chat') {
+      const body = await readJsonBody(req).catch(() => ({}));
+      const model = body.model || process.env.OLLAMA_MODEL || 'taskman-ai:latest';
+      const messages = Array.isArray(body.messages) ? body.messages : [{ role: 'user', content: body.prompt || '' }];
+      const systemPrompt = body.systemPrompt || '';
+      const temperature = typeof body.temperature === 'number' ? body.temperature : 0.7;
+
+      const t0 = Date.now();
+      const aiRes = await callOllama({
+        messages,
+        systemPrompt,
+        model,
+        temperature
+      });
+      const durationMs = Date.now() - t0;
+
+      // Automatically capture user-assistant interaction in dataset builder
+      if (body.recordInDataset !== false && messages.length > 0) {
+        const lastUser = [...messages].reverse().find(m => m.role === 'user');
+        if (lastUser) {
+          recordDatasetEntry({
+            domain: 'INTERACTIVE_CHAT',
+            systemPrompt,
+            prompt: lastUser.content,
+            response: aiRes.text,
+            outcomeScore: 1.0,
+            metadata: { model, durationMs }
+          });
+        }
+      }
+
+      return json(res, 200, {
+        ok: true,
+        model: aiRes.model || model,
+        message: {
+          role: 'assistant',
+          content: aiRes.text
+        },
+        inputTokens: aiRes.inputTokens,
+        outputTokens: aiRes.outputTokens,
+        durationMs
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/commercial/wedge') {
       return json(res, 200, COMMERCIAL_WEDGE_SPEC);

@@ -138,26 +138,44 @@ export function findSSRF(file, text) {
   // destination noun. A URL argument named for external input is the SSRF tell.
   const INPUT_SHAPED = /url|uri|endpoint|\bwebhook|callback|redirect|href|\blink\b|\btarget|\bremote\b|\bhost\b|\baddress\b|avatar|proxy/i;
   const REQUEST_SOURCE = /\b(req|request|ctx)\.(query|params|body|headers)\b|\breq\.(url|originalUrl)\b/;
+
+  // Collect request-tainted variables across the file:
+  // e.g. const target = req.body.url; or let dest = req.query.link;
+  const taintedVars = new Set();
+  const taintAssign = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:[^\n;]*\b(?:req|request|ctx)\.(?:query|params|body|headers|url|originalUrl)\b[^\n;]*)/g;
+  for (const tm of text.matchAll(taintAssign)) {
+    taintedVars.add(tm[1]);
+  }
+
   for (const m of text.matchAll(sink)) {
     const lineEnd = text.indexOf('\n', m.index);
     const arg = text.slice(m.index, lineEnd === -1 ? m.index + 200 : lineEnd);
     // A static string URL (no interpolation, no bare variable) is not SSRF.
     const dynamic = /`[^`]*\$\{/.test(arg) || /\(\s*[A-Za-z_$][\w$.]*\s*[,)]/.test(arg);
     if (!dynamic) continue;
-    // The destination must be tied to request data. A dynamic URL alone is not
-    // SSRF — apps fetch configured provider endpoints (CATALOG_URL, baseURL) all
-    // day, and a variable merely named `url` matched 34 of those in anything-llm
-    // on a first run. The tell is a request source (req.query/body/params) close
-    // to the call; INPUT_SHAPED only raises confidence, it does not qualify.
+
+    // Check 1: Adjacent request source within 240 chars window
     const window = text.slice(Math.max(0, m.index - 240), m.index + 240);
     const nearRequest = REQUEST_SOURCE.test(window);
-    if (!nearRequest) continue;
+
+    // Check 2: Intra-file taint flow - does the sink argument or interpolated string use a tainted variable?
+    let usesTaintedVar = false;
+    for (const v of taintedVars) {
+      const varUsage = new RegExp(`\\b${v}\\b`);
+      if (varUsage.test(arg)) {
+        usesTaintedVar = true;
+        break;
+      }
+    }
+
+    if (!nearRequest && !usesTaintedVar) continue;
     const inputNamed = INPUT_SHAPED.test(arg);
     findings.push({
       kind: 'ssrf',
       file, line: lineOf(text, m.index),
       evidence: arg.trim().slice(0, 90),
       why: 'A server-side HTTP request whose destination is tied to request data'
+        + (usesTaintedVar ? ' via tracked tainted variable' : '')
         + (inputNamed ? ' and named like an external URL' : '')
         + '. If the URL is attacker-controlled and unvalidated, the server can be made to reach '
         + 'internal hosts — cloud metadata (169.254.169.254), localhost admin ports, private '

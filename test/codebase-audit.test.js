@@ -155,6 +155,18 @@ test('findSSRF flags a server request whose URL comes from request data', () => 
   assert.equal(findSSRF('a.js', nearby).length, 1);
 });
 
+test('findSSRF flags non-adjacent calls via intra-file taint tracking (Issue #209)', () => {
+  // Over 500 characters between assignment and fetch, well beyond the 240 char window
+  const distant = `
+    const remoteTarget = req.body.targetUrl;
+    console.log('Validating payload format...');
+    // ${'padding line content\n'.repeat(25)}
+    const response = await fetch(remoteTarget);
+  `;
+  assert.equal(findSSRF('service.js', distant).length, 1);
+  assert.match(findSSRF('service.js', distant)[0].why, /tainted variable/);
+});
+
 test('findSSRF does not flag a request to a configured provider endpoint', () => {
   // The anything-llm false positives: dynamic URL, but a configured destination,
   // no request data in sight.

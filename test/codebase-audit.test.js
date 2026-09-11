@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  findSilentFallback, findDateShift, findMissingTables, findStorageDivergence
-, findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors, findMissingRls } from '../src/codebase-audit.js';
+  findSilentFallback, findDateShift, findMissingTables, findStorageDivergence,
+  findPathPrefixGuard, findCommandInjection, findSSRF, findExposedSecret, findOpenCors, findMissingRls,
+  findUnauthenticatedAdminRoutes, findSupabaseTableMissingRls
+} from '../src/codebase-audit.js';
 
 test('a catch that returns success is reported', () => {
   // The shape that hid outreach_drafts for months: the write failed on every
@@ -234,3 +236,73 @@ test('findExposedSecret ignores the Supabase local-dev demo key (public by desig
   assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${demo}"`).length, 0, 'demo key is not a leak');
   assert.equal(findExposedSecret('scripts/seed.ts', `const k = "${real}"`).length, 1, 'a real project key still fires');
 });
+
+test('findUnauthenticatedAdminRoutes flags admin routes lacking auth/session guards', () => {
+  const unauthRoute = `
+    export async function POST(req) {
+      const body = await req.json();
+      await db.deleteUser(body.userId);
+      return Response.json({ ok: true });
+    }
+  `;
+  assert.equal(findUnauthenticatedAdminRoutes('app/api/admin/delete-user/route.ts', unauthRoute).length, 1);
+
+  const expressUnauth = `
+    app.post('/api/admin/users', async (req, res) => {
+      await purgeData();
+      res.json({ done: true });
+    });
+  `;
+  assert.equal(findUnauthenticatedAdminRoutes('src/server.js', expressUnauth).length, 1);
+});
+
+test('findUnauthenticatedAdminRoutes ignores routes with proper auth/session guards', () => {
+  const authNextRoute = `
+    import { getServerSession } from 'next-auth';
+    export async function POST(req) {
+      const session = await getServerSession(authOptions);
+      if (!session || session.user.role !== 'admin') return new Response('Unauthorized', { status: 401 });
+      await db.deleteUser();
+      return Response.json({ ok: true });
+    }
+  `;
+  assert.equal(findUnauthenticatedAdminRoutes('app/api/admin/route.ts', authNextRoute).length, 0);
+
+  const expressAuthRoute = `
+    app.post('/api/admin/users', requireAuth, async (req, res) => {
+      res.json({ ok: true });
+    });
+  `;
+  assert.equal(findUnauthenticatedAdminRoutes('src/server.js', expressAuthRoute).length, 0);
+
+  const nonAdminRoute = `
+    export async function GET(req) {
+      return Response.json({ status: 'ok' });
+    }
+  `;
+  assert.equal(findUnauthenticatedAdminRoutes('app/api/health/route.ts', nonAdminRoute).length, 0);
+});
+
+test('findSupabaseTableMissingRls flags .from() client queries without matching RLS enabled', () => {
+  const code = `
+    const { data } = await supabase.from('sensitive_logs').select('*');
+  `;
+  const unverified = findSupabaseTableMissingRls('src/client.ts', code, { rlsEnabled: new Set(['profiles']) });
+  assert.equal(unverified.length, 1);
+  assert.match(unverified[0].evidence, /sensitive_logs/);
+
+  const verified = findSupabaseTableMissingRls('src/client.ts', code, { rlsEnabled: new Set(['sensitive_logs']) });
+  assert.equal(verified.length, 0);
+});
+
+test('findSupabaseTableMissingRls ignores comments and duplicate table hits in same file', () => {
+  const codeWithComments = `
+    // const { data } = await supabase.from('legacy_orders').select('*');
+    const { data } = await supabase.from('active_orders').select('*');
+    const { count } = await supabase.from('active_orders').select('*', { count: 'exact' });
+  `;
+  const findings = findSupabaseTableMissingRls('src/orders.ts', codeWithComments, { rlsEnabled: new Set() });
+  assert.equal(findings.length, 1, 'only active_orders, and deduplicated');
+  assert.match(findings[0].evidence, /active_orders/);
+});
+

@@ -27,6 +27,7 @@ export const SCAN_RAIL = 'ai-app-scan';
 const SELLABLE = {
   'exposed-secret': 'CRITICAL',
   'missing-rls': 'CRITICAL',
+  'unauthenticated-admin-route': 'HIGH',
   'open-cors': 'HIGH',
   'ssrf': 'HIGH',
   'command-injection': 'HIGH',

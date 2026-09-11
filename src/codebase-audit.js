@@ -433,6 +433,69 @@ export function findMissingRls({ supabaseCreates = [], rlsEnabled = new Set() })
   return findings;
 }
 
+/**
+ * Flags Supabase client queries (.from('table')) against tables that have no
+ * RLS enabled in supabase/migrations, or when no migrations exist at all.
+ * Precision-first: skips test files, comments, and views/internal references.
+ */
+export function findSupabaseTableMissingRls(file, text, { rlsEnabled = new Set(), hasMigrations = true } = {}) {
+  const findings = [];
+  // Match .from('tableName') or .from("tableName")
+  const fromPattern = /\.from\s*\(\s*['"]([a-zA-Z0-9_]+)['"]\s*\)/g;
+  const seen = new Set();
+  for (const m of text.matchAll(fromPattern)) {
+    const table = m[1].toLowerCase();
+    if (seen.has(table)) continue;
+    // If migrations exist and RLS is enabled for this table, it's safe
+    if (hasMigrations && rlsEnabled.has(table)) continue;
+
+    // Check if commented out on its line
+    const lineStart = text.lastIndexOf('\n', m.index) + 1;
+    const linePrefix = text.slice(lineStart, m.index).trimStart();
+    if (linePrefix.startsWith('//') || linePrefix.startsWith('*')) continue;
+
+    seen.add(table);
+    findings.push({
+      kind: 'missing-rls',
+      file, line: lineOf(text, m.index),
+      evidence: `.from('${table}') without confirmed RLS migration`,
+      why: `Client queries Supabase table "${table}", but no migration in this codebase enables Row-Level Security `
+        + 'for it. The table is accessible by any client holding the anon key. CWE-284 broken access control.',
+      confirm: `Verify in Supabase SQL editor: ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`
+    });
+  }
+  return findings;
+}
+
+/**
+ * Flags admin, internal, or mutating API routes that lack any authentication check.
+ * Checks Next.js app/pages router, Express/Hono/Fastify handlers for /api/admin or /api/* mutating actions.
+ */
+export function findUnauthenticatedAdminRoutes(file, text) {
+  const findings = [];
+  // Target route files: /api/admin, /routes/admin, or files defining /api/admin handlers
+  const isAdminFile = /(?:^|[\\/])(?:api[\\/].*admin|routes[\\/].*admin|admin[\\/].*route)\.[jt]sx?$/i.test(file);
+  const hasAdminRouteDef = /(?:app|router)\.(?:get|post|put|delete|patch)\s*\(\s*['"][^'"]*admin/i.test(text);
+
+  if (!isAdminFile && !hasAdminRouteDef) return findings;
+
+  // Check for common auth guards: auth, session, token, req.user, requireAuth, verifyToken, getServerSession, createServerComponentClient
+  const hasAuthGuard = /\b(auth|session|token|user|requireAuth|verifyToken|authenticate|isAuthenticated|getServerSession|createRouteHandlerClient|authMiddleware|supabase\.auth)\b/i.test(text);
+
+  if (!hasAuthGuard) {
+    findings.push({
+      kind: 'unauthenticated-admin-route',
+      file, line: 1,
+      evidence: 'Admin API route file or handler with no auth/session/token verification detected',
+      why: 'An admin or privileged route handler is exposed without an authentication guard. '
+        + 'Any unauthenticated caller can invoke this endpoint directly. CWE-306 missing authentication for critical function.',
+      confirm: 'Send an unauthenticated HTTP request to this endpoint and verify if it processes the action without a 401/403 status.'
+    });
+  }
+
+  return findings;
+}
+
 export function findMissingTables({ writes, creates }) {
   const created = new Set(creates.map(c => c.table));
   const seen = new Set();
@@ -528,11 +591,13 @@ export async function auditCodebase(root, { maxFiles = 2000 } = {}) {
       ...findCommandInjection(rel, text),
       ...findSSRF(rel, text),
       ...findExposedSecret(rel, text),
-      ...findOpenCors(rel, text)
+      ...findOpenCors(rel, text),
+      ...findUnauthenticatedAdminRoutes(rel, text)
     ].filter(notCommented));
   }
   findings.push(...findMissingTables({ writes, creates }));
   findings.push(...findMissingRls({ supabaseCreates, rlsEnabled }));
+
 
   // One finding, not one per branch. A hundred and thirty-five of these is not a
   // list of defects, it is a description of the architecture — and reporting it

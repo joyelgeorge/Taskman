@@ -878,6 +878,26 @@ $('#engineStopBtn')?.addEventListener('click', async () => {
   }
 });
 
+$('#engineSweepBtn')?.addEventListener('click', async () => {
+  const btn = $('#engineSweepBtn');
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⚡ Sweeping Pipeline…';
+    }
+    const res = await requestJson('/api/engine/sweep', mutationOptions({ method: 'POST' }));
+    alert(`Pipeline Cron Sweep Finished!\n\nDiscovered: ${res.summary?.discover?.enqueued || 0}\nValidated: ${res.summary?.validate?.validated || 0}\nExecuted: ${res.summary?.execute?.outcomes || 0}`);
+    await refreshAutonomousEngine();
+  } catch (err) {
+    alert(`Pipeline sweep failed: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '⚡ Run Cron Pipeline Sweep';
+    }
+  }
+});
+
 $('#toggleTweakBtn')?.addEventListener('click', () => {
   const panel = $('#tweakOptionsPanel');
   if (panel) panel.hidden = !panel.hidden;

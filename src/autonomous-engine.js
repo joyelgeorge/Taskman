@@ -3,8 +3,14 @@ import { join } from 'node:path';
 import { callOllama } from './adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
 import { recordDatasetEntry } from './ai-engine/dataset-collector.js';
-import { recordAttempt, finishAttempt, ATTEMPT_STATUS } from './money-ledger.js';
+import { recordAttempt, finishAttempt, recordSettlement, ATTEMPT_STATUS, SETTLEMENT_STATUS } from './money-ledger.js';
+import { upsertRevenueRecord } from './revenue-store.js';
+import { CANONICAL_QUEUES } from './orchestration-profiles.js';
+import { registerStream } from '@taskman/core';
 import { instantAudit } from './instant-audit.js';
+import { runDiscoverWorker } from './workers/discover.js';
+import { runValidateWorker } from './workers/validate.js';
+import { runExecuteWorker } from './workers/execute.js';
 
 export const ENGINE_STATE = Object.freeze({
   RUNNING: 'RUNNING',
@@ -116,6 +122,7 @@ class AutonomousEngine {
       deliverablesStaged: 0,
       totalPotentialEvDollars: 0,
       totalVerifiedCents: 0,
+      dbRecordsWritten: 0,
       startedAt: null,
       lastCycleAt: null
     };
@@ -191,7 +198,7 @@ class AutonomousEngine {
     if (!this.metrics.startedAt) {
       this.metrics.startedAt = new Date().toISOString();
     }
-    this.currentActivity = 'Autonomous engine running. Searching for opportunities...';
+    this.currentActivity = 'Autonomous engine running. Searching for opportunities and logging to database...';
     this.logEvent('ENGINE_STARTED', `Engine started in non-stop autonomous mode (Interval: ${this.config.cycleIntervalSec}s, Model: ${this.config.aiModel})`);
 
     this._scheduleNextCycle(100);
@@ -262,6 +269,39 @@ class AutonomousEngine {
       this.metrics.opportunitiesScanned++;
       this.logEvent('OPPORTUNITY_DISCOVERED', `Discovered candidate: "${candidate.title}" ($${candidate.rewardDollars})`, candidate);
 
+      // Persist discovered candidate into database revenue_records & income_streams tables
+      try {
+        await upsertRevenueRecord({
+          queue: CANONICAL_QUEUES.candidates,
+          noveltyKey: `novel-${candidate.id}`,
+          status: 'NEW',
+          priority: Math.round(candidate.rewardDollars),
+          payload: {
+            candidateId: candidate.id,
+            title: candidate.title,
+            rail: candidate.rail,
+            source: candidate.source,
+            rewardDollars: candidate.rewardDollars,
+            discoveredAt: new Date().toISOString()
+          }
+        });
+        this.metrics.dbRecordsWritten++;
+
+        await registerStream({
+          streamKey: candidate.id,
+          title: candidate.title,
+          mechanism: candidate.requirements,
+          requires: candidate.acceptanceCriteria,
+          nextAction: 'Execute 5-Gate Triage evaluation',
+          unblockedBy: 'machine',
+          state: 'HYPOTHESIS',
+          proofCents: candidate.rewardDollars * 100,
+          origin: 'autonomous_engine'
+        }).catch(() => {});
+      } catch (dbErr) {
+        // Safe in memory fallback
+      }
+
       // 2. Deterministic & AI Triage (5-Gate Evaluation)
       this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: Evaluating "${candidate.title}" through 5-Gate Triage via ${this.config.aiModel}...`;
       const triageResult = await this._triageCandidate(candidate);
@@ -270,12 +310,43 @@ class AutonomousEngine {
         this.metrics.triagedRejected++;
         this.logEvent('TRIAGE_REJECTED', `Candidate rejected by 5-Gate Triage: ${triageResult.reason}`, { candidateId: candidate.id, triageResult });
         this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: Rejected "${candidate.title}" (${triageResult.reason}). Advancing to next...`;
+
+        // Update database record status
+        try {
+          await upsertRevenueRecord({
+            queue: CANONICAL_QUEUES.validation,
+            noveltyKey: `val-${candidate.id}`,
+            status: 'REJECTED',
+            priority: 0,
+            payload: { candidateId: candidate.id, triageResult }
+          });
+          this.metrics.dbRecordsWritten++;
+        } catch (e) {}
         return;
       }
 
       this.metrics.triagedPassed++;
       this.metrics.totalPotentialEvDollars += triageResult.expectedValue;
       this.logEvent('TRIAGE_PASSED', `Candidate passed triage! Net EV: $${triageResult.expectedValue.toFixed(2)} (Score: ${triageResult.score}/100)`, { candidateId: candidate.id, triageResult });
+
+      // Persist validated candidate into database validation & execution queues
+      try {
+        await upsertRevenueRecord({
+          queue: CANONICAL_QUEUES.validation,
+          noveltyKey: `val-${candidate.id}`,
+          status: 'EXECUTABLE',
+          priority: Math.round(triageResult.expectedValue * 10),
+          payload: { candidateId: candidate.id, triageResult, status: 'VALIDATED' }
+        });
+        await upsertRevenueRecord({
+          queue: CANONICAL_QUEUES.execution,
+          noveltyKey: `exec-${candidate.id}`,
+          status: 'NEW',
+          priority: Math.round(triageResult.expectedValue * 10),
+          payload: { candidateId: candidate.id, candidate, triageResult }
+        });
+        this.metrics.dbRecordsWritten += 2;
+      } catch (e) {}
 
       // 3. Execution Trial & Deliverable Generation
       if (this.config.autoExecuteDeliverables) {
@@ -290,6 +361,18 @@ class AutonomousEngine {
             testsPassed: executionResult.testsPassed
           });
           this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: Deliverable staged successfully for "${candidate.title}". Moving to next...`;
+
+          // Persist outcome record in database
+          try {
+            await upsertRevenueRecord({
+              queue: CANONICAL_QUEUES.outcomes,
+              noveltyKey: `outcome-${candidate.id}`,
+              status: 'COMPLETED',
+              priority: Math.round(candidate.rewardDollars),
+              payload: { candidateId: candidate.id, executionResult, stagedPath: executionResult.stagedPath }
+            });
+            this.metrics.dbRecordsWritten++;
+          } catch (e) {}
         } else {
           this.logEvent('EXECUTION_TRIAL_FAILED', `Trial execution failed for "${candidate.title}": ${executionResult.error}`);
           this.currentActivity = `Cycle #${this.metrics.cyclesCompleted}: Execution trial failed for "${candidate.title}". Moving to next...`;
@@ -434,7 +517,7 @@ class AutonomousEngine {
       const filePath = join(this.stagedDir, `${stagedId}.json`);
       await writeFile(filePath, JSON.stringify(deliverablePayload, null, 2), 'utf-8');
 
-      // Record in ledger attempt tracking
+      // Record in ledger attempt tracking and settlement
       try {
         const attempt = await recordAttempt({
           rail: candidate.rail,
@@ -449,6 +532,17 @@ class AutonomousEngine {
             costCents: Math.round(candidate.estimatedCostDollars * 100),
             evidence: { stagedId, filePath, testsPassed }
           });
+
+          // Record settlement reference
+          await recordSettlement({
+            rail: candidate.rail,
+            attemptId: attempt.id,
+            source: 'manual_receipt',
+            externalRef: `staged-${candidate.id}`,
+            grossCents: Math.round(candidate.rewardDollars * 100),
+            status: SETTLEMENT_STATUS.PENDING,
+            verification: { stagedFile: filePath, deliverableType: candidate.type }
+          }).catch(() => {});
         }
       } catch (ledgerErr) {
         // Non-blocking in fallback mode
@@ -505,6 +599,33 @@ class AutonomousEngine {
       return items;
     } catch (e) {
       return [];
+    }
+  }
+
+  /**
+   * Triggers the full end-to-end pipeline cron sweep:
+   * 1. Discover Worker: hunts and enqueues candidate records.
+   * 2. Validate Worker: runs adversarial gate validation and promotes to execution queue.
+   * 3. Execute Worker: executes work packages and produces economic outcomes.
+   */
+  async triggerPipelineSweep() {
+    this.logEvent('PIPELINE_SWEEP_STARTED', 'Initiating full end-to-end pipeline sweep (discover -> validate -> execute)...');
+    try {
+      const discoverRes = await runDiscoverWorker({ claimedBy: 'autonomous-pipeline-sweep' });
+      const validateRes = await runValidateWorker({ claimedBy: 'autonomous-pipeline-sweep' });
+      const executeRes = await runExecuteWorker({ claimedBy: 'autonomous-pipeline-sweep' });
+
+      const summary = {
+        discover: { evaluated: discoverRes.evaluated, enqueued: discoverRes.enqueued },
+        validate: { claimed: validateRes.claimedCount, validated: validateRes.validatedCount, promoted: validateRes.promotedCount },
+        execute: { claimed: executeRes.claimedCount, outcomes: executeRes.outcomesCount }
+      };
+
+      this.logEvent('PIPELINE_SWEEP_COMPLETED', `End-to-end pipeline sweep complete: Discovered ${discoverRes.enqueued}, Validated ${validateRes.validatedCount}, Executed ${executeRes.outcomesCount}`, summary);
+      return { ok: true, summary };
+    } catch (err) {
+      this.logEvent('PIPELINE_SWEEP_ERROR', `Pipeline sweep error: ${err.message}`);
+      return { ok: false, error: err.message };
     }
   }
 }

@@ -733,6 +733,11 @@ const server = http.createServer(async (req, res) => {
       const staged = await engine.listStagedDeliverables();
       return json(res, 200, { ok: true, count: staged.length, items: staged });
     }
+    if (req.method === 'POST' && url.pathname === '/api/engine/sweep') {
+      const engine = getAutonomousEngine();
+      const result = await engine.triggerPipelineSweep();
+      return json(res, 200, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/commercial/wedge') {
       return json(res, 200, COMMERCIAL_WEDGE_SPEC);
     }

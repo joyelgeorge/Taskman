@@ -24,6 +24,26 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+
+      # scanned_repos (migration 033) is created by this repo, not by hand, so a
+      # runner meeting a fresh or lagging database would otherwise die on
+      # "relation does not exist" — a failure that looks nothing like its cause.
+      # scripts/migrate.js takes an advisory lock and is a no-op once applied,
+      # so running it ahead of the sweep is safe and idempotent. It reads BOTH
+      # db/migrations/ and packages/db/migrations/, which is where 033 lives.
+      - name: Apply pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # Skip rather than fail when the secret is absent: hunt-vibe-leads.mjs
+          # refuses far more precisely, naming what to set and why a
+          # memory-backed sweep is worse than a failed one.
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not set — skipping migrations so the sweep reports the setup error itself."
+            exit 0
+          fi
+          npm run migrate
+
       - name: Hunt genuine-business leads
         env:
           GH_TOKEN: ${{ github.token }}

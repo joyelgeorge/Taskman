@@ -103,3 +103,50 @@ test('AutonomousEngine: filters out opportunities below reward or EV threshold',
   assert.equal(status.metrics.opportunitiesScanned, 0); // None passed hunt filter
   assert.equal(status.metrics.triagedPassed, 0);
 });
+
+test('AutonomousEngine: stages ground truth deliverables and accurately distinguishes tested code from pending items', async () => {
+  const engine = getAutonomousEngine({
+    cycleIntervalSec: 100,
+    minRewardDollars: 10,
+    minExpectedValue: 5,
+    autoExecuteDeliverables: true
+  });
+
+  engine.start();
+  // Run 5 cycles to cycle through all 5 feed items
+  for (let i = 0; i < 5; i++) {
+    await engine._runCycle();
+  }
+
+  const staged = await engine.listStagedDeliverables();
+  assert.ok(staged.length >= 5);
+
+  const byId = new Map(staged.map(s => [s.candidateId, s.payload]));
+
+  // bounty-algora-101 has real implementation and passing tests
+  const algora101 = byId.get('bounty-algora-101');
+  assert.ok(algora101);
+  assert.equal(algora101.status, 'TESTED_AND_READY');
+  assert.equal(algora101.testsPassed, true);
+  assert.equal(algora101.patchFile, 'src/stripe-webhook-mutex.js');
+
+  // bounty-algora-102 has real implementation and passing tests
+  const algora102 = byId.get('bounty-algora-102');
+  assert.ok(algora102);
+  assert.equal(algora102.status, 'TESTED_AND_READY');
+  assert.equal(algora102.testsPassed, true);
+  assert.equal(algora102.patchFile, 'src/accessibility-calendar-tokens.js');
+
+  // bounty-dispute-chargeback-301 has no implementation files
+  const dispute301 = byId.get('bounty-dispute-chargeback-301');
+  assert.ok(dispute301);
+  assert.equal(dispute301.status, 'PENDING_IMPLEMENTATION');
+  assert.equal(dispute301.testsPassed, false);
+
+  // bounty-api-rate-limiter-401 has no implementation files
+  const rate401 = byId.get('bounty-api-rate-limiter-401');
+  assert.ok(rate401);
+  assert.equal(rate401.status, 'PENDING_IMPLEMENTATION');
+  assert.equal(rate401.testsPassed, false);
+});
+

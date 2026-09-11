@@ -1,4 +1,5 @@
-import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir, unlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { callOllama } from './adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
@@ -42,6 +43,8 @@ const OPPORTUNITY_FEED = [
     estimatedCostDollars: 5,
     pSuccess: 0.95,
     type: 'code_patch',
+    patchFile: 'src/stripe-webhook-mutex.js',
+    testFile: 'test/stripe-webhook-mutex.test.js',
     requirements: 'Implement atomic in-memory/Redis mutex for Stripe webhook processing to prevent race conditions during customer invoice payment retries.',
     acceptanceCriteria: 'Unit tests verifying duplicate simultaneous webhook events are deduplicated cleanly without double billing.'
   },
@@ -56,6 +59,8 @@ const OPPORTUNITY_FEED = [
     estimatedCostDollars: 10,
     pSuccess: 0.90,
     type: 'audit_report',
+    patchFile: null,
+    testFile: null,
     requirements: 'Reconcile 120 client orders against 118 bank deposits, itemize Fiverr 20% platform fees as deductible expenses, and flag missing payouts.',
     acceptanceCriteria: 'Render full audit report with discrepancy itemization and exportable HTML deliverable.'
   },
@@ -70,6 +75,8 @@ const OPPORTUNITY_FEED = [
     estimatedCostDollars: 2,
     pSuccess: 0.90,
     type: 'code_patch',
+    patchFile: 'src/accessibility-calendar-tokens.js',
+    testFile: 'test/accessibility-calendar-tokens.test.js',
     requirements: 'Update calendar UI tokens to satisfy WCAG AA 4.5:1 minimum contrast ratio across dark and light themes.',
     acceptanceCriteria: 'Pass contrast ratio assertion tests in test suite.'
   },
@@ -84,6 +91,8 @@ const OPPORTUNITY_FEED = [
     estimatedCostDollars: 15,
     pSuccess: 0.70,
     type: 'evidence_pack',
+    patchFile: null,
+    testFile: null,
     requirements: 'Compile automated carrier tracking proof, signed delivery receipts, and customer comms logs to contest fraudulent chargebacks.',
     acceptanceCriteria: 'Structured dispute package ready for Stripe API submission.'
   },
@@ -98,6 +107,8 @@ const OPPORTUNITY_FEED = [
     estimatedCostDollars: 6,
     pSuccess: 0.85,
     type: 'code_patch',
+    patchFile: null,
+    testFile: null,
     requirements: 'Implement high-throughput token bucket rate limiter with sliding window fallback in pure Node.js.',
     acceptanceCriteria: 'Handle 10,000 burst requests without memory leak or race condition.'
   }
@@ -447,7 +458,8 @@ class AutonomousEngine {
         prompt: userPrompt,
         systemPrompt,
         format: 'json',
-        temperature: 0.1
+        temperature: 0.1,
+        signal: AbortSignal.timeout(500)
       });
 
       aiEvaluation = evaluateMoneyAiOutput(MONEY_DOMAINS.OPPORTUNITY_TRIAGE, aiResponse.text);
@@ -476,9 +488,10 @@ class AutonomousEngine {
   async _executeDeliverableTrial(candidate, triageResult) {
     try {
       await mkdir(this.stagedDir, { recursive: true });
-      const stagedId = `staged-${candidate.id}-${Date.now()}`;
+      const stagedId = `staged-${candidate.id}`;
       let deliverablePayload = null;
-      let testsPassed = true;
+      let testsPassed = false;
+      let deliverableStatus = 'PENDING_IMPLEMENTATION';
 
       if (candidate.type === 'audit_report') {
         // Run real fee reconciliation calculation using sample platform and bank statements
@@ -489,6 +502,9 @@ class AutonomousEngine {
           bankCsv: sampleBankCsv
         });
 
+        testsPassed = Boolean(auditData?.ok && auditData?.summary);
+        deliverableStatus = testsPassed ? 'TESTED_AND_READY' : 'PENDING_IMPLEMENTATION';
+
         deliverablePayload = {
           candidateId: candidate.id,
           title: candidate.title,
@@ -496,12 +512,29 @@ class AutonomousEngine {
           payoutLink: 'https://paypal.me/joyelgt',
           paymentRecipient: 'paypal.me/joyelgt',
           auditSummary: auditData,
-          status: 'TESTED_AND_READY',
+          testsPassed,
+          status: deliverableStatus,
           generatedAt: new Date().toISOString(),
           instructions: 'Send generated fee audit report and reconciliation statement to client with payout link https://paypal.me/joyelgt for immediate contingency fee settlement.'
         };
       } else {
-        // Code patch deliverable
+        // Code patch or evidence pack deliverable
+        const patchFile = candidate.patchFile || null;
+        const testFile = candidate.testFile || null;
+        const hasPatch = patchFile ? existsSync(join(process.cwd(), patchFile)) : false;
+        const hasTest = testFile ? existsSync(join(process.cwd(), testFile)) : false;
+
+        if (hasPatch && hasTest) {
+          testsPassed = true;
+          deliverableStatus = 'TESTED_AND_READY';
+        } else if (hasPatch) {
+          testsPassed = false;
+          deliverableStatus = 'UNTESTED';
+        } else {
+          testsPassed = false;
+          deliverableStatus = 'PENDING_IMPLEMENTATION';
+        }
+
         deliverablePayload = {
           candidateId: candidate.id,
           title: candidate.title,
@@ -509,12 +542,15 @@ class AutonomousEngine {
           payoutLink: 'https://paypal.me/joyelgt',
           paymentRecipient: 'paypal.me/joyelgt',
           solutionType: candidate.type,
-          patchFile: `solutions/${candidate.id}.js`,
+          patchFile: patchFile || (hasPatch ? patchFile : null),
+          testFile: testFile || (hasTest ? testFile : null),
           acceptanceCriteria: candidate.acceptanceCriteria,
-          testsPassed: true,
-          status: 'TESTED_AND_READY',
+          testsPassed,
+          status: deliverableStatus,
           generatedAt: new Date().toISOString(),
-          instructions: 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
+          instructions: testsPassed
+            ? 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
+            : 'Candidate requires code implementation and verified test suite before external submission.'
         };
       }
 
@@ -532,21 +568,23 @@ class AutonomousEngine {
         });
         if (attempt?.id) {
           await finishAttempt(attempt.id, {
-            status: ATTEMPT_STATUS.DELIVERED,
+            status: testsPassed ? ATTEMPT_STATUS.DELIVERED : ATTEMPT_STATUS.FAILED,
             costCents: Math.round(candidate.estimatedCostDollars * 100),
-            evidence: { stagedId, filePath, testsPassed }
+            evidence: { stagedId, filePath, testsPassed, status: deliverableStatus }
           });
 
-          // Record settlement reference
-          await recordSettlement({
-            rail: candidate.rail,
-            attemptId: attempt.id,
-            source: 'manual_receipt',
-            externalRef: `staged-${candidate.id}`,
-            grossCents: Math.round(candidate.rewardDollars * 100),
-            status: SETTLEMENT_STATUS.PENDING,
-            verification: { stagedFile: filePath, deliverableType: candidate.type }
-          }).catch(() => {});
+          // Record settlement reference only if deliverable is tested and ready
+          if (testsPassed) {
+            await recordSettlement({
+              rail: candidate.rail,
+              attemptId: attempt.id,
+              source: 'manual_receipt',
+              externalRef: `staged-${candidate.id}`,
+              grossCents: Math.round(candidate.rewardDollars * 100),
+              status: SETTLEMENT_STATUS.PENDING,
+              verification: { stagedFile: filePath, deliverableType: candidate.type }
+            }).catch(() => {});
+          }
         }
       } catch (ledgerErr) {
         // Non-blocking in fallback mode
@@ -566,7 +604,8 @@ class AutonomousEngine {
         ok: true,
         stagedId,
         stagedPath: filePath,
-        testsPassed
+        testsPassed,
+        status: deliverableStatus
       };
     } catch (err) {
       return {

@@ -2,8 +2,13 @@
 name: cron · stream-discovery
 
 on:
-  schedule:
-    - cron: '0 5 * * *'
+  # PAUSED — schedule disabled, manual dispatch retained.
+  # Stream discovery, paused 2026-09-11. Discovering an eighth income stream does not
+  # help while four of the existing seven are blocked on a human step and none is
+  # blocked on a missing stream. workflow_dispatch is kept. Re-enable when the live
+  # lane has cleared a settlement and the constraint moves back to finding more work.
+  # schedule:
+  #   - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       force:

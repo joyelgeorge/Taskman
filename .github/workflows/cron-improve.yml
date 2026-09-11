@@ -2,8 +2,15 @@
 name: cron · improve
 
 on:
-  schedule:
-    - cron: '0 3 * * *'
+  # PAUSED — schedule disabled, manual dispatch retained.
+  # Self-improvement, paused 2026-09-11. Seven income streams exist: two disproven,
+  # four blocked on a human, one live and waiting for a recipient. Generating more
+  # capability into a backlog blocked on a person is the failure this project already
+  # diagnosed once — supply built without demand — running on a timer. workflow_dispatch
+  # is kept, so it still runs on request. Re-enable when something is genuinely blocked
+  # on capability rather than on someone sending a message.
+  # schedule:
+  #   - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       force:

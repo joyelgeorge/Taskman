@@ -2,6 +2,18 @@
 
 Taskman is an autonomous revenue, telemetry, and execution engine designed with strict economic verification, human gating, and deterministic safety rules.
 
+## 📌 READ FIRST — `docs/READ-FIRST.md`
+
+Before writing any code in this repository, read `docs/READ-FIRST.md`. It holds
+the one question every change has to answer — **which settlement row does this
+produce, and who pays it?** — and the verified current position: the code path
+to the first dollar is complete and has never been travelled. The constraint
+has not been code for some time.
+
+Work that is found but deliberately not done goes in `docs/tasks/` rather than
+blocking whoever found it. Two sessions share this working tree; if another
+session is mid-edit in a file you need, park a task and carry on.
+
 ## ⚠ CRITICAL STRATEGIC FINDING (2026-09-08) — read first
 
 **The gap that kept revenue at $0: Taskman built enormous SUPPLY (detection,

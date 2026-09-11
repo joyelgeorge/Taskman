@@ -275,9 +275,54 @@ against code writing a value the schema rejects — it only runs with
   not be used for a contingency invoice). Treat the live skill/CLAUDE.md
   pricing as authoritative over `BILLING_RULES` if the two ever diverge —
   `BILLING_RULES` reads as an earlier or parallel pricing model.
-- `src/audit-fulfilment.js` / `src/scan-fulfilment.js` — order-to-report
-  fulfillment plumbing tied to the reconciliation output; not independently
-  verified beyond their existence and rough size in this pass.
+- **`src/audit-fulfilment.js`** — `fulfilAuditOrder` books one paid
+  payout-reconciliation audit end-to-end: this is the specific link
+  CLAUDE.md's strategic finding names as the missing piece (free check →
+  paid deliverable → booked settlement). Verified real, not fabricated:
+    - Deliver-first ordering — the report is built via `buildFullReport`/
+      `renderReportHtml` *before* anything is booked; an undeliverable audit
+      is never charged.
+    - Reuses §2's real invariant correctly: throws unless
+      `source ∈ VERIFIED_SOURCES` and `externalRef` is present — unlike
+      `complete-fiverr-audit-settlement.js` (§15), which faked a "CLEARED"
+      settlement by writing a raw JSON file instead of calling this path.
+    - `minutesSpent` is mandatory and feeds `effectiveHourlyRate` — an
+      honest per-hour economics readout ("a $20 report that takes two hours
+      is not a business"), not a vanity metric.
+    - The income stream (`payout-audit-direct`) is only marked `EARNING` on
+      a `CLEARED` settlement — a pending payment never moves it.
+    - Wired to a real CLI: `npm run fulfil` → `scripts/fulfil-audit.js`, a
+      genuine one-command operator tool (`--platform`, `--bank`, `--ref`,
+      `--gross`, `--minutes`, etc.).
+    - Tested: `test/audit-fulfilment.test.js` passes.
+- **`src/scan-fulfilment.js`** — mirrors the pattern above for a second,
+  separate lane: a paid AI-app security scan for vibe-coded apps (the
+  validated-demand market named in CLAUDE.md's strategic finding). Also
+  verified real:
+    - `SCAN_TIERS`: `scan` $99, `fix` $249 — real priced tiers; the PayPal
+      link is built dynamically as `paypal.me/joyelgt/<amount>`.
+    - `SELLABLE` maps exactly the finding classes CLAUDE.md names as the
+      validated vuln class (`exposed-secret`, `missing-rls`, `open-cors`,
+      `ssrf`, `command-injection`, `path-prefix-guard`) to CRITICAL/HIGH —
+      and all six corresponding detectors
+      (`findExposedSecret`, `findOpenCors`, `findMissingRls`, `findSSRF`,
+      `findCommandInjection`, `findPathPrefixGuard`) are real, implemented
+      functions in `src/codebase-audit.js`, not stubs.
+    - `prepareScanOrder` (pre-payment preview, books nothing) is correctly
+      split from `fulfilScanOrder` (post-payment, booked) — a buyer sees
+      findings and price before any settlement is written. Same
+      `VERIFIED_SOURCES`/`externalRef` guard and deliver-first ordering as
+      the audit lane.
+    - Tested: `test/scan-fulfilment.test.js`, 13/13 pass.
+    - Minor gap: `scripts/fulfil-scan.mjs` exists but, unlike
+      `fulfil-audit.js`, is not wired into `package.json` scripts — there is
+      no `npm run fulfil:scan` yet.
+
+  **Verified 2026-09-11.** Both files are examples of the pattern done
+  right — worth contrasting with §15's fabrication findings rather than
+  lumping them in with the same suspicion. The lesson for the new brain:
+  not everything in this codebase is fake; check each claim on its own
+  evidence rather than assuming a pattern from one bad file generalizes.
 
 ## 12. AI / LLM orchestration layer
 

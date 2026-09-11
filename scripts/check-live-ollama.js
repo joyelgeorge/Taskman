@@ -1,3 +1,13 @@
+// Manual live-integration check against a running Ollama daemon. Run it by hand:
+//   node scripts/check-live-ollama.js
+//
+// Named check-* rather than test-* on purpose. `node --test` collects
+// scripts/test-*.js, so as a test-* file this was picked up by the suite and
+// exited 1 on every CI runner, none of which has an Ollama daemon. That single
+// unpassable file made CI fail on 20 of its last 24 runs while 785 of 786 real
+// tests passed - and a red CI nobody believes is worse than no CI, because the
+// next genuine regression looks exactly like the noise.
+
 import { checkOllamaHealth, listOllamaModels, callOllama } from '../src/adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from '../src/ai-engine/money-making-agent.js';
 import { recordDatasetEntry, getDatasetEntries, exportFineTuningDataset } from '../src/ai-engine/dataset-collector.js';

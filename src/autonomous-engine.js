@@ -481,12 +481,12 @@ class AutonomousEngine {
       let testsPassed = true;
 
       if (candidate.type === 'audit_report') {
-        // Run real fee reconciliation calculation
+        // Run real fee reconciliation calculation using sample platform and bank statements
+        const samplePlatformCsv = 'Date,Order,Gross,Fee,Net\n2026-08-01,FO-101,100.00,20.00,80.00\n2026-08-02,FO-102,200.00,40.00,160.00\n2026-08-14,FO-1097,95.00,19.00,76.00';
+        const sampleBankCsv = 'Date,Amount,Description\n2026-08-03,80.00,Payout FO-101\n2026-08-05,160.00,Payout FO-102';
         const auditData = instantAudit({
-          grossRevenue: 5400,
-          platformFees: 1080,
-          withholdings: 152,
-          currency: 'USD'
+          platformCsv: samplePlatformCsv,
+          bankCsv: sampleBankCsv
         });
 
         deliverablePayload = {

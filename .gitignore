@@ -8,3 +8,5 @@ npm-debug.log*
 skills-lock.json
 dist/
 .firebase/
+data/runtime/
+data/staged-deliverables/staged-bounty-*.json

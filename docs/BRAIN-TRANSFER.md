@@ -26,11 +26,42 @@ engine's own hardcoded opportunity feed (§6 below) was fictional, and one
 staging script was asserting `testsPassed: true` for code that did not
 exist. Fixed in `src/autonomous-engine.js`; see §13.
 
-**Rule for the new brain:** before building an execution pipeline (report,
-invoice, "cleared" settlement) against any opportunity, verify a real
-external reference exists for it (a live bounty URL, a real order ID, a
-matching `settlements` row with `externalRef`). Treat anything without one as
-fictional until proven otherwise.
+**Rule for the new brain (calibrated 2026-09-11, `src/evidence-tier.js`):**
+a reference gates ASSERTION and SPEND, never EXPLORATION.
+
+An earlier phrasing of this rule required a verifiable external reference
+before pursuing any opportunity. That version was wrong, and dangerously so:
+combined with §1's own "start from visible, already-paying demand", it would
+have confined the engine to opportunities already listed on public boards —
+which §14 records as picked clean (`github-bounty-hunt`: 403 listings, 0
+winnable). The rule against inventing counterparties would have become a rule
+against discovering real ones.
+
+Three tiers instead:
+
+1. **Explore freely.** No reference is needed to enter the pipeline. `isNovel()`
+   stays the only novelty filter, and it rejects nothing but exact repeats and
+   aliases of KILLED lanes.
+2. **Assert honestly.** Without a resolvable reference a candidate is typed
+   `HYPOTHESIS` and may not claim `escrow`, a precise `rewardDollars`, or a
+   calibrated `pSuccess`. The figure survives as
+   `unverifiedRewardEstimateDollars` with `rewardBasis: 'unverified_estimate'`,
+   and the candidate is decided `NEEDS_EVIDENCE` — which
+   `rankEconomicOpportunities` already prioritises ABOVE skip and
+   setup-required, so it gets investigated rather than dropped.
+3. **Spend and claim carefully.** A reference is required before real cost is
+   incurred and before any counterparty claim (DELIVERED / ACCEPTED / CLEARED /
+   INVOICED). `money-ledger.js` already enforces the settlement end properly.
+
+A reference is deliberately broad — any resolvable URL counts, a forum thread as
+readily as a bounty listing, because demand signals are where unexplored lanes
+start. What does not count is a generic label like `'Algora / GitHub OSS
+Bounty'`, which names a venue and identifies nothing.
+
+Note what this does NOT gate: `TESTED_AND_READY` is an internal claim with
+internal evidence (a real test exit code). Requiring a counterparty reference
+for it would block finishing honest work on a new lane before anyone could be
+shown it.
 
 ---
 
@@ -410,14 +441,33 @@ already commits to.
   (`src/stripe-webhook-mutex.js`, `src/accessibility-calendar-tokens.js` —
   both pass their real test files) but referenced a nonexistent
   `solutions/<id>.js` path and had never been submitted to any real bounty.
-  **Fixed**: these two candidates now carry real `sourceFile`/`testFile`
-  fields, and `_executeDeliverableTrial` runs `node --test <testFile>` for
-  real before claiming `TESTED_AND_READY`.
+  **Status corrected 2026-09-11.** This entry previously claimed
+  `_executeDeliverableTrial` "runs `node --test <testFile>` for real". **It did
+  not.** It called `existsSync()` on the patch and test files and set
+  `testsPassed = true` if both merely existed — so a test file that existed and
+  FAILED still staged as `TESTED_AND_READY`. The document asserted a fix that
+  was not in the code: the exact failure this project is built to prevent,
+  committed in the document written to prevent it.
+
+  **Now genuinely fixed**: `verifyDeliverableTests()` (exported from
+  `src/autonomous-engine.js`, covered by `test/deliverable-test-verification.
+  test.js`) spawns `node --test <testFile>` and reads the exit code. Verdicts:
+  `PENDING_IMPLEMENTATION` (no patch), `UNTESTED` (patch, no test),
+  `TESTS_FAILING` (suite ran and failed), `TEST_RUN_FAILED` (suite could not be
+  spawned), `TESTED_AND_READY` (suite ran and passed). A `ran` flag
+  distinguishes "tests failed" from "tests never ran".
+
+  Two traps found while fixing it, both worth knowing: the field is
+  `patchFile`, not `sourceFile`; and the spawned child must NOT inherit
+  `NODE_TEST_CONTEXT`, which a parent `node --test` run sets and which makes a
+  failing child suite report success — a naive fix reintroduces the bug
+  whenever the engine is exercised from a test.
 - `bounty-dispute-chargeback-301` and `bounty-api-rate-limiter-401` had
   `testsPassed: true` hardcoded with **no source file anywhere in `src/`**
-  — a fabricated status flag, not just unvalidated demand. **Fixed**: a
-  candidate with no `sourceFile` now stages as `status: 'NO_IMPLEMENTATION'`,
-  `testsPassed: false`, `patchFile: null`. The 40 stale staged-deliverable
+  — a fabricated status flag, not just unvalidated demand. **Fixed** (verified
+  2026-09-11): a candidate with no `patchFile` stages as `testsPassed: false`
+  with `patchFile: null`. The status string is `PENDING_IMPLEMENTATION`, not
+  the `NO_IMPLEMENTATION` this document previously named. The 40 stale staged-deliverable
   JSON files asserting the old false claim were deleted from
   `data/staged-deliverables/` (that directory is gitignored going forward).
 
@@ -425,6 +475,44 @@ already commits to.
 READY'` must never be set without an actual test run against an actual
 source file that exists on disk. If you find code doing this again, it is
 the same bug recurring — fix at the source, not by patching the output.
+
+---
+
+## 16. The four failure shapes, and why a rule is not enough
+
+Every incident in §14 and §15 is one of four things. Learn them by name; they
+are separate bugs that reinforce each other.
+
+1. **The indicator is not the thing** (Goodhart's law; specification gaming).
+   A proxy stands in for the property and the code optimises the proxy —
+   `existsSync` standing in for a test run.
+2. **The vacuous test.** An assertion with no discriminating power: it passes
+   identically whether the code is right or wrong.
+3. **Confabulation.** A confident claim with no underlying check — including
+   §15 of this document, which asserted a `node --test` fix that was not in the
+   code.
+4. **Surrogation.** Enforcing a rule's letter against its intent — §1's earlier
+   hard reference gate, which would have blocked discovery in the name of
+   preventing fabrication.
+
+The uncomfortable lesson: this repo already carried `taskman-verify`, a
+`CLAUDE.md` rule to verify before asserting, and this document — whose whole
+thesis is that unverified "verified" marks nearly cost a year. All four
+happened anyway, and two of them happened *while fixing another one*. A rule
+you must remember to apply does not fire in the state where you are confident,
+and confidence is the state in which these get written.
+
+So prefer, in this order:
+
+1. **An executable check** that fails whether or not anyone remembered —
+   `verifyDeliverableTests()`, `test/schema-code-agreement.test.js`, a CI scan.
+2. **A broken-then-restored demonstration** recorded in the commit: break the
+   guarded property, watch the test fail, restore, keep both outputs.
+3. **A written rule**, last, because it is the weakest of the three.
+
+The procedure and the discriminating-guard checklist live in the
+`verifying-guard-tests` skill (`.claude/skills/`), reachable also from
+`taskman-verify`.
 
 ---
 

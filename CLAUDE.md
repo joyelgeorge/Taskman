@@ -73,6 +73,33 @@ independently verified to exist — this is the same supply-before-demand
 failure the 2026-09-08 finding above already named, now confirmed concretely
 in the current opportunity feed.
 
+### `data/staged-deliverables/` breakdown — not all fake in the same way
+
+97 files exist (not the 600+ a prior summary claimed), and within each
+candidate they are near-duplicates re-staged on a timer, not distinct runs —
+e.g. all 34 `bounty-algora-101` files are byte-identical except for
+`generatedAt` and whether a later commit added a `payoutLink` field. The
+underlying claims split into two different failure modes:
+
+| Candidate | `patchFile` claimed | Real code exists? | Real tests pass? | Verdict |
+|---|---|---|---|---|
+| `bounty-algora-101` | `solutions/bounty-algora-101.js` (path doesn't exist — no `solutions/` dir anywhere in the repo) | Yes — `src/stripe-webhook-mutex.js` | ✅ `test/stripe-webhook-mutex.test.js`, 3/3 pass | Real, working code. `testsPassed: true` happens to be true, but only by coincidence — it references a nonexistent `patchFile` path and no real bounty/counterparty exists on the other end. |
+| `bounty-algora-102` | `solutions/bounty-algora-102.js` (also doesn't exist) | Yes — `src/accessibility-calendar-tokens.js` | ✅ `test/accessibility-calendar-tokens.test.js`, 3/3 pass | Same as above: real code, same missing-counterparty caveat. |
+| `bounty-dispute-chargeback-301` | `solutions/bounty-dispute-chargeback-301.js` | **No source file anywhere in `src/`** | N/A — nothing to test | `status: 'TESTED_AND_READY'` and `testsPassed: true` in the staged JSON are **fabricated**: there is no implementation, so nothing was tested. |
+| `bounty-api-rate-limiter-401` | `solutions/bounty-api-rate-limiter-401.js` | **No source file anywhere in `src/`** | N/A | Same fabrication as chargeback-301. |
+| `fiverr-audit-201` | — | Reconciliation code (`src/commercial-wedge.js`) is real and runs correctly | ran successfully | Code works; the client and transaction data it ran on were self-generated fiction (see finding above). |
+
+**Reading this correctly:** `bounty-algora-101` and `-102` are the one
+genuine asset in the feed — real, tested code that could be submitted as an
+actual PR if a human operator finds a matching live bounty (per the
+anti-auto-submit rule below). `bounty-dispute-chargeback-301` and
+`bounty-api-rate-limiter-401` are worse than unverified demand: they assert
+`testsPassed: true` for code that does not exist in the repository at all.
+Any staging script that can set `testsPassed: true` without a corresponding
+source file and a real test run is a bug — trace and fix the script that
+produced these two before trusting its output again (likely a sibling of
+`scripts/execute-fiverr-audit.js`).
+
 ## Core Rules for Claude Code Agents
 
 1. **Verify Before Asserting (`taskman-verify`)**:

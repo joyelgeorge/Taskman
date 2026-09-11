@@ -1,4 +1,6 @@
 import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { callOllama } from './adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt, evaluateMoneyAiOutput } from './ai-engine/money-making-agent.js';
@@ -43,7 +45,9 @@ const OPPORTUNITY_FEED = [
     pSuccess: 0.95,
     type: 'code_patch',
     requirements: 'Implement atomic in-memory/Redis mutex for Stripe webhook processing to prevent race conditions during customer invoice payment retries.',
-    acceptanceCriteria: 'Unit tests verifying duplicate simultaneous webhook events are deduplicated cleanly without double billing.'
+    acceptanceCriteria: 'Unit tests verifying duplicate simultaneous webhook events are deduplicated cleanly without double billing.',
+    sourceFile: 'src/stripe-webhook-mutex.js',
+    testFile: 'test/stripe-webhook-mutex.test.js'
   },
   {
     id: 'bounty-fiverr-audit-201',
@@ -71,7 +75,9 @@ const OPPORTUNITY_FEED = [
     pSuccess: 0.90,
     type: 'code_patch',
     requirements: 'Update calendar UI tokens to satisfy WCAG AA 4.5:1 minimum contrast ratio across dark and light themes.',
-    acceptanceCriteria: 'Pass contrast ratio assertion tests in test suite.'
+    acceptanceCriteria: 'Pass contrast ratio assertion tests in test suite.',
+    sourceFile: 'src/accessibility-calendar-tokens.js',
+    testFile: 'test/accessibility-calendar-tokens.test.js'
   },
   {
     id: 'bounty-dispute-chargeback-301',
@@ -501,7 +507,28 @@ class AutonomousEngine {
           instructions: 'Send generated fee audit report and reconciliation statement to client with payout link https://paypal.me/joyelgt for immediate contingency fee settlement.'
         };
       } else {
-        // Code patch deliverable
+        // Code patch deliverable — only claim TESTED_AND_READY when a real
+        // sourceFile/testFile exist and the test file actually passes.
+        // A candidate with no implementation has nothing to test.
+        testsPassed = false;
+        let readiness = 'NO_IMPLEMENTATION';
+        if (candidate.sourceFile && candidate.testFile) {
+          const sourceExists = existsSync(join(process.cwd(), candidate.sourceFile));
+          if (sourceExists) {
+            try {
+              execFileSync(process.execPath, ['--test', candidate.testFile], {
+                cwd: process.cwd(),
+                stdio: 'pipe'
+              });
+              testsPassed = true;
+              readiness = 'TESTED_AND_READY';
+            } catch {
+              testsPassed = false;
+              readiness = 'TESTS_FAILING';
+            }
+          }
+        }
+
         deliverablePayload = {
           candidateId: candidate.id,
           title: candidate.title,
@@ -509,12 +536,14 @@ class AutonomousEngine {
           payoutLink: 'https://paypal.me/joyelgt',
           paymentRecipient: 'paypal.me/joyelgt',
           solutionType: candidate.type,
-          patchFile: `solutions/${candidate.id}.js`,
+          patchFile: candidate.sourceFile || null,
           acceptanceCriteria: candidate.acceptanceCriteria,
-          testsPassed: true,
-          status: 'TESTED_AND_READY',
+          testsPassed,
+          status: readiness,
           generatedAt: new Date().toISOString(),
-          instructions: 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
+          instructions: testsPassed
+            ? 'Submit PR / deliverable to bounty issuer with verified test suite passes. Payout receivable via https://paypal.me/joyelgt.'
+            : 'No implementation exists for this candidate yet — do not submit or invoice until sourceFile/testFile are added and pass.'
         };
       }
 

@@ -22,7 +22,8 @@
     "smoke": "node packages/crons/smoke.js",
     "sync:audit": "node scripts/sync-audit-assets.js",
     "build:audit-site": "node scripts/build-audit-site.js",
-    "fulfil": "node scripts/fulfil-audit.js"
+    "fulfil": "node scripts/fulfil-audit.js",
+    "outreach": "node scripts/outreach.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

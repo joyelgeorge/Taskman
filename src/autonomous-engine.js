@@ -17,7 +17,7 @@ import { getActionableWorkQueue, syncGitHubWork } from './github-intake.js';
 import { runDiscoverWorker } from './workers/discover.js';
 import { runValidateWorker } from './workers/validate.js';
 import { runExecuteWorker } from './workers/execute.js';
-import { normalizeCandidate, EVIDENCE_TIER } from './evidence-tier.js';
+import { normalizeCandidate, EVIDENCE_TIER, assertSpendAllowed, assertClaimAllowed } from './evidence-tier.js';
 
 export const ENGINE_STATE = Object.freeze({
   RUNNING: 'RUNNING',
@@ -636,31 +636,54 @@ class AutonomousEngine {
 
       // Record in ledger attempt tracking and settlement
       try {
+        let costCents = Math.round((candidate.estimatedCostDollars || 0) * 100);
+        try {
+          assertSpendAllowed(candidate, { costCents });
+        } catch (spendErr) {
+          // Unreferenced hypothesis: investigation is free; real spend is not allowed.
+          // Zero out cost rather than booking fictitious spend against an unverified counterparty.
+          costCents = 0;
+        }
+
         const attempt = await recordAttempt({
           rail: candidate.rail,
           candidateKey: candidate.id,
           stage: 'EXECUTE',
-          costCents: Math.round(candidate.estimatedCostDollars * 100),
-          evidence: { stagedFile: filePath, candidateTitle: candidate.title }
+          costCents,
+          evidence: { stagedFile: filePath, candidateTitle: candidate.title, evidenceTier }
         });
         if (attempt?.id) {
+          let outcomeStatus = testsPassed ? ATTEMPT_STATUS.DELIVERED : ATTEMPT_STATUS.FAILED;
+          try {
+            assertClaimAllowed(candidate, outcomeStatus);
+          } catch (claimErr) {
+            // Unreferenced hypothesis cannot claim DELIVERED to a counterparty;
+            // record honestly as SETUP_REQUIRED (needs real counterparty/evidence)
+            outcomeStatus = ATTEMPT_STATUS.SETUP_REQUIRED;
+          }
+
           await finishAttempt(attempt.id, {
-            status: testsPassed ? ATTEMPT_STATUS.DELIVERED : ATTEMPT_STATUS.FAILED,
-            costCents: Math.round(candidate.estimatedCostDollars * 100),
-            evidence: { stagedId, filePath, testsPassed, status: deliverableStatus }
+            status: outcomeStatus,
+            costCents,
+            evidence: { stagedId, filePath, testsPassed, status: deliverableStatus, evidenceTier }
           });
 
-          // Record settlement reference only if deliverable is tested and ready
-          if (testsPassed) {
-            await recordSettlement({
-              rail: candidate.rail,
-              attemptId: attempt.id,
-              source: 'manual_receipt',
-              externalRef: `staged-${candidate.id}`,
-              grossCents: Math.round(candidate.rewardDollars * 100),
-              status: SETTLEMENT_STATUS.PENDING,
-              verification: { stagedFile: filePath, deliverableType: candidate.type }
-            }).catch(() => {});
+          // Record settlement reference only if deliverable is tested, ready, AND has a verifiable counterparty reference
+          if (testsPassed && candidate.rewardDollars > 0) {
+            try {
+              assertClaimAllowed(candidate, 'CLEARED');
+              await recordSettlement({
+                rail: candidate.rail,
+                attemptId: attempt.id,
+                source: 'manual_receipt',
+                externalRef: `staged-${candidate.id}`,
+                grossCents: Math.round(candidate.rewardDollars * 100),
+                status: SETTLEMENT_STATUS.PENDING,
+                verification: { stagedFile: filePath, deliverableType: candidate.type, evidenceTier }
+              });
+            } catch (settleGateErr) {
+              // Unreferenced candidates cannot book settlement claims
+            }
           }
         }
       } catch (ledgerErr) {

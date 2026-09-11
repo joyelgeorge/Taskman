@@ -85,6 +85,25 @@ value the schema rejects; it runs only with `DATABASE_URL`. Any API response
 carries its own mode — `storage: "memory"` means the numbers persist nowhere and
 are not revenue.
 
+## A passing guard proves less than it looks
+
+A claim can also be unverified when it comes from a test rather than a person.
+A test that cannot fail still passes; a status flag reading the wrong signal
+still reports green. Both then get trusted *because* they exist.
+
+Real case in this repo: `_executeDeliverableTrial` set `testsPassed: true`
+whenever `existsSync()` found a test file on disk. A test that existed and
+failed still staged as `TESTED_AND_READY`. The flag observed a file, not an
+outcome.
+
+So when a claim is "the tests pass", "this is guarded", or "we check for that",
+the thing to check is not whether the test is green — it is whether the test
+can go red. Break what it guards, watch it fail, restore it.
+
+For the full procedure, the four failure shapes and their names, and the
+checklist for whether a guard actually discriminates, use the
+`verifying-guard-tests` skill.
+
 ## Does it actually exist
 
 Two separate messages described modules, tables and assets never in the tree.

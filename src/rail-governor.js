@@ -30,6 +30,61 @@ function monthStartIso(now) {
 }
 
 /**
+ * Computes the minimum number of zero-success matured attempts at which the
+ * 95% upper confidence bound on the true settlement rate falls below
+ * `breakEvenRate` (the rate needed to cover attempt cost).
+ *
+ * Uses the Clopper-Pearson exact upper confidence limit for 0 successes in n
+ * trials:  UCB(n) = 1 − α^(1/n),  where α = 0.05 for 95% confidence.
+ *
+ * When breakEvenRate ≤ 0 (free or free-pass attempts) there is no cost to cover,
+ * so no attempt limit applies — return Infinity.
+ * When breakEvenRate ≥ 1 the lane is structurally unprofitable — return the floor.
+ *
+ * A hard floor of MIN_SEQUENTIAL_ATTEMPTS ensures a rail is never killed in its
+ * first few runs before meaningful evidence has accumulated.
+ *
+ * @param {number} breakEvenRate  Settlement rate that exactly covers attempt cost. [0,1]
+ * @param {number} [confidence]   Confidence level (default 0.95 → 95%).
+ * @returns {number}              Minimum matured-zero-attempts before shutdown.
+ */
+export const MIN_SEQUENTIAL_ATTEMPTS = 5;
+
+export function sequentialMinAttempts(breakEvenRate, confidence = 0.95) {
+  if (!Number.isFinite(breakEvenRate) || breakEvenRate <= 0) return Infinity;
+  if (breakEvenRate >= 1) return MIN_SEQUENTIAL_ATTEMPTS;
+  const alpha = 1 - confidence;
+  // UCB(n) = 1 - alpha^(1/n) < breakEvenRate
+  // => alpha^(1/n) > 1 - breakEvenRate
+  // => 1/n > log(1 - breakEvenRate) / log(alpha)      [both logs are negative]
+  // => n < log(alpha) / log(1 - breakEvenRate)
+  const n = Math.log(alpha) / Math.log(1 - breakEvenRate);
+  return Math.max(MIN_SEQUENTIAL_ATTEMPTS, Math.ceil(n));
+}
+
+/**
+ * Derives the break-even settlement rate from the rail's lifetime economics.
+ * Break-even = costPerAttempt / (expectedReward × workerShare).
+ *
+ * If no attempts have been made or reward cannot be inferred, returns null
+ * (caller falls back to a safe default cap).
+ */
+export function breakEvenRateFor(economics) {
+  const attempts = Number(economics?.attempts) || 0;
+  if (attempts === 0) return null;
+  const spendCents = Number(economics?.spendCents) || 0;
+  const costPerAttemptCents = spendCents / attempts;
+  // Expected reward: use cleared value per cleared attempt, or valuePerAttemptCents as proxy.
+  const clearedCount = Number(economics?.clearedCount) || 0;
+  const clearedCents = Number(economics?.clearedCents) || 0;
+  const rewardPerWinCents = clearedCount > 0
+    ? clearedCents / clearedCount
+    : Number(economics?.valuePerAttemptCents) || 0;
+  if (rewardPerWinCents <= 0 || costPerAttemptCents <= 0) return null;
+  return Math.min(1, costPerAttemptCents / rewardPerWinCents);
+}
+
+/**
  * Total attempt spend across every rail so far this calendar month, against the
  * cap — so a fleet of rails each individually inside their own probation budget
  * cannot collectively drain the account.
@@ -69,11 +124,21 @@ export async function setGlobalMonthlyBudget(capCents) {
  * Computes the next state for a rail without writing anything. `enforceRailGovernor`
  * is the version that acts on the result; this one exists so a caller can preview
  * the decision (the dashboard, a dry run) without side effects.
+ *
+ * The attempt limit is no longer a fixed number. Instead, `sequentialMinAttempts`
+ * computes — from the rail's own cost/reward ratio — the minimum number of
+ * zero-success matured attempts at which the 95% UCB on settlement rate falls
+ * below the rail's break-even rate. A cheap rail proves or disproves itself
+ * quickly; an expensive one requires stronger evidence before shutdown.
+ *
+ * The legacy `minAttempts` parameter is retained for overrides and tests, but
+ * when omitted the sequential rule applies.
  */
 export async function evaluateRailGovernor({
   rail,
   probationBudgetCents,
-  minAttempts = 25,
+  minAttempts,                 // explicit override; omit to use sequential rule
+  sequentialConfidence = 0.95, // CI level for the sequential stopping test
   scaleRoiThreshold = 3,
   scaleMinSettlements = 10,
   demoteRoiThreshold = 1,
@@ -129,23 +194,44 @@ export async function evaluateRailGovernor({
         budgetCents: budget
       };
     }
+
+    // Sequential stopping rule: derive the minimum evidence threshold from the
+    // rail's own cost/reward economics, rather than a fixed count. A rail that
+    // costs $0.05/attempt and pays $20 on success needs ~150 zero-success attempts
+    // to conclude at 95% confidence it is below break-even; one costing $5 and
+    // paying $10 needs only ~4. One fixed number (25) cannot be right for both.
+    const ber = breakEvenRateFor(economics);
+    const effectiveMin = Number.isFinite(minAttempts) && minAttempts > 0
+      ? minAttempts
+      : Number.isFinite(ber) ? sequentialMinAttempts(ber, sequentialConfidence) : Infinity;
+
     // Matured attempts only. An attempt younger than the rail's clearing period
     // has not failed to settle — it has not had the chance to. Counting it kills
     // the lane in the week it starts working.
-    if (windowed.maturedAttempts >= minAttempts) {
+    if (Number.isFinite(effectiveMin) && windowed.maturedAttempts >= effectiveMin) {
+      const ruleNote = Number.isFinite(minAttempts)
+        ? ''
+        : ` (sequential test: break-even rate ${ber != null ? (ber * 100).toFixed(2) : '?'}%, 95% CI upper bound)`;
       return {
         ...base, nextState: 'DISABLED',
-        reason: `${windowed.maturedAttempts} attempts older than this rail's ${windowed.settlementLagDays}-day `
-          + 'clearing period, with zero verified settlements',
-        budgetCents: budget
+        // "verified" is deliberate and matches the budget-exhaustion reason above:
+        // money-ledger.js accepts no settlement without a verified source and a
+        // real externalRef, so an absence here is an absence of verified money,
+        // not of reporting. The two kill paths must describe it the same way.
+        reason: `${windowed.maturedAttempts} matured attempts, zero verified settlements — 95% CI excludes `
+          + `profitable settlement rate${ruleNote}`,
+        budgetCents: budget,
+        sequentialTest: { breakEvenRate: ber, effectiveMinAttempts: effectiveMin, confidence: sequentialConfidence }
       };
     }
+    const remaining = Number.isFinite(effectiveMin) ? effectiveMin - windowed.maturedAttempts : '∞';
     return {
       ...base, nextState: 'PROBATION',
       reason: `on probation: ${usd(budget - windowed.spendCents)} and `
-        + `${minAttempts - windowed.maturedAttempts} matured attempts remaining before automatic shutdown`
+        + `${remaining} matured attempts remaining before sequential shutdown`
         + (windowed.pendingAttempts ? `; ${windowed.pendingAttempts} still within the ${windowed.settlementLagDays}-day clearing period` : ''),
-      budgetCents: budget
+      budgetCents: budget,
+      sequentialTest: { breakEvenRate: ber, effectiveMinAttempts: effectiveMin, confidence: sequentialConfidence }
     };
   }
 
@@ -198,3 +284,6 @@ export async function resetGovernorMemory() {
   memoryBudget.monthlyCapCents = Number(process.env.GLOBAL_MONTHLY_BUDGET_CENTS || 50_000);
   await truncateForTesting(['global_budget']);
 }
+
+
+

@@ -5,7 +5,8 @@ import {
   isRailEnabled, resetLedgerMemory, SETTLEMENT_STATUS
 } from '../src/money-ledger.js';
 import {
-  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory
+  evaluateRailGovernor, enforceRailGovernor, globalBudgetStatus, setGlobalMonthlyBudget, resetGovernorMemory,
+  sequentialMinAttempts, breakEvenRateFor, MIN_SEQUENTIAL_ATTEMPTS
 } from '../src/rail-governor.js';
 
 async function reset() { await resetLedgerMemory(); await resetGovernorMemory(); }
@@ -203,14 +204,18 @@ test('a rail is not disabled for attempts too young to have settled', async () =
   assert.match(verdict.reason, /clearing period/);
 });
 
-test('a rail is still disabled once the attempts are genuinely overdue', async () => {
+test('a rail is still disabled once the attempts are genuinely overdue (explicit limit)', async () => {
   await reset();
   // Older than Fiverr's 14-day clearing period, so the money really is absent.
+  // We use an explicit minAttempts override here because with no cleared-settlement
+  // history the sequential rule correctly cannot derive a break-even rate and falls
+  // back to Infinity (unknown reward → can't conclude). The minAttempts override
+  // represents operator policy when economics are not yet measurable.
   const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
   for (let i = 0; i < 30; i += 1) {
     await recordAttempt({ rail: 'fiverr', costCents: 1, startedAt: longAgo });
   }
-  const verdict = await evaluateRailGovernor({ rail: 'fiverr', probationBudgetCents: 100_000 });
+  const verdict = await evaluateRailGovernor({ rail: 'fiverr', probationBudgetCents: 100_000, minAttempts: 25 });
   assert.equal(verdict.nextState, 'DISABLED');
   assert.match(verdict.reason, /zero verified settlements/);
 });
@@ -225,4 +230,93 @@ test('an unknown rail waits the slowest common term rather than the fastest', as
   // costs a little budget where being quick costs the lane.
   const verdict = await evaluateRailGovernor({ rail: 'some-new-rail', probationBudgetCents: 100_000 });
   assert.notEqual(verdict.nextState, 'DISABLED');
+});
+
+// ── Sequential stopping rule tests ──────────────────────────────────────────
+
+test('sequentialMinAttempts: zero or negative break-even rate means no attempt limit', () => {
+  assert.equal(sequentialMinAttempts(0), Infinity);
+  assert.equal(sequentialMinAttempts(-0.1), Infinity);
+  assert.equal(sequentialMinAttempts(NaN), Infinity);
+});
+
+test('sequentialMinAttempts: break-even >= 1 means structurally unprofitable → floor', () => {
+  assert.equal(sequentialMinAttempts(1), MIN_SEQUENTIAL_ATTEMPTS);
+  assert.equal(sequentialMinAttempts(2), MIN_SEQUENTIAL_ATTEMPTS);
+});
+
+test('sequentialMinAttempts: cheap rail needs far more attempts than expensive one', () => {
+  // $0.05 cost, $20 reward → break-even = 0.0025 → needs ~1192 attempts
+  const cheap = sequentialMinAttempts(0.0025);
+  // $5 cost, $10 reward → break-even = 0.5 → needs only ~5 attempts
+  const expensive = sequentialMinAttempts(0.5);
+  assert.ok(cheap > expensive, `cheap (${cheap}) should need more attempts than expensive (${expensive})`);
+  assert.ok(cheap > 100, `cheap rail (break-even 0.25%) should need >> 100 attempts, got ${cheap}`);
+  assert.ok(expensive <= 10, `expensive rail (break-even 50%) should need <= 10 attempts, got ${expensive}`);
+});
+
+test('sequentialMinAttempts: enforces the minimum floor regardless of economics', () => {
+  // Even an astronomically high break-even rate cannot produce a threshold below the floor
+  assert.ok(sequentialMinAttempts(0.99) >= MIN_SEQUENTIAL_ATTEMPTS);
+  assert.ok(sequentialMinAttempts(0.9999) >= MIN_SEQUENTIAL_ATTEMPTS);
+});
+
+test('sequentialMinAttempts: mathematical property — UCB at threshold is just below break-even', () => {
+  const ber = 0.05; // 5% break-even rate
+  const n = sequentialMinAttempts(ber);
+  const alpha = 0.05;
+  // UCB(n) = 1 - alpha^(1/n) should be < ber (we've passed the threshold)
+  const ucbAtN = 1 - Math.pow(alpha, 1 / n);
+  // UCB(n-1) should be >= ber (we haven't yet passed)
+  const ucbAtNMinus1 = n > 1 ? 1 - Math.pow(alpha, 1 / (n - 1)) : 1;
+  assert.ok(ucbAtN < ber, `UCB at n=${n} (${ucbAtN.toFixed(4)}) should be < break-even ${ber}`);
+  assert.ok(ucbAtNMinus1 >= ber || n === MIN_SEQUENTIAL_ATTEMPTS,
+    `UCB at n-1 (${ucbAtNMinus1.toFixed(4)}) should be >= break-even, or n is at floor`);
+});
+
+test('breakEvenRateFor: returns null when no attempts have been made', () => {
+  assert.equal(breakEvenRateFor({ attempts: 0, spendCents: 0 }), null);
+  assert.equal(breakEvenRateFor(null), null);
+  assert.equal(breakEvenRateFor({}), null);
+});
+
+test('breakEvenRateFor: computes correctly from cleared settlement data', () => {
+  // $0.05/attempt cost, 1 win in 100 attempts paying $20 → BER = 0.05/20 = 0.0025
+  const ber = breakEvenRateFor({
+    attempts: 100,
+    spendCents: 500,         // $0.05 × 100
+    clearedCount: 1,
+    clearedCents: 2000,      // $20 per win
+    valuePerAttemptCents: 20
+  });
+  assert.ok(Number.isFinite(ber), 'should return a finite number');
+  assert.ok(Math.abs(ber - 0.0025) < 0.0001, `expected ~0.0025, got ${ber}`);
+});
+
+test('breakEvenRateFor: clamps result to [0, 1]', () => {
+  // cost > reward → break-even > 1 → clamped to 1
+  const ber = breakEvenRateFor({ attempts: 10, spendCents: 1000, clearedCount: 1, clearedCents: 50 });
+  assert.ok(ber !== null && ber <= 1, `expected <= 1, got ${ber}`);
+});
+
+test('governor: sequential rule without history keeps rail on probation (economics unknown → Infinity threshold)', async () => {
+  await reset();
+  // No attempts at all — breakEvenRateFor returns null → effectiveMin = Infinity
+  const verdict = await evaluateRailGovernor({ rail: 'brand-new', probationBudgetCents: 100_000 });
+  assert.equal(verdict.nextState, 'PROBATION');
+  assert.ok(verdict.sequentialTest.effectiveMinAttempts === Infinity,
+    'no economic history → infinite threshold');
+});
+
+test('governor: explicit minAttempts override still works (backward compat)', async () => {
+  await reset();
+  const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
+  for (let i = 0; i < 30; i++) {
+    await recordAttempt({ rail: 'old-style', costCents: 1, startedAt: longAgo });
+  }
+  const verdict = await evaluateRailGovernor({
+    rail: 'old-style', probationBudgetCents: 100_000, minAttempts: 100
+  });
+  // 30 < 100 → stays on probation with explicit override
+  assert.equal(verdict.nextState, 'PROBATION');
 });

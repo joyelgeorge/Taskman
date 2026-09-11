@@ -59,6 +59,17 @@ function url(env, name, fallback, problems, { protocols, required = false } = {}
   }
 }
 
+function positiveFloat(env, name, fallback, problems, { max = Number.MAX_SAFE_INTEGER } = {}) {
+  const raw = env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0 || value > max) {
+    problems.push(`${name} must be a non-negative number`);
+    return fallback;
+  }
+  return value;
+}
+
 function csv(env, name, problems) {
   const values = (env[name] || '').split(',').map(value => value.trim()).filter(Boolean);
   for (const value of values) {
@@ -150,7 +161,8 @@ export function loadConfig(env = process.env) {
       allowWrite: allowWriteRails,
       writeEnabled: writeRails,
       deskcrew: {
-        enabled: boolean(env, 'DESKCREW_ENABLED', false, problems)
+        enabled: boolean(env, 'DESKCREW_ENABLED', false, problems),
+        maxSubmissionCostUsd: positiveFloat(env, 'DESKCREW_MAX_SUBMISSION_COST_USD', null, problems, { max: 100 })
       },
       taskmarket: {
         enabled: boolean(env, 'TASKMARKET_ENABLED', false, problems)

@@ -180,11 +180,15 @@ export function normalizeDeskCrewOpportunity(raw = {}, {
 export class DeskCrewRailAdapter extends RailAdapter {
   constructor({
     enabled = getRuntimeConfig().rails.deskcrew.enabled,
+    maxSubmissionCostUsd = getRuntimeConfig().rails.deskcrew.maxSubmissionCostUsd,
     fetchImpl = globalThis.fetch,
     timeoutMs = 10_000
   } = {}) {
     super({ name: 'deskcrew', mode: RAIL_MODE.READ_ONLY });
     this.enabled = enabled === true;
+    this.maxSubmissionCostUsd = (maxSubmissionCostUsd !== null && Number.isFinite(maxSubmissionCostUsd) && maxSubmissionCostUsd >= 0)
+      ? maxSubmissionCostUsd
+      : null;
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
   }
@@ -197,8 +201,42 @@ export class DeskCrewRailAdapter extends RailAdapter {
       configured: this.enabled,
       baseUrl: DESKCREW_ORIGIN,
       safeDefault: true,
-      writeAdapterAvailable: false
+      writeAdapterAvailable: false,
+      maxSubmissionCostUsd: this.maxSubmissionCostUsd
     };
+  }
+
+  /**
+   * Checks whether the proposed spend (in USD) is authorized by the operator's
+   * per-attempt cost ceiling. Throws if not; returns quietly if authorized.
+   *
+   * This must be called before any real x402 payment attempt.
+   * Discover and Validate MUST NOT call this — they spend nothing.
+   */
+  checkSpendCap(proposedCostUsd) {
+    if (this.maxSubmissionCostUsd === null) {
+      const error = new Error(
+        'DeskCrew spend blocked: DESKCREW_MAX_SUBMISSION_COST_USD is not configured. ' +
+        'Set it explicitly to authorize spend up to that amount per submission.'
+      );
+      error.code = 'DESKCREW_SPEND_NOT_AUTHORIZED';
+      throw error;
+    }
+    const cost = Number(proposedCostUsd);
+    if (!Number.isFinite(cost) || cost < 0) {
+      const error = new Error('DeskCrew spend blocked: proposed cost is invalid');
+      error.code = 'DESKCREW_SPEND_NOT_AUTHORIZED';
+      throw error;
+    }
+    if (cost > this.maxSubmissionCostUsd) {
+      const error = new Error(
+        `DeskCrew spend blocked: proposed cost \$${cost} exceeds cap \$${this.maxSubmissionCostUsd}`
+      );
+      error.code = 'DESKCREW_SPEND_EXCEEDS_CAP';
+      error.proposedCostUsd = cost;
+      error.maxSubmissionCostUsd = this.maxSubmissionCostUsd;
+      throw error;
+    }
   }
 
   async discover({ signal } = {}) {

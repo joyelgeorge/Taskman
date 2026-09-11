@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCapabilityRegistry, CAPABILITY_STATUS } from '../src/capability-registry.js';
 import { loadConfig } from '../src/config.js';
-import { ECONOMIC_DECISION } from '../src/economic-selector.js';
+import { ECONOMIC_DECISION, scoreEconomicOpportunity } from '../src/economic-selector.js';
 import { normalizeCandidate } from '../src/qualification-engine.js';
 import { RAIL_MODE } from '../src/rails/base.js';
 import {
@@ -200,4 +200,122 @@ test('configuration is strict, disabled by default, and secret-safe', () => {
   assert.equal(enabled.rails.deskcrew.enabled, true);
   assert.deepEqual(enabled.safeSummary.configuredRails, ['deskcrew']);
   assert.throws(() => loadConfig({ NODE_ENV: 'test', DESKCREW_ENABLED: 'yes' }), /configuration/i);
+});
+
+test('DESKCREW_MAX_SUBMISSION_COST_USD is read strictly and defaults to null (no spend)', () => {
+  const def = loadConfig({ NODE_ENV: 'test', DESKCREW_ENABLED: 'true' });
+  assert.equal(def.rails.deskcrew.maxSubmissionCostUsd, null);
+
+  const withCap = loadConfig({ NODE_ENV: 'test', DESKCREW_ENABLED: 'true', DESKCREW_MAX_SUBMISSION_COST_USD: '0.50' });
+  assert.equal(withCap.rails.deskcrew.maxSubmissionCostUsd, 0.5);
+
+  assert.throws(
+    () => loadConfig({ NODE_ENV: 'test', DESKCREW_MAX_SUBMISSION_COST_USD: '-1' }),
+    /configuration/i
+  );
+  assert.throws(
+    () => loadConfig({ NODE_ENV: 'test', DESKCREW_MAX_SUBMISSION_COST_USD: 'free' }),
+    /configuration/i
+  );
+});
+
+test('execute cannot pay when spend policy is absent or when proposed cost exceeds cap', () => {
+  // null cap → every spend blocked
+  const noCap = new DeskCrewRailAdapter({ enabled: true, maxSubmissionCostUsd: null });
+  assert.throws(
+    () => noCap.checkSpendCap(0.06),
+    error => error.code === 'DESKCREW_SPEND_NOT_AUTHORIZED'
+  );
+  // even a zero-cost call is blocked when cap is null (operator has not consented)
+  assert.throws(
+    () => noCap.checkSpendCap(0),
+    error => error.code === 'DESKCREW_SPEND_NOT_AUTHORIZED'
+  );
+
+  // cap set, cost within → ok
+  const withCap = new DeskCrewRailAdapter({ enabled: true, maxSubmissionCostUsd: 0.10 });
+  assert.doesNotThrow(() => withCap.checkSpendCap(0.06));
+  assert.doesNotThrow(() => withCap.checkSpendCap(0.10));
+
+  // cap set, cost over → blocked
+  assert.throws(
+    () => withCap.checkSpendCap(0.11),
+    error => error.code === 'DESKCREW_SPEND_EXCEEDS_CAP'
+      && error.proposedCostUsd === 0.11
+      && error.maxSubmissionCostUsd === 0.10
+  );
+
+  // invalid spend value
+  assert.throws(
+    () => withCap.checkSpendCap(-1),
+    error => error.code === 'DESKCREW_SPEND_NOT_AUTHORIZED'
+  );
+  assert.throws(
+    () => withCap.checkSpendCap(NaN),
+    error => error.code === 'DESKCREW_SPEND_NOT_AUTHORIZED'
+  );
+});
+
+test('discover and verify issue zero spend calls — checkSpendCap is never invoked', async () => {
+  let spendChecks = 0;
+  const rail = new DeskCrewRailAdapter({
+    enabled: true,
+    maxSubmissionCostUsd: null, // would block any spend
+    fetchImpl: async (url) =>
+      url.endsWith(DESKCREW_CONTESTS_PATH) ? response([contest()]) : response(CATALOG)
+  });
+  // Monkey-patch to detect any forbidden spend check during read paths
+  const originalCheck = rail.checkSpendCap.bind(rail);
+  rail.checkSpendCap = (...args) => { spendChecks++; return originalCheck(...args); };
+
+  const discoverResult = await rail.discover();
+  assert.equal(discoverResult.ok, true);
+  const candidate = discoverResult.bounties[0];
+  const verifyResult = await rail.verify(candidate);
+  assert.equal(verifyResult.executionReady, false);
+  assert.equal(spendChecks, 0, 'Discover and Verify must not invoke checkSpendCap');
+});
+
+test('accepted result does not automatically become a payout event', () => {
+  const candidate = normalizeDeskCrewOpportunity(contest(), { catalog: CATALOG, observedAt: OBSERVED_AT });
+  // The candidate has no settlement field at all
+  assert.ok(!Object.prototype.hasOwnProperty.call(candidate, 'payout'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(candidate, 'settled'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(candidate, 'payoutReceived'));
+  // estimatedValue stays null — no fabricated realized value
+  assert.equal(candidate.estimatedValue, null);
+  assert.equal(candidate.economicScore.ev.realizedValue, null);
+  assert.equal(candidate.economicScore.ev.verifiedRevenue, null);
+  // The economic score never auto-promotes to executionAuthorized or spendAuthorized
+  assert.equal(candidate.economicScore.executionAuthorized, false);
+  assert.equal(candidate.economicScore.spendAuthorized, false);
+  // recommendationOnly is always true — payout requires separate verified event
+  assert.equal(candidate.economicScore.recommendationOnly, true);
+});
+
+test('missing x402.payment or wallet.receive_usdc capability blocks execution-ready classification', async () => {
+  // Build a registry with deskcrew.bounties.read AVAILABLE but write capabilities UNAVAILABLE
+  const rail = new DeskCrewRailAdapter({ enabled: true });
+  const caps = buildCapabilityRegistry({ env: {}, providers: [], rails: [rail] });
+
+  assert.equal(caps['deskcrew.bounties.read'].status, CAPABILITY_STATUS.AVAILABLE);
+  assert.equal(caps['x402.payment'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(caps['wallet.receive_usdc'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(caps['deskcrew.draft.submit'].status, CAPABILITY_STATUS.UNAVAILABLE);
+  assert.equal(caps['deskcrew.ticket_context.read'].status, CAPABILITY_STATUS.UNAVAILABLE);
+
+  // Score the candidate against execution write-capabilities — all missing → BLOCKED
+  const candidate = normalizeDeskCrewOpportunity(contest(), { catalog: CATALOG, observedAt: OBSERVED_AT });
+  const execCaps = {
+    'deskcrew.ticket_context.read': { status: CAPABILITY_STATUS.UNAVAILABLE },
+    'deskcrew.draft.submit': { status: CAPABILITY_STATUS.UNAVAILABLE },
+    'x402.payment': { status: CAPABILITY_STATUS.UNAVAILABLE },
+    'wallet.receive_usdc': { status: CAPABILITY_STATUS.UNAVAILABLE }
+  };
+  const execScore = scoreEconomicOpportunity({
+    ...candidate.economicInput,
+    requiredCapabilities: candidate.executionRequiredCapabilities
+  }, { capabilities: execCaps, nowMs: Date.parse(OBSERVED_AT) });
+  assert.equal(execScore.decision, ECONOMIC_DECISION.BLOCKED);
+  assert.ok(execScore.missingCapabilities.length > 0);
 });

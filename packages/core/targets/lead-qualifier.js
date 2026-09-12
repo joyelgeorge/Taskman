@@ -11,7 +11,42 @@
 
 // Names/descriptions that announce the repo is not a business: learning
 // material, scaffolding, throwaways. A vuln in these is real but unsellable.
-const NOT_A_BUSINESS = /\b(template|starter|boilerplate|scaffold|tutorial|course|demo|example|sample|playground|sandbox|test[-_ ]?app|hello[-_ ]?world|clone|portfolio|my[-_ ]?first|learning|practice|todo[-_ ]?app|workshop|assignment|homework|poc|proof[-_ ]of[-_ ]concept)\b/i;
+/**
+ * Words that name the artifact as a toy. These are unambiguous: no real product
+ * describes itself as a boilerplate.
+ */
+const UNAMBIGUOUS_TOY = /\b(template|starter|boilerplate|scaffold|hello[-_ ]?world|my[-_ ]?first|todo[-_ ]?app|assignment|homework|poc|proof[-_ ]of[-_ ]concept|test[-_ ]?app)\b/i;
+
+/**
+ * Words that are ordinary DOMAIN VOCABULARY as often as they are toy signals.
+ *
+ * The 2026-09-12 sweep threw away its best lead — a real company, custom domain,
+ * sustained development, four critical findings — because its description read
+ * "portfolio optimization" and `portfolio` was on the reject list. Measured
+ * against ten plausible business descriptions, the old single list rejected
+ * nine: portfolio optimization, machine learning, course marketplace, practice
+ * management, sample tracking, workshop booking, demo day.
+ *
+ * `learning` was the most expensive of them, in a market defined as AI-built
+ * apps.
+ *
+ * So these reject only when nothing else says the repo is a real product, and
+ * they still reject outright when they name the repo itself — "my-portfolio"
+ * names the artifact, "portfolio optimization" describes a domain.
+ */
+const AMBIGUOUS_TOY = /\b(tutorial|course|demo|example|sample|playground|sandbox|clone|portfolio|learning|practice|workshop)\b/i;
+
+/** Hosting subdomains: present for toys and products alike, so they prove nothing. */
+const PLATFORM_HOST = /\.(github\.io|vercel\.app|netlify\.app|pages\.dev|herokuapp\.com|onrender\.com|web\.app|firebaseapp\.com|surge\.sh|repl\.co)$/i;
+
+/**
+ * A custom domain is somebody paying a registrar for this specific thing, which
+ * is the cheapest honest signal that a product is real.
+ */
+function hasCustomDomain(homepage) {
+  if (!homepage || !/^https?:\/\//.test(homepage)) return false;
+  try { return !PLATFORM_HOST.test(new URL(homepage).hostname); } catch { return false; }
+}
 
 // Code-level tells that a product has users and money moving through it.
 export const BUSINESS_CODE_SIGNALS = {
@@ -35,7 +70,13 @@ export function qualifyLead(repo = {}, code = {}) {
   // Hard rejections — not a business, or unreachable to disclose to.
   if (repo.archived) rejections.push('archived — not maintained');
   if (repo.fork) rejections.push('a fork, not an original product');
-  if (NOT_A_BUSINESS.test(text)) rejections.push(`name/description reads as non-business ("${(text.match(NOT_A_BUSINESS) || [])[0]}")`);
+  const unambiguous = text.match(UNAMBIGUOUS_TOY);
+  if (unambiguous) rejections.push(`names itself a toy ("${unambiguous[0]}")`);
+
+  // An ambiguous word naming the repo is a toy signal; the same word inside a
+  // description may simply be the business's subject matter.
+  const ambiguousInName = (repo.name || '').match(AMBIGUOUS_TOY);
+  if (ambiguousInName) rejections.push(`repo name reads as non-business ("${ambiguousInName[0]}")`);
 
   // Positive evidence of a real, used product.
   let score = 0;
@@ -50,9 +91,21 @@ export function qualifyLead(repo = {}, code = {}) {
   if (code.hasPayments) { score += 0.35; reasons.push('payment integration in code — money at stake'); }
   if (code.hasAuth) { score += 0.15; reasons.push('auth in code — has user accounts'); }
 
+  // Strong evidence that somebody is running this as a product: a domain they
+  // pay for, or money moving through the code.
+  const strongEvidence = hasCustomDomain(repo.homepage) || Boolean(code.hasPayments);
+  if (hasCustomDomain(repo.homepage)) reasons.push('custom domain — somebody pays a registrar for this');
+
+  // An ambiguous word in the description only rejects when nothing else argues
+  // the repo is real. "portfolio optimization" on a custom domain is a business;
+  // "a demo of what I learned" with no deployment is not.
+  const ambiguousInDescription = (repo.description || '').match(AMBIGUOUS_TOY);
+  if (ambiguousInDescription && !strongEvidence) {
+    rejections.push(`description reads as non-business ("${ambiguousInDescription[0]}") `
+      + 'with no custom domain or payment integration to argue otherwise');
+  }
+
   score = Math.round(Math.min(score, 1) * 100) / 100;
-  // Genuine = no hard rejection AND real evidence of use. A live deployment or
-  // payments alone clears it; otherwise it needs enough combined signal.
   const genuine = rejections.length === 0 && (deployed || code.hasPayments || score >= 0.45);
   return { genuine, score, reasons, rejections };
 }

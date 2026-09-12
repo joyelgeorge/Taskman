@@ -47,3 +47,42 @@ effort to the warm-inbound engine. If it is meaningfully non-zero, the filters
 are the problem and the other tasks are worth doing.
 
 **Do this measurement before investing further in the scanning path.**
+
+---
+
+## Partially answered, 2026-09-12 — by the first real sweep
+
+Run [34670002340](https://github.com/joyelgeorge/Taskman/actions/runs/34670002340)
+scanned 36 repositories. The results correct this task's premise in both
+directions, so it stays open but narrower.
+
+**The premise was too pessimistic.** Real businesses with custom domains ARE
+present in public results:
+
+- `Dicoangelo/frontier-alpha` — frontier-alpha.metaventionsai.com, a company
+  (Metaventions AI), 116 MB, pushed two days before the scan, **4 CRITICAL
+  findings**
+- `SunrisesIllNeverSee/sigrank-app` — signalaf.com, 68 MB, active
+- `goklab/guardvibe` — guardvibe.dev (note: sells vibe-coding security — a
+  competitor, not a prospect)
+
+**But the population is thin and heavily diluted.** Of 36 scanned, roughly thirty
+were templates by name: `pixio-api-starter`, `nextjs-boilerplate`,
+`dream-starter-kit`, `LaunchKit`, `saas-zero`, `stripe-saas-boilerplate`,
+`saas-starter-nextjs`. That part of the premise held.
+
+**And the qualifier was discarding the good half.** `frontier-alpha`, the only
+repo in the run with critical findings, was rejected because its description
+said "portfolio optimization". Fixed — see the word-sense commit — but it means
+every earlier conclusion about this lane's yield was measured through a filter
+rejecting nine of ten plausible businesses.
+
+## What is still open
+
+Re-run the sweep with the fixed qualifier and count again. The question is no
+longer "do businesses exist here" — they do — but **how many per hundred
+scanned, and do they carry the finding classes that actually pay**
+(`exposed-secret`, `missing-rls`), rather than the ssrf/path-traversal classes
+CLAUDE.md says do not.
+
+Both leads persisted in this run had **zero** critical findings.

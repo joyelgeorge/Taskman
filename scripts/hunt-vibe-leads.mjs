@@ -65,23 +65,78 @@ async function scanRepo(repo) {
   }
 }
 
+/**
+ * How many repositories one sweep is willing to clone. A clone is the expensive
+ * step, so this is the real budget and it should be a decision rather than an
+ * accident of page size.
+ */
+const CANDIDATE_BUDGET = 120;
+const PER_PAGE = 100;          // GitHub's maximum
+const MAX_PAGES_PER_QUERY = 3;
+
+/**
+ * Candidate repositories to scan.
+ *
+ * Measured against the live API on 2026-09-12, the previous query set was
+ * reaching almost none of its pool:
+ *
+ *   supabase stripe ... stars:5..400        ->     25 repos
+ *   supabase stripe ... stars:0..4          ->  1,009 repos
+ *   supabase stripe language:JavaScript ... ->      0 repos
+ *
+ * Two things were wrong. One query returned nothing at all and had been
+ * contributing nothing since it was written. And the star floor was not merely
+ * narrow, it was backwards: stars measure open-source popularity, and nobody
+ * stars a company's product repository. They accumulate on templates and
+ * starter kits, which is exactly what the business qualifier then spends its
+ * time rejecting, so the two filters pulled against each other.
+ *
+ * The whole pool was also consumed in a single run — the sweep of 2026-09-12
+ * scanned 35 candidates and the next run found zero new ones, leaving the cron
+ * with nothing to do for the length of the rescan window. So this paginates to
+ * a stated budget instead of taking one page and stopping.
+ */
 async function generateCandidates() {
-  // Genuine-business signal: Supabase paired with a payments integration.
+  // Pool sizes measured against the live API on 2026-09-12 and recorded here so
+  // a future change can see what it is trading away.
   const queries = [
-    'supabase stripe language:TypeScript stars:5..400 pushed:>2026-06-01',
-    'supabase stripe saas language:TypeScript pushed:>2026-07-01',
-    'supabase stripe subscription language:JavaScript stars:3..300 pushed:>2026-06-01'
+    'supabase stripe pushed:>2026-06-01',              // 1,034
+    'firebase stripe pushed:>2026-06-01',              //   296
+    'lovable supabase pushed:>2026-06-01',             //   177
+    '"built with lovable" pushed:>2026-06-01',         //   123
+    '"bolt.new" supabase pushed:>2026-06-01'           //    11
   ];
+  // Deliberately NOT `bolt.new OR v0.dev supabase`: GitHub does not apply that
+  // OR the way it reads, and the query returned 41,406 repositories — bare
+  // `supabase` returns 41,226. It matched almost everything and would have
+  // flooded the budget with noise while looking like a targeted search.
+
   const seen = new Set();
   for (const q of queries) {
-    try {
-      const { stdout } = await run('gh', ['api', '-X', 'GET', 'search/repositories',
-        '--raw-field', `q=${q}`, '-f', 'sort=stars', '-f', 'per_page=25',
-        '--jq', '.items[] | select(.archived==false and .fork==false) | .full_name'], { timeout: 25000 });
-      for (const line of stdout.trim().split('\n')) if (line) seen.add(line);
-    } catch {}
+    for (let page = 1; page <= MAX_PAGES_PER_QUERY && seen.size < CANDIDATE_BUDGET; page += 1) {
+      try {
+        const { stdout } = await run('gh', ['api', '-X', 'GET', 'search/repositories',
+          '--raw-field', `q=${q}`, '-f', 'sort=updated', '-f', `per_page=${PER_PAGE}`,
+          '-f', `page=${page}`,
+          '--jq', '.items[] | select(.archived==false and .fork==false) | .full_name'],
+          { timeout: 30000 });
+        const lines = stdout.trim().split('\n').filter(Boolean);
+        // A query returning nothing is a fact worth seeing. The old set carried a
+        // query that had matched zero repositories since it was written, and
+        // nothing said so.
+        if (page === 1 && lines.length === 0) console.warn(`  (query returned no results: ${q})`);
+        for (const line of lines) seen.add(line);
+        if (lines.length < PER_PAGE) break;   // last page for this query
+      } catch (error) {
+        console.warn(`  (query failed: ${q} — ${String(error.message || error).slice(0, 80)})`);
+        break;
+      }
+    }
   }
-  return [...seen];
+
+  const all = [...seen];
+  console.log(`${all.length} candidates from ${queries.length} queries (budget ${CANDIDATE_BUDGET})`);
+  return all.slice(0, CANDIDATE_BUDGET);
 }
 
 const listFile = process.argv[2];

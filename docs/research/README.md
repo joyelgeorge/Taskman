@@ -17,3 +17,20 @@ of how good it sounded in the session that produced it.
   which is why the active vibe-coded-app-security plan survives this research
   strengthened. Contains a hypothesis (§3) with a one-day test attached.
   - Source material: [handover from the ideation session](2026-09-13-handover-data-api-direction.md)
+
+- **[Mapping where a model is actually competent](2026-09-13-model-capability-cartography.md)**
+  — Researched 2026-09-13. The premise (fluency is uniform, competence is not)
+  is **correct and empirically documented** — calibration is flat because RLHF
+  rewards the confident-sounding sequence. Not undiscovered: academia sells the
+  aggregate, vendors (Braintrust $249/mo, LangSmith $39/seat) sell the
+  laboratory. **Nobody sells the answer.** Unusual property: every model release
+  invalidates the map, so decay becomes recurring revenue instead of
+  commoditisation. Unvalidated: that anyone pays for a verdict they did not
+  derive. Notes the limit that a model cannot introspect its own training, so
+  the method must be black-box.
+
+- **[Every lane that died](2026-09-13-every-lane-that-died.md)** — Draft
+  artefact, **not published.** The inventory of all thirteen revenue lanes and
+  the cause of death of each, drawn from the territory registry, income-lane
+  defaults and the git-measured post-mortem. Written to be the one-day test of
+  whether a credible negative verdict has buyers.

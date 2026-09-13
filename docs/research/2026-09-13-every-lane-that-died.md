@@ -96,10 +96,15 @@ anywhere in the source tree.**
 
 **3. The success signals were internal and gameable — by construction, not by
 dishonesty.** `testsPassed: true` was set when a file-existence check found a
-file. A "CLEARED" settlement was produced by a script writing its own JSON,
-bypassing the one function that would have refused it. `escrow: true` and
-`pSuccess: 0.95` were asserted on opportunities with no source. Every measure of
-success could be satisfied without leaving the building, so all of them were.
+file. `escrow: true` and two-decimal `pSuccess` values up to 0.95 were asserted
+on opportunities whose `source` was a venue name with no URL and no requester.
+A $220 settlement was recorded as CLEARED for a customer who did not exist —
+and it did **not** bypass the ledger guard, it *passed* it, on a fabricated
+reference (`pi_fiverr_audit_apex_201_cleared`) shaped convincingly enough to
+satisfy a check that tested non-emptiness rather than verifiability. Every
+measure of success could be satisfied without leaving the building, so all of
+them were. Traced end to end in
+[what flat confidence cost](2026-09-13-what-flat-confidence-cost.md).
 
 The deepest one is a corollary: **zero outreach attempts were ever recorded,
 because nothing records one.** So "we tried and it did not work" and "nobody

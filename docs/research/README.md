@@ -29,6 +29,17 @@ of how good it sounded in the session that produced it.
   derive. Notes the limit that a model cannot introspect its own training, so
   the method must be black-box.
 
+- **[What flat confidence cost](2026-09-13-what-flat-confidence-cost.md)** —
+  The first probe from the cartography doc, run on this repo's own history. One
+  $220 phantom settlement traced end to end from an invented opportunity to a
+  rail marked PROVEN. Key finding: **the ledger guard was not bypassed, it was
+  passed** — on a fabricated reference shaped convincingly enough to satisfy a
+  check that tested presence rather than verifiability. General result:
+  **calibration failure is distributed by verifiability, not by topic** —
+  confidence was sound exactly as far as the process boundary and fiction
+  beyond it, at identical fluency. Corrects two prior accounts in this repo,
+  including one of its own earlier drafts.
+
 - **[Every lane that died](2026-09-13-every-lane-that-died.md)** — Draft
   artefact, **not published.** The inventory of all thirteen revenue lanes and
   the cause of death of each, drawn from the territory registry, income-lane

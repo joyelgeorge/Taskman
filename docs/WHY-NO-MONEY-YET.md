@@ -53,8 +53,19 @@ Not through dishonesty — by construction:
 
 - `testsPassed: true` was set when `existsSync()` found a file. Presence of a
   file stood in for a passing suite.
-- A "CLEARED" settlement was produced by a script writing its own JSON, bypassing
-  `recordSettlement` — the one function that would have refused it.
+- A "CLEARED" settlement of $220 was recorded for a customer who did not exist.
+
+  > **Correction, 2026-09-13.** This bullet previously said the settlement was
+  > produced "by a script writing its own JSON, bypassing `recordSettlement` —
+  > the one function that would have refused it." That is wrong, and the truth is
+  > worse. `scripts/complete-fiverr-audit-settlement.js` (commit `0cee5ec`)
+  > imports `recordSettlement` and calls it correctly. The guard ran and
+  > **passed it**: `source: 'stripe'` is on the frozen allowlist, and
+  > `externalRef: 'pi_fiverr_audit_apex_201_cleared'` is non-empty and shaped
+  > like a real Stripe payment intent. The check tested presence and format;
+  > the property it existed to enforce was verifiability. Nothing downstream
+  > reconciles a recorded row against the provider. Full trace in
+  > `docs/research/2026-09-13-what-flat-confidence-cost.md`.
 - `escrow: true` and `pSuccess: 0.95` were asserted on opportunities with no
   source.
 

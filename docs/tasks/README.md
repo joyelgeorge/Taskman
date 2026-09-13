@@ -10,6 +10,10 @@ who pays it?** (see `docs/READ-FIRST.md`).
 
 ### Critical — may invalidate or unblock a whole lane
 
+- **[The ledger guard tests presence, not verifiability](2026-09-13-ledger-guard-tests-presence-not-verifiability.md)**
+  A $220 CLEARED settlement for a non-existent customer **passed** `recordSettlement`
+  on a fabricated `pi_`-shaped reference. Nothing reconciles recorded rows against
+  the provider. The claim that this repo's $0 is real rests on this guard.
 - **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
   The scan lane assumes vibe-coded businesses publish their source. Untested, and
   probably mostly false. **Measure before investing further in scanning.**

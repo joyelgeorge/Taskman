@@ -29,6 +29,21 @@ export function normalizeStripeTransaction(txn = {}, rail) {
     // 'available' means the money is in the balance and withdrawable. Anything else
     // is a promise, and promises are what the agent job boards already fail on.
     status: txn.status === 'available' ? SETTLEMENT_STATUS.CLEARED : SETTLEMENT_STATUS.PENDING,
+    // This row came back from Stripe's balance-transaction endpoint, so it is a
+    // real outside observation — the one path in the codebase that can honestly
+    // say so. Everything else has to stay PENDING until someone checks.
+    //
+    // observedAt is when Stripe confirmed the money was available to us, not
+    // when the payment itself happened; the transaction's own timestamp is kept
+    // separately as verification.createdAt.
+    confirmation: txn.status === 'available'
+      ? {
+        method: 'provider_api',
+        observedAt: new Date().toISOString(),
+        reference: txn.id,
+        detail: { endpoint: 'balance_transactions', stripeStatus: txn.status }
+      }
+      : null,
     verification: {
       stripeStatus: txn.status || null,
       type: txn.type || null,
@@ -90,7 +105,7 @@ export async function syncStripeSettlements({ rail, since = null, apiKey, fetchI
       }
       const settlement = await recordSettlement(normalized);
       if (normalized.status === SETTLEMENT_STATUS.CLEARED && settlement.status !== SETTLEMENT_STATUS.CLEARED) {
-        await markSettlementCleared('stripe', normalized.externalRef, normalized.verification);
+        await markSettlementCleared('stripe', normalized.externalRef, normalized.verification, normalized.confirmation);
       }
       recorded.push(settlement);
     } catch (error) {

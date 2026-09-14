@@ -314,7 +314,8 @@ test('11. Execute: authorized executor records MONEY_EVENT with verified attribu
         externalRef: `txn_${noveltyKey}`,
         grossCents: 13000,
         feeCents: 500,
-        status: 'CLEARED'
+        status: 'CLEARED',
+        confirmation: { method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' }
       }
     })
   });

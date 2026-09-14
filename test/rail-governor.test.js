@@ -1,5 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+// These tests are about rail economics, not about confirmation. The ledger now
+// refuses to call money cleared without an outside observation, so they have to
+// supply one — which is the contract, not a formality.
+const OBSERVED = Object.freeze({ method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' });
+
 import {
   recordAttempt, recordSettlement, setRailEnabled, setRailState, getRailState, railEconomics,
   isRailEnabled, resetLedgerMemory, SETTLEMENT_STATUS
@@ -21,7 +27,7 @@ test('a freshly registered rail starts in PROBATION', async () => {
 test('PROBATION promotes to PROVEN on the first cleared settlement', async () => {
   await reset();
   await recordAttempt({ rail: 'r', costCents: 500 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
 
   const verdict = await enforceRailGovernor({ rail: 'r' });
   assert.equal(verdict.nextState, 'PROVEN');
@@ -66,7 +72,7 @@ test('a manual re-enable gives a genuine fresh probation window', async () => {
 test('PROVEN demotes to PROBATION when trailing ROI collapses', async () => {
   await reset();
   await recordAttempt({ rail: 'r', costCents: 100 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_old', grossCents: 200, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_old', grossCents: 200, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
   await setRailState('r', 'PROVEN');
 
   // Heavy new spend with nothing new settling drags the trailing-30-day ROI down.
@@ -82,7 +88,7 @@ test('PROVEN promotes to SCALED once lifetime ROI and volume both clear the bar'
   await setRailState('r', 'PROVEN');
   await recordAttempt({ rail: 'r', costCents: 1000 });
   for (let i = 0; i < 10; i += 1) {
-    await recordSettlement({ rail: 'r', source: 'stripe', externalRef: `txn_${i}`, grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
+    await recordSettlement({ rail: 'r', source: 'stripe', externalRef: `txn_${i}`, grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
   }
 
   const verdict = await enforceRailGovernor({ rail: 'r', scaleMinSettlements: 10, scaleRoiThreshold: 3 });
@@ -94,7 +100,7 @@ test('PROVEN does not promote below the settlement-count floor even at high ROI'
   await reset();
   await setRailState('r', 'PROVEN');
   await recordAttempt({ rail: 'r', costCents: 100 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
 
   const verdict = await enforceRailGovernor({ rail: 'r', scaleMinSettlements: 10, scaleRoiThreshold: 3 });
   assert.equal(verdict.nextState, 'PROVEN', 'one huge settlement is not the same as a proven pattern');
@@ -104,7 +110,7 @@ test('SCALED descales to PROVEN when lifetime ROI falls through the floor', asyn
   await reset();
   await setRailState('r', 'SCALED');
   await recordAttempt({ rail: 'r', costCents: 10000 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
 
   const verdict = await enforceRailGovernor({ rail: 'r', descaleRoiThreshold: 2 });
   assert.equal(verdict.nextState, 'PROVEN');
@@ -114,7 +120,7 @@ test('SCALED stays scaled with no per-rail budget cap', async () => {
   await reset();
   await setRailState('r', 'SCALED');
   for (let i = 0; i < 5; i += 1) {
-    await recordSettlement({ rail: 'r', source: 'stripe', externalRef: `txn_${i}`, grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED });
+    await recordSettlement({ rail: 'r', source: 'stripe', externalRef: `txn_${i}`, grossCents: 100000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
   }
   const verdict = await enforceRailGovernor({ rail: 'r' });
   assert.equal(verdict.nextState, 'SCALED');

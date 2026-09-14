@@ -1,3 +1,24 @@
+/**
+ * DISPROVEN — this script records revenue that never existed. Do not run it.
+ *
+ * Kept in the tree deliberately, the way the other dead rails are, so it is not
+ * rediscovered next quarter as a working example of "booking a settlement".
+ *
+ * Written 2026-09-11 (commit 0cee5ec) to "complete fiverr-audit-201 end to end".
+ * There was no customer. It records $220.00 as CLEARED against
+ * `externalRef: 'pi_fiverr_audit_apex_201_cleared'` — a string invented here,
+ * shaped like a Stripe payment intent — asserts `clientConfirmed: true` about a
+ * person who was never contacted, and then marks the rail PROVEN. The system
+ * believed it had a working revenue lane for a week on the strength of it.
+ *
+ * At the time this passed every check the ledger had, because those checked the
+ * form of the claim rather than whether anything outside the process had seen
+ * the money. As of 2026-09-14 `recordSettlement` requires a confirmation naming
+ * an outside observation, so this script now throws where it used to succeed.
+ * That failure is the guard working; it is not a bug to fix.
+ *
+ * Full trace: docs/research/2026-09-13-what-flat-confidence-cost.md
+ */
 import { buildFullReport, renderReportHtml } from '../src/payout-report.js';
 import { callOllama } from '../src/adapters/ollama-adapter.js';
 import { MONEY_DOMAINS, buildMoneyPrompt } from '../src/ai-engine/money-making-agent.js';

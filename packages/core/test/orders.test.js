@@ -59,7 +59,7 @@ test('a cleared payout produces a real effective hourly rate', async () => {
   await reset();
   // One order: $20 gross, $4 platform fee, 30 minutes of work, $1 of API cost.
   await recordOrder({ rail: RAIL, orderId: 'FO200', priceCents: 2000, minutesSpent: 30, costCents: 100 });
-  await recordOrderPayout({ rail: RAIL, orderId: 'FO200', grossCents: 2000, feeCents: 400, status: SETTLEMENT_STATUS.CLEARED });
+  await recordOrderPayout({ rail: RAIL, orderId: 'FO200', grossCents: 2000, feeCents: 400, status: SETTLEMENT_STATUS.CLEARED, confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' } });
 
   const economics = await orderEconomics({ rail: RAIL });
   assert.equal(economics.clearedCents, 1600); // 2000 - 400 fee
@@ -73,12 +73,12 @@ test('a cleared payout produces a real effective hourly rate', async () => {
 test('a slow job and a fast job at the same price produce very different hourly rates', async () => {
   await reset();
   await recordOrder({ rail: RAIL, orderId: 'FAST', priceCents: 2000, minutesSpent: 20 });
-  await recordOrderPayout({ rail: RAIL, orderId: 'FAST', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordOrderPayout({ rail: RAIL, orderId: 'FAST', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED, confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' } });
   const fast = await orderEconomics({ rail: RAIL });
 
   await reset();
   await recordOrder({ rail: RAIL, orderId: 'SLOW', priceCents: 2000, minutesSpent: 180 });
-  await recordOrderPayout({ rail: RAIL, orderId: 'SLOW', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordOrderPayout({ rail: RAIL, orderId: 'SLOW', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED, confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' } });
   const slow = await orderEconomics({ rail: RAIL });
 
   assert.equal(fast.effectiveHourlyRateCents, 6000); // $20 over 20min
@@ -90,7 +90,7 @@ test('a slow job and a fast job at the same price produce very different hourly 
 test('a paid order reads as PAID, and the order id is the settlement reference', async () => {
   await reset();
   await recordOrder({ rail: RAIL, orderId: 'FO300', priceCents: 1000, minutesSpent: 15 });
-  await recordOrderPayout({ rail: RAIL, orderId: 'FO300', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordOrderPayout({ rail: RAIL, orderId: 'FO300', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED, confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' } });
 
   const [order] = await listOrders({ rail: RAIL });
   assert.equal(order.orderStatus, ORDER_STATUS.PAID);

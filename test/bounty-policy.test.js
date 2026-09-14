@@ -1,5 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+// These tests are about rail economics, not about confirmation. The ledger now
+// refuses to call money cleared without an outside observation, so they have to
+// supply one — which is the contract, not a formality.
+const OBSERVED = Object.freeze({ method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' });
+
 import {
   checkRepoAiPolicy,
   AI_POLICY_VERDICT,
@@ -221,7 +227,7 @@ test('Bounty Payout: cleared bounty is bookable as a verified settlement (Issue 
     externalRef: 'pi_algora_bounty_issue_99',
     grossCents: 15000,
     feeCents: 450,
-    status: SETTLEMENT_STATUS.CLEARED,
+    status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED,
     verification: {
       platform: 'algora',
       payoutMethod: 'stripe_express',

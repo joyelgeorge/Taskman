@@ -99,6 +99,7 @@ export async function fulfilScanOrder({
   feeCents = 0,
   currency = 'USD',
   status = SETTLEMENT_STATUS.CLEARED,
+  confirmation = null,
   minutesSpent,
   now = new Date()
 } = {}) {
@@ -133,6 +134,7 @@ export async function fulfilScanOrder({
     feeCents,
     currency,
     status,
+    confirmation,
     verification: { deliverable: 'ai-app-security-scan', tier, preparedFor, issues: report.summary.total }
   });
 

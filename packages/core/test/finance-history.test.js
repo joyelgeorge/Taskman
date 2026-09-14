@@ -1,5 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+// These tests are about rail economics, not about confirmation. The ledger now
+// refuses to call money cleared without an outside observation, so they have to
+// supply one — which is the contract, not a formality.
+const OBSERVED = Object.freeze({ method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' });
+
 import {
   recordFinanceReportSnapshot, listFinanceReportHistory, snapshotFinanceReport,
   resetFinanceMemory, recordExpense
@@ -87,7 +93,7 @@ test('snapshotFinanceReport computes live report and records snapshot accurately
   await recordAttempt({ rail: 'demo', costCents: 500 });
   await recordSettlement({
     rail: 'demo', source: 'stripe', externalRef: 'txn_snap_1',
-    grossCents: 2000, feeCents: 100, status: SETTLEMENT_STATUS.CLEARED
+    grossCents: 2000, feeCents: 100, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED
   });
   await recordExpense({ category: 'infra', amountCents: 300 });
 

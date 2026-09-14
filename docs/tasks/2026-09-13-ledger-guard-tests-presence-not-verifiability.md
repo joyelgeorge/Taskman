@@ -4,6 +4,19 @@ Found 2026-09-13 while tracing the $220 phantom settlement for
 `docs/research/2026-09-13-what-flat-confidence-cost.md`. Not fixed there, because
 that document's job was to measure rather than to change things.
 
+> **Mostly fixed 2026-09-14.** `recordSettlement` and `markSettlementCleared` now
+> require a `confirmation` naming an outside observation (`provider_api`,
+> `bank_statement`, `operator_receipt`) before a settlement may be CLEARED, and
+> `verifiedAt` is taken from that observation rather than stamped from the
+> caller's own status claim. Items 2 and 3 below are done; item 4 is not.
+>
+> **Item 1 — reconciling recorded rows back against the provider — is still
+> open, and is still the only check that actually leaves the process.** What
+> exists now makes a caller *name* its evidence; it cannot tell whether the
+> naming is true. An `operator_receipt` is still somebody's word, by design.
+> Closing that means a function that walks settlements with `source: 'stripe'`
+> or `'paypal'` and confirms each `externalRef` resolves at the provider.
+
 ## What is wrong
 
 `src/money-ledger.js` is the repository's one real integrity control: it refuses

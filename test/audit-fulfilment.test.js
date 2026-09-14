@@ -20,7 +20,8 @@ const bankCsv = `Date,Description,Amount
 
 const order = (over = {}) => ({
   platformCsv, bankCsv, source: 'stripe', externalRef: 'pi_1',
-  grossCents: 2000, feeCents: 88, minutesSpent: 12, ...over
+  grossCents: 2000, feeCents: 88, minutesSpent: 12,
+  confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' }, ...over
 });
 
 test('a paid order produces the deliverable, the settlement and the stream together', async () => {

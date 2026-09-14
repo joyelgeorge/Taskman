@@ -106,7 +106,11 @@ export async function recordOrderPayout({
   feeCents = 0,
   source = 'manual_receipt',
   status = SETTLEMENT_STATUS.CLEARED,
-  verification = {}
+  verification = {},
+  // A marketplace payout has no API this system can query, so the operator
+  // seeing it land is the observation. It has to be passed explicitly: the
+  // ledger will refuse a CLEARED row without one.
+  confirmation = null
 }) {
   if (!orderId) throw new Error('orderId is required');
   if (!VERIFIED_SOURCES.includes(source)) {
@@ -120,7 +124,8 @@ export async function recordOrderPayout({
     grossCents,
     feeCents,
     status,
-    verification: { marketplace: 'fiverr', ...verification }
+    verification: { marketplace: 'fiverr', ...verification },
+    confirmation
   });
 }
 

@@ -52,7 +52,8 @@ test('fulfilScanOrder books a verified PayPal payment as revenue', async () => {
   try {
     const done = await fulfilScanOrder({
       root: dir, tier: 'scan', source: 'paypal',
-      externalRef: 'PAYPAL-TEST-' + Date.now(), grossCents: 9900, feeCents: 400, minutesSpent: 30
+      externalRef: 'PAYPAL-TEST-' + Date.now(), grossCents: 9900, feeCents: 400, minutesSpent: 30,
+      confirmation: { method: 'operator_receipt', observedAt: '2026-09-01T00:00:00.000Z' }
     });
     assert.equal(done.settlement.source, 'paypal');
     assert.equal(done.economics.netCents, 9500);

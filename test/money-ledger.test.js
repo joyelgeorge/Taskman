@@ -25,6 +25,12 @@ import { upsertRevenueRecord } from '../src/revenue-store.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
 import { CANONICAL_QUEUES } from '../src/orchestration-profiles.js';
 
+// These tests are about rail economics, not about confirmation. The ledger now
+// refuses to call money cleared without an outside observation, so they have to
+// supply one — which is the contract, not a formality.
+const OBSERVED = Object.freeze({ method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' });
+
+
 test('a settlement from an unverifiable source is rejected', async () => {
   await resetLedgerMemory();
   await assert.rejects(
@@ -41,15 +47,102 @@ test('a settlement with no external reference is rejected', async () => {
   );
 });
 
+// The $220 that was not money.
+//
+// On 2026-09-11 commit 0cee5ec recorded a CLEARED settlement for a customer who
+// did not exist. It did not bypass the ledger — it passed it, because 'stripe'
+// is an accepted source and 'pi_fiverr_audit_apex_201_cleared' is a non-empty
+// string shaped like a payment intent. These tests use that exact payload.
+const FABRICATED = {
+  rail: 'fee_audit',
+  source: 'stripe',
+  externalRef: 'pi_fiverr_audit_apex_201_cleared',
+  grossCents: 22000,
+  status: SETTLEMENT_STATUS.CLEARED,
+  // Deliberately carries no confirmation. That is the whole point of the payload.
+  verification: { clientConfirmed: true, recoveredLeakageCents: 19400 }
+};
+
+test('a cleared settlement nobody outside this process observed is rejected', async () => {
+  await resetLedgerMemory();
+  await assert.rejects(
+    () => recordSettlement({ ...FABRICATED }),
+    /confirmation\.method/,
+    'a well-shaped reference and an accepted source must not be enough to call money cleared'
+  );
+});
+
+test('asserting the money arrived is not observing that it did', async () => {
+  await resetLedgerMemory();
+  // `clientConfirmed: true` is the agent's own belief in a free-form bag. The
+  // shape of a confirmation is not a confirmation.
+  await assert.rejects(
+    () => recordSettlement({
+      ...FABRICATED,
+      confirmation: { method: 'client_said_so', observedAt: new Date().toISOString() }
+    }),
+    /confirmation\.method/
+  );
+  await assert.rejects(
+    () => recordSettlement({ ...FABRICATED, confirmation: { method: 'provider_api' } }),
+    /observedAt is required/
+  );
+});
+
+test('the same payload stays PENDING rather than being refused outright', async () => {
+  await resetLedgerMemory();
+  const settlement = await recordSettlement({ ...FABRICATED, status: SETTLEMENT_STATUS.PENDING });
+  assert.equal(settlement.status, SETTLEMENT_STATUS.PENDING);
+  assert.equal(settlement.verifiedAt, null, 'nothing observed it, so it has no verification time');
+
+  const [economics] = await railEconomics('fee_audit');
+  assert.equal(economics.clearedCents, 0, 'unobserved money must never count as earned');
+  assert.equal(economics.pendingCents, 22000);
+});
+
+test('verifiedAt records when the outside system saw the money, not when the row was written', async () => {
+  await resetLedgerMemory();
+  const observedAt = '2026-09-01T10:00:00.000Z';
+  const settlement = await recordSettlement({
+    ...FABRICATED,
+    externalRef: 'pi_real_observed',
+    confirmation: { method: 'provider_api', observedAt, reference: 'pi_real_observed' }
+  });
+
+  assert.equal(settlement.status, SETTLEMENT_STATUS.CLEARED);
+  // Pins the value. Under the old implementation this was Date.now(), so an
+  // assertion on shape alone would have passed against the bug.
+  assert.equal(settlement.verifiedAt, observedAt);
+  assert.equal(settlement.confirmation.method, 'provider_api');
+});
+
+test('clearing a pending settlement also needs an outside observation', async () => {
+  await resetLedgerMemory();
+  await recordSettlement({ ...FABRICATED, status: SETTLEMENT_STATUS.PENDING });
+
+  await assert.rejects(
+    () => markSettlementCleared('stripe', FABRICATED.externalRef, { clientConfirmed: true }),
+    /confirmation\.method/,
+    'markSettlementCleared must not be the easier door into the same room'
+  );
+
+  const cleared = await markSettlementCleared(
+    'stripe', FABRICATED.externalRef, {},
+    { method: 'bank_statement', observedAt: '2026-09-02T00:00:00.000Z' }
+  );
+  assert.equal(cleared.status, SETTLEMENT_STATUS.CLEARED);
+  assert.equal(cleared.verifiedAt, '2026-09-02T00:00:00.000Z');
+});
+
 test('the same processor reference cannot be counted twice', async () => {
   await resetLedgerMemory();
   const first = await recordSettlement({
     rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 175,
-    status: SETTLEMENT_STATUS.CLEARED
+    status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED
   });
   const second = await recordSettlement({
     rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 175,
-    status: SETTLEMENT_STATUS.CLEARED
+    status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED
   });
   assert.equal(first.id, second.id);
 
@@ -64,7 +157,7 @@ test('economics net spend against cleared settlements only', async () => {
   await finishAttempt(a1.id, { status: ATTEMPT_STATUS.DELIVERED });
   await recordAttempt({ rail: 'r', costCents: 80 });
 
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'cleared_1', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'cleared_1', grossCents: 1000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
   await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'pending_1', grossCents: 9999 });
 
   const [e] = await railEconomics('r');
@@ -98,7 +191,7 @@ test('a rail that exhausts its attempt allowance without settling is disabled', 
 test('a rail with a verified settlement keeps running', async () => {
   await resetLedgerMemory();
   for (let i = 0; i < 40; i += 1) await recordAttempt({ rail: 'live', costCents: 100 });
-  await recordSettlement({ rail: 'live', source: 'stripe', externalRef: 'txn_live', grossCents: 25000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'live', source: 'stripe', externalRef: 'txn_live', grossCents: 25000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
 
   const verdict = await evaluateRailViability({ rail: 'live', probationBudgetCents: 1000, minAttempts: 5 });
   assert.equal(verdict.verdict, 'CONTINUE');
@@ -191,7 +284,7 @@ test('an executor returning a cleared settlement produces a money event', async 
         externalRef: 'txn_real_1',
         grossCents: 30000,
         feeCents: 900,
-        status: SETTLEMENT_STATUS.CLEARED
+        status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED
       }
     })
   });

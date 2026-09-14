@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { recordExpense, listExpenses, resetFinanceMemory } from '../finance/store.js';
 import { financeReport } from '../finance/report.js';
+
+// These tests are about rail economics, not about confirmation. The ledger now
+// refuses to call money cleared without an outside observation, so they have to
+// supply one — which is the contract, not a formality.
+const OBSERVED = Object.freeze({ method: 'provider_api', observedAt: '2026-09-01T00:00:00.000Z' });
+
 import {
   recordAttempt, recordSettlement, setGlobalMonthlyBudget, resetLedgerMemory, resetGovernorMemory,
   SETTLEMENT_STATUS
@@ -49,7 +55,7 @@ test('a completely empty ledger produces a report that says so, not an error', a
 test('lifetime net position combines rail spend, expenses, and cleared settlements correctly', async () => {
   await reset();
   await recordAttempt({ rail: 'r', costCents: 1000 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 200, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 5000, feeCents: 200, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
   await recordExpense({ category: 'infra', amountCents: 800 });
 
   const report = await financeReport({});
@@ -96,7 +102,7 @@ test('marketing expenses tagged to a campaign roll into the same report as rail 
 test('per-rail margin and cleared-per-attempt are reported alongside the raw ledger numbers', async () => {
   await reset();
   for (let i = 0; i < 4; i += 1) await recordAttempt({ rail: 'r', costCents: 250 });
-  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED });
+  await recordSettlement({ rail: 'r', source: 'stripe', externalRef: 'txn_1', grossCents: 2000, status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED });
 
   const report = await financeReport({});
   const rail = report.perRail.find(r => r.rail === 'r');
@@ -141,7 +147,7 @@ test('financeReport converts cleared USD settlements to INR at historical observ
     grossCents: 10000,
     feeCents: 0,
     currency: 'USD',
-    status: SETTLEMENT_STATUS.CLEARED,
+    status: SETTLEMENT_STATUS.CLEARED, confirmation: OBSERVED,
     verifiedAt: '2026-09-01T18:00:00Z'
   });
 

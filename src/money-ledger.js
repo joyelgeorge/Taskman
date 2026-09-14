@@ -74,6 +74,62 @@ export function settlementLagFor(rail) {
 export const VERIFIED_SOURCES = Object.freeze(['stripe', 'paypal', 'bank', 'manual_receipt']);
 
 /**
+ * How a settlement came to be believed cleared.
+ *
+ * This list exists because `source` and `externalRef` turned out not to be
+ * enough. On 2026-09-11 a $220 settlement was recorded CLEARED for a customer
+ * who did not exist (commit 0cee5ec). It did not bypass this module — it passed
+ * it. `'stripe'` is on the list above, and `'pi_fiverr_audit_apex_201_cleared'`
+ * is non-empty and shaped like a payment intent. Both checks looked at the
+ * *form* of the claim. Neither looked at whether anything outside this process
+ * agreed with it, and `verifiedAt` was then stamped from the caller's own
+ * assertion that the status was CLEARED — so "verified" meant "asserted".
+ *
+ * Note what is deliberately NOT the fix: tightening the reference format.
+ * A generator that produces plausible strings defeats any format check, so a
+ * stricter pattern would buy a speed bump and re-hide the same hole. The only
+ * property worth enforcing is that *something outside this process observed the
+ * money*, and that has to be named rather than inferred.
+ *
+ * Ordered strongest to weakest. `operator_receipt` is honest about being a
+ * human's word — cash and cheques have no other record — and is kept distinct
+ * precisely so it never reads as processor-confirmed.
+ */
+export const CONFIRMATION_METHODS = Object.freeze([
+  'provider_api',     // the processor was queried and returned this transaction
+  'bank_statement',   // the credit was read off a statement or export
+  'operator_receipt'  // a person saw the money arrive; the weakest evidence there is
+]);
+
+/**
+ * Money may only be called cleared on the word of something outside this
+ * process. Returns the normalized confirmation, or null for a non-cleared row.
+ */
+function assertConfirmation(status, confirmation) {
+  if (status !== SETTLEMENT_STATUS.CLEARED) return null;
+
+  const method = confirmation?.method;
+  if (!CONFIRMATION_METHODS.includes(method)) {
+    throw new Error(
+      `a cleared settlement needs confirmation.method (one of ${CONFIRMATION_METHODS.join(', ')}): `
+      + 'an agent\'s belief that money arrived is not an observation that it did'
+    );
+  }
+
+  const observedAt = confirmation?.observedAt;
+  if (!observedAt || Number.isNaN(new Date(observedAt).getTime())) {
+    throw new Error('confirmation.observedAt is required: when the outside system saw the money, not when this row was written');
+  }
+
+  return {
+    method,
+    observedAt: new Date(observedAt).toISOString(),
+    reference: confirmation.reference ? String(confirmation.reference).trim() : null,
+    detail: confirmation.detail ?? null
+  };
+}
+
+/**
  * The four states a rail moves through. See src/rail-governor.js for the
  * transition table; this module only stores the state and the raw ledger data
  * the governor reads.
@@ -86,6 +142,13 @@ const cents = value => {
 };
 
 const usd = c => `$${(Number(c || 0) / 100).toFixed(2)}`;
+
+/** Timestamps cross the two storage modes as different types; normalize to ISO. */
+const isoOrNull = value => {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
 
 function normalizeAttempt(row = {}) {
   return {
@@ -116,8 +179,14 @@ function normalizeSettlement(row = {}) {
     netCents: cents(row.netCents ?? row.net_cents ?? gross - fee),
     currency: (row.currency || 'USD').toUpperCase(),
     status: row.status || SETTLEMENT_STATUS.PENDING,
-    verifiedAt: row.verifiedAt || row.verified_at || null,
+    // PostgreSQL hands back a Date for timestamptz while memory mode holds the
+    // ISO string it was given. Callers compare this field, so the two modes have
+    // to agree on its type as well as its value.
+    verifiedAt: isoOrNull(row.verifiedAt ?? row.verified_at),
     verification: row.verification || {},
+    // Surfaced from the verification payload so callers can read how this row
+    // came to be trusted without knowing where it is stored.
+    confirmation: (row.verification || {}).confirmation ?? null,
     createdAt: row.createdAt || row.created_at || null,
     probationEpoch: Number(row.probationEpoch ?? row.probation_epoch ?? 0)
   };
@@ -204,7 +273,8 @@ export async function recordSettlement({
   feeCents = 0,
   currency = 'USD',
   status = SETTLEMENT_STATUS.PENDING,
-  verification = {}
+  verification = {},
+  confirmation = null
 }) {
   if (!rail) throw new Error('rail is required');
   if (!VERIFIED_SOURCES.includes(source)) {
@@ -215,6 +285,11 @@ export async function recordSettlement({
   }
   const gross = cents(grossCents);
   if (gross <= 0) throw new Error('grossCents must be a positive amount');
+
+  // Throws if the caller asked for CLEARED without an outside observation.
+  // A settlement recorded without one is still welcome — it just stays PENDING,
+  // which is the honest description of money nobody has seen arrive.
+  const confirmed = assertConfirmation(status, confirmation);
 
   const epoch = await currentEpoch(rail);
   const settlement = normalizeSettlement({
@@ -227,8 +302,9 @@ export async function recordSettlement({
     fee_cents: cents(feeCents),
     currency,
     status,
-    verified_at: status === SETTLEMENT_STATUS.CLEARED ? new Date().toISOString() : null,
-    verification,
+    // When the outside system saw the money — never when this row was written.
+    verified_at: confirmed ? confirmed.observedAt : null,
+    verification: confirmed ? { ...verification, confirmation: confirmed } : verification,
     created_at: new Date().toISOString(),
     probation_epoch: epoch
   });
@@ -249,25 +325,35 @@ export async function recordSettlement({
        verification = EXCLUDED.verification
      RETURNING *`,
     [settlement.id, rail, attemptId, settlement.source, settlement.externalRef, settlement.grossCents,
-     settlement.feeCents, settlement.currency, settlement.status, settlement.verifiedAt, JSON.stringify(verification), epoch]
+     settlement.feeCents, settlement.currency, settlement.status, settlement.verifiedAt, JSON.stringify(settlement.verification), epoch]
   );
   return normalizeSettlement(result.rows[0]);
 }
 
-export async function markSettlementCleared(source, externalRef, verification = {}) {
-  const now = new Date().toISOString();
+/**
+ * Promote a pending settlement to cleared.
+ *
+ * Takes the same confirmation as `recordSettlement` and for the same reason:
+ * this was previously the easier door into the same room, stamping
+ * `verified_at = now()` on nothing but the fact that it had been called.
+ */
+export async function markSettlementCleared(source, externalRef, verification = {}, confirmation = null) {
+  const confirmed = assertConfirmation(SETTLEMENT_STATUS.CLEARED, confirmation);
+
   if (!databaseEnabled) {
     const settlement = memory.settlements.find(s => s.source === source && s.externalRef === externalRef);
     if (!settlement) return null;
     settlement.status = SETTLEMENT_STATUS.CLEARED;
-    settlement.verifiedAt = now;
-    settlement.verification = { ...settlement.verification, ...verification };
+    settlement.verifiedAt = confirmed.observedAt;
+    settlement.verification = { ...settlement.verification, ...verification, confirmation: confirmed };
+    settlement.confirmation = confirmed;
     return settlement;
   }
   const result = await query(
-    `UPDATE settlements SET status=$3, verified_at=now(), verification = verification || $4::jsonb
+    `UPDATE settlements SET status=$3, verified_at=$5, verification = verification || $4::jsonb
      WHERE source=$1 AND external_ref=$2 RETURNING *`,
-    [source, externalRef, SETTLEMENT_STATUS.CLEARED, JSON.stringify(verification)]
+    [source, externalRef, SETTLEMENT_STATUS.CLEARED,
+     JSON.stringify({ ...verification, confirmation: confirmed }), confirmed.observedAt]
   );
   return result.rows[0] ? normalizeSettlement(result.rows[0]) : null;
 }

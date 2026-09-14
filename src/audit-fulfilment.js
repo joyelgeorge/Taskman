@@ -50,6 +50,7 @@ export async function fulfilAuditOrder({
   feeCents = 0,
   currency = 'USD',
   status = SETTLEMENT_STATUS.CLEARED,
+  confirmation = null,
   // What delivery actually cost.
   minutesSpent,
   now = new Date()
@@ -90,6 +91,7 @@ export async function fulfilAuditOrder({
     feeCents,
     currency,
     status,
+    confirmation,
     verification: { deliverable: 'payout-reconciliation-report', preparedFor }
   });
 

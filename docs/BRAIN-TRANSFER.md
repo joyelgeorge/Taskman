@@ -314,9 +314,13 @@ against code writing a value the schema rejects — it only runs with
       `VERIFIED_SOURCES`/`externalRef` guard and deliver-first ordering as
       the audit lane.
     - Tested: `test/scan-fulfilment.test.js`, 13/13 pass.
-    - Minor gap: `scripts/fulfil-scan.mjs` exists but, unlike
-      `fulfil-audit.js`, is not wired into `package.json` scripts — there is
-      no `npm run fulfil:scan` yet.
+    - Wired to a real CLI: `npm run fulfil:scan -- prepare <repoPath>
+      [--tier scan|fix]` (read-only, books nothing) or
+      `npm run fulfil:scan -- deliver <repoPath> --tier scan --ref <paypalTxn>
+      --gross <cents> --minutes <n>` (books a settlement — only with a real
+      PayPal reference). Accepts a local path, a GitHub URL, or an
+      `owner/repo` slug (shallow-cloned to a temp dir and cleaned up after).
+      Added 2026-09-14 — previously existed as a script with no npm entry.
 
   **Verified 2026-09-11.** Both files are examples of the pattern done
   right — worth contrasting with §15's fabrication findings rather than

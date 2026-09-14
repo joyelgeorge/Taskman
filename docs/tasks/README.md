@@ -10,30 +10,40 @@ who pays it?** (see `docs/READ-FIRST.md`).
 
 ### Critical — may invalidate or unblock a whole lane
 
-- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
-  The scan lane assumes vibe-coded businesses publish their source. Untested, and
-  probably mostly false. **Measure before investing further in scanning.**
 - **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
   The repo calls `warm-lead-scout` the primary engine. It has no cron, no script
   and no persistence. All the engineering went to the funnel labelled low-yield.
-- **[The star filter selects against businesses](2026-09-12-star-filter-selects-against-businesses.md)**
-  Measured: the search sees 25 of 1,034 repos. Stars proxy for OSS popularity,
-  not commerce, so the filter and the business qualifier fight each other.
+  **Now the highest-value open task**: the cold-scan funnel is fixed and full,
+  and the bottleneck has moved from finding leads to contacting them.
 
 ### High
 
-- **[No outreach attempt is ever counted](2026-09-12-no-outreach-attempt-has-ever-been-counted.md)**
-  Kill criteria exist and can never fire, so no lane can be honestly proven or
-  retired.
-- **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**
-  Minutes to fix; contributing nothing to every run.
-- **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**
-  Needs a manual workflow run. Blocks the first real sweep.
+- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
+  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. The lane is
+  not dead. Held open only until the first outreach attempt is logged, because
+  response rate is the untested half.
 
 ### Medium
 
-- **[Candidate cap is 75 against a 1,000 pool](2026-09-12-candidate-cap-is-75-against-a-1000-pool.md)**
+- **[The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md)**
+  Fails under the full suite, passes standalone. It guards the function that
+  replaced `existsSync`-as-"tests passed", so a random red here is dangerous.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
+
+## Closed
+
+- ~~Star filter selects against businesses~~ — removed; the search now sorts by
+  `updated` and the pool went from 25 reachable repos to 199 candidates.
+- ~~One search query returns zero~~ — deleted, and a zero-result query now warns
+  loudly instead of contributing nothing in silence.
+- ~~Candidate cap is 75 against a 1,000 pool~~ — paginates to a stated
+  `CANDIDATE_BUDGET = 120` with the pool sizes recorded in the source.
+- ~~No outreach attempt is ever counted~~ — `src/outreach-log.js`, migration
+  `034_outreach_attempts.sql`, `npm run outreach`, and a 50-attempt kill
+  criterion that can now actually fire.
+- ~~Verify the CI database is migrated~~ — proven by run
+  [34857396120](https://github.com/joyelgeorge/Taskman/actions/runs/34857396120):
+  migrations applied and `persisted: 5 new`.
 
 ## Writing one
 

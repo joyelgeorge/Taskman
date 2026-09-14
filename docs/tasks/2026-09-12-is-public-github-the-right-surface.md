@@ -86,3 +86,49 @@ scanned, and do they carry the finding classes that actually pay**
 CLAUDE.md says do not.
 
 Both leads persisted in this run had **zero** critical findings.
+
+---
+
+## Answered on yield, 2026-09-14 — the premise survives
+
+Run [34688151638](https://github.com/joyelgeorge/Taskman/actions/runs/34688151638),
+the first with the fixed qualifier and the loosened search:
+
+| | Run 1 (2026-09-12) | Run 3 (fixed qualifier) |
+|---|---|---|
+| Candidates found | 36 | **199** (budget 120) |
+| Scanned | 36 | **112** |
+| Passed `genuine` with a finding | 2 | **27** |
+| Carrying ≥1 CRITICAL | **0** | **19** |
+
+Run [34857396120](https://github.com/joyelgeorge/Taskman/actions/runs/34857396120)
+(2026-09-14, scheduled) scanned 27 more and found 5 leads, 3 with criticals, and
+skipped 93 already-scanned repos — so `scanned_repos` works and the pool has not
+run dry.
+
+**The measurement this task asked for is done, and it does not kill the lane.**
+17% of scanned repos are a business carrying a critical finding, and the classes
+are the ones CLAUDE.md says pay — `exposed-secret` and `missing-rls`, not ssrf.
+
+## The caveat the first disclosure exposed
+
+Counts of `crit` are **issue counts, not distinct problems.** The headline
+`flyrpro (73 issues, 71 crit)` was verified by hand against a fresh clone and is
+really:
+
+- `exposed-secret` — **1** (a `service_role` key literal, genuinely serious)
+- `missing-rls` — **70, across 12 files**, 56 of them in one `schema.current.sql`
+  dump: *one* systemic issue counted once per table
+- `ssrf` — 2
+
+So "19 leads with criticals" is 19 leads worth verifying, not 19 × dozens of
+holes. Anything sent to a human must be hand-verified first — see
+`docs/outreach/2026-09-12-flyrpro-disclosure.md`, which corrects our own number
+in writing.
+
+## What is still open
+
+Nothing about the surface. What is untested now is **the response rate**: 19
+qualified leads, 1 disclosure drafted, 0 sent. That question belongs to
+`src/outreach-log.js` and the 50-attempt kill criterion, not here. Close this
+task once the first attempt is logged.

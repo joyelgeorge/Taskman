@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 import { createHash } from 'node:crypto';
 
 export const BILLABLE_METRICS = Object.freeze({
@@ -69,12 +69,15 @@ function activeMemoryAssignment(accountId, at) {
     .sort((a, b) => b.effectiveFrom - a.effectiveFrom)[0] || null;
 }
 
-export function resetMeteringForTesting({ seedDevelopment = false } = {}) {
+export async function resetMeteringForTesting({ seedDevelopment = false } = {}) {
   memory.accounts.clear();
   memory.assignments.length = 0;
   memory.entitlements.clear();
   memory.events.clear();
   memory.exports.clear();
+  await truncateForTesting(
+    ['meter_events', 'billing_export_receipts', 'account_plan_assignments', 'billing_accounts']
+  );
   if (seedDevelopment) seedDevelopmentPlan();
 }
 

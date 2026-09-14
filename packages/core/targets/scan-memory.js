@@ -1,4 +1,4 @@
-import { databaseEnabled, query } from '@taskman/db';
+import { databaseEnabled, query, truncateForTesting } from '@taskman/db';
 import { MemoryTable, nowIso } from '../memory-table.js';
 
 /**
@@ -96,6 +96,7 @@ export async function selectUnscanned(candidates = [], {
   });
 }
 
-export function resetScanMemoryForTesting() {
+export async function resetScanMemoryForTesting() {
   mem.repos.clear();
+  await truncateForTesting(['scanned_repos']);
 }

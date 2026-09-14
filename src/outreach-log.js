@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 import { scrubSecrets } from './adapters/coding-agent-adapter.js';
 
 /**
@@ -48,6 +48,9 @@ export const KILL_AFTER_ATTEMPTS = 50;
 const mem = { attempts: [] };
 const nowIso = () => new Date().toISOString();
 
+/** timestamptz returns a Date from PostgreSQL and a string from memory. */
+const iso = v => (v ? (v instanceof Date ? v : new Date(v)).toISOString() : null);
+
 const normalize = (row) => row && ({
   id: row.id,
   lane: row.lane,
@@ -55,8 +58,8 @@ const normalize = (row) => row && ({
   prospect: row.prospect,
   outcome: row.outcome,
   note: row.note ?? null,
-  attemptedAt: row.attempted_at ?? row.attemptedAt,
-  respondedAt: row.responded_at ?? row.respondedAt ?? null
+  attemptedAt: iso(row.attempted_at ?? row.attemptedAt),
+  respondedAt: iso(row.responded_at ?? row.respondedAt)
 });
 
 /**
@@ -155,6 +158,7 @@ export async function outreachSummary(lane) {
   return { lane, attempts: attempts.length, replies, paid, killCriterionReached, verdict };
 }
 
-export function resetOutreachLogForTesting() {
+export async function resetOutreachLogForTesting() {
   mem.attempts.length = 0;
+  await truncateForTesting(['outreach_attempts']);
 }

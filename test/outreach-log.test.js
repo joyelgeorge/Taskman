@@ -15,7 +15,7 @@ import {
 const reset = () => resetOutreachLogForTesting();
 
 test('records an attempt', async () => {
-  reset();
+  await reset();
   const a = await logOutreachAttempt({ lane: 'audit', channel: 'r/Fiverr', prospect: 'u/someone' });
   assert.equal(a.lane, 'audit');
   assert.equal(a.outcome, OUTREACH_OUTCOME.PENDING, 'a fresh attempt has no outcome yet');
@@ -24,20 +24,20 @@ test('records an attempt', async () => {
 });
 
 test('requires the three facts that make an attempt checkable', async () => {
-  reset();
+  await reset();
   await assert.rejects(() => logOutreachAttempt({ channel: 'c', prospect: 'p' }), /lane/i);
   await assert.rejects(() => logOutreachAttempt({ lane: 'l', prospect: 'p' }), /channel/i);
   await assert.rejects(() => logOutreachAttempt({ lane: 'l', channel: 'c' }), /prospect/i);
 });
 
 test('rejects an outcome the schema would not accept', async () => {
-  reset();
+  await reset();
   const a = await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: 'p' });
   await assert.rejects(() => updateOutreachOutcome(a.id, 'MAYBE'), /outcome/i);
 });
 
 test('an outcome can be recorded later, with the date it came', async () => {
-  reset();
+  await reset();
   const a = await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: 'p' });
   const updated = await updateOutreachOutcome(a.id, OUTREACH_OUTCOME.REPLIED, { now: () => '2026-09-20T00:00:00.000Z' });
   assert.equal(updated.outcome, 'REPLIED');
@@ -45,7 +45,7 @@ test('an outcome can be recorded later, with the date it came', async () => {
 });
 
 test('the same prospect is not logged twice on the same channel', async () => {
-  reset();
+  await reset();
   await logOutreachAttempt({ lane: 'audit', channel: 'r/Fiverr', prospect: 'u/someone' });
   const second = await logOutreachAttempt({ lane: 'audit', channel: 'r/Fiverr', prospect: 'u/someone' });
   assert.equal(second.duplicate, true, 'contacting the same person twice is a fact worth knowing');
@@ -53,7 +53,7 @@ test('the same prospect is not logged twice on the same channel', async () => {
 });
 
 test('a note is scrubbed of credentials before it is stored', async () => {
-  reset();
+  await reset();
   const a = await logOutreachAttempt({
     lane: 'audit', channel: 'c', prospect: 'p',
     note: 'they pasted ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 in the thread'
@@ -62,7 +62,7 @@ test('a note is scrubbed of credentials before it is stored', async () => {
 });
 
 test('summary counts what the kill criteria need', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 5; i += 1) {
     await logOutreachAttempt({ lane: 'audit', channel: 'r/Fiverr', prospect: `u/p${i}` });
   }
@@ -73,7 +73,7 @@ test('summary counts what the kill criteria need', async () => {
 });
 
 test('replies and paid are counted separately', async () => {
-  reset();
+  await reset();
   const a = await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: 'p1' });
   const b = await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: 'p2' });
   await updateOutreachOutcome(a.id, OUTREACH_OUTCOME.REPLIED);
@@ -85,14 +85,14 @@ test('replies and paid are counted separately', async () => {
 });
 
 test('a summary is scoped to its lane', async () => {
-  reset();
+  await reset();
   await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: 'p1' });
   await logOutreachAttempt({ lane: 'vibe-security', channel: 'c', prospect: 'p2' });
   assert.equal((await outreachSummary('audit')).attempts, 1);
 });
 
 test('the kill criterion does not fire early', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 49; i += 1) {
     await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: `p${i}` });
   }
@@ -100,7 +100,7 @@ test('the kill criterion does not fire early', async () => {
 });
 
 test('the kill criterion fires at 50 attempts with zero paid', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 50; i += 1) {
     await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: `p${i}` });
   }
@@ -110,7 +110,7 @@ test('the kill criterion fires at 50 attempts with zero paid', async () => {
 });
 
 test('one paid customer keeps the lane alive at any attempt count', async () => {
-  reset();
+  await reset();
   for (let i = 0; i < 60; i += 1) {
     await logOutreachAttempt({ lane: 'audit', channel: 'c', prospect: `p${i}` });
   }
@@ -120,7 +120,7 @@ test('one paid customer keeps the lane alive at any attempt count', async () => 
 });
 
 test('an empty lane has not been tried — and says so, rather than reading as failed', async () => {
-  reset();
+  await reset();
   const s = await outreachSummary('audit');
   assert.equal(s.attempts, 0);
   assert.equal(s.killCriterionReached, false);

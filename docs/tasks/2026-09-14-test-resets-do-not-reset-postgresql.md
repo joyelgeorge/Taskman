@@ -1,8 +1,18 @@
-# Four test resets clear memory and leave PostgreSQL untouched
+# Test resets clear memory and leave PostgreSQL untouched
 
 Found 2026-09-14 while verifying the ledger guard fix against both storage
-modes. Not fixed there because it is unrelated to that change — it is older, and
-it is load-bearing for a different lane.
+modes. Kept as the record of what was wrong and how it was measured.
+
+> **Fixed 2026-09-14.** All three resets now truncate their tables, and
+> `test/testing-resets-clear-durable-storage.test.js` guards the property
+> directly: write a row, reset, assert it is gone. That test was confirmed red
+> against the old code in PostgreSQL before the fix, and — the point of the whole
+> entry — **green against the old code in memory mode**, exactly as the rest of
+> the suite was.
+>
+> Two further defects surfaced while fixing it, both recorded below: `respondedAt`
+> crossed the storage boundary as a `Date` in PostgreSQL and a string in memory,
+> and the now-async resets were being called without `await` at 24 sites.
 
 ## What is wrong
 
@@ -19,13 +29,18 @@ In PostgreSQL mode the reset is a **no-op that reports success**, so rows
 accumulate across every test in the file. `money-ledger.js:692` shows the
 correct shape for comparison — `await truncateForTesting([...])`.
 
-Four modules have the same defect. Each exports a `*ForTesting` reset, each is
-storage-aware (`databaseEnabled`), and none of them truncates:
+Three modules had the same defect. Each exports a `*ForTesting` reset, each is
+storage-aware (`databaseEnabled`), and none of them cleared its tables:
 
 - `src/outreach-log.js`
 - `packages/core/targets/scan-memory.js`
-- `src/durable-scheduler.js`
 - `src/metering.js`
+
+> **Correction.** An earlier version of this file also listed
+> `src/durable-scheduler.js`. That was wrong: it already clears both its tables
+> with plain `DELETE FROM`. It was caught by a grep for `truncateForTesting`,
+> which is a search for one spelling of the fix rather than for the property —
+> the same mistake, in miniature, as the bug being described here.
 
 ## Measured
 
@@ -63,13 +78,34 @@ named for the property it is supposed to establish, which actually observes
 something weaker. `resetOutreachLogForTesting` sounds like it resets the
 outreach log. It resets an array.
 
-## The fix
+## What the fix turned up
 
-1. Make each of the four resets truncate its table when `databaseEnabled`,
-   following `money-ledger.js:692`. They become `async`, so their callers need
-   `await` — `test/outreach-log.test.js:15` wraps one already.
-2. Re-run each affected suite against PostgreSQL and confirm it matches its
-   memory-mode result.
+Truncating was the easy part. Two further defects only appeared once the resets
+started working, and both are worth knowing because neither was visible before:
+
+1. **`respondedAt` had the same dual-storage bug as the ledger's `verifiedAt`.**
+   `timestamptz` comes back as a `Date` from PostgreSQL and as the ISO string it
+   was given from memory, so `normalize()` in `src/outreach-log.js` emitted
+   different types per mode. One test compared the value and failed on the type.
+   Fixed by normalizing to ISO in `normalize()`, as `money-ledger.js` now does.
+2. **The resets became `async`, and 24 call sites were not awaiting them.**
+   `test/outreach-log.test.js` alone had 13. One was a sync `beforeEach` in
+   `test/metering.test.js`, which turned into a syntax error rather than a silent
+   race — lucky, because the silent version is the one the `verifying-guard-tests`
+   skill warns about: a fixture cleared mid-test makes tests pass for the wrong
+   reason.
+
+Note also that `test/metering.test.js` is memory-only — its `beforeEach` returns
+early when `databaseEnabled` and its cases are marked `memoryOnly` — so the
+truncation added to `resetMeteringForTesting` is defensive rather than
+load-bearing today.
+
+## Result
+
+`test/outreach-log.test.js` and `test/scan-memory.test.js` now match across
+modes. Affected suites: **24 pass / 0 fail** against PostgreSQL run serially,
+**30 pass / 0 fail** in memory (the difference is the memory-only metering
+cases).
 
 ## Testing it properly
 

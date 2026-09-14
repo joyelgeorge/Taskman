@@ -24,11 +24,11 @@ const memoryOnly = { skip: databaseEnabled ? 'metering tests configure memory pl
 const originalNodeEnv = process.env.NODE_ENV;
 const originalExportFlag = process.env.TASKMAN_BILLING_EXPORT_ENABLED;
 
-beforeEach(() => {
+beforeEach(async () => {
   if (databaseEnabled) return;
   process.env.NODE_ENV = 'test';
   delete process.env.TASKMAN_BILLING_EXPORT_ENABLED;
-  resetMeteringForTesting();
+  await resetMeteringForTesting();
   configureMemoryAccountPlan({
     accountId: 'acct-test',
     entitlements: [
@@ -139,7 +139,7 @@ test('account summaries require an explicit UTC window and paginate with opaque 
 });
 
 test('development plan and live billing export both remain fail closed in production', memoryOnly, async () => {
-  resetMeteringForTesting();
+  await resetMeteringForTesting();
   seedDevelopmentPlan();
   process.env.NODE_ENV = 'production';
   const decision = await checkEntitlement({ accountId: 'local-default', metricId: 'ai_tokens', proposedQuantity: 1 });

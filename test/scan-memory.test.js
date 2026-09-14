@@ -7,7 +7,7 @@ import {
 const reset = () => resetScanMemoryForTesting();
 
 test('remembers a scanned repo', async () => {
-  reset();
+  await reset();
   await recordScanned({ repo: 'a/one', outcome: SCAN_OUTCOME.LEAD, findingCount: 2 });
   const all = await listScanned();
   assert.equal(all.length, 1);
@@ -16,7 +16,7 @@ test('remembers a scanned repo', async () => {
 });
 
 test('re-scanning the same repo does not duplicate it', async () => {
-  reset();
+  await reset();
   await recordScanned({ repo: 'a/one', outcome: SCAN_OUTCOME.CLEAN });
   await recordScanned({ repo: 'a/one', outcome: SCAN_OUTCOME.LEAD, findingCount: 1 });
   const all = await listScanned();
@@ -26,17 +26,17 @@ test('re-scanning the same repo does not duplicate it', async () => {
 });
 
 test('rejects an outcome the schema would not accept', async () => {
-  reset();
+  await reset();
   await assert.rejects(() => recordScanned({ repo: 'a/one', outcome: 'MAYBE' }), /outcome/i);
 });
 
 test('requires a repo', async () => {
-  reset();
+  await reset();
   await assert.rejects(() => recordScanned({ outcome: SCAN_OUTCOME.CLEAN }), /repo/i);
 });
 
 test('skips repos scanned inside the window — this is the whole point', async () => {
-  reset();
+  await reset();
   const now = Date.parse('2026-09-11T00:00:00Z');
   await recordScanned({ repo: 'a/seen', outcome: SCAN_OUTCOME.CLEAN, now: () => new Date(now).toISOString() });
   const fresh = await selectUnscanned(['a/seen', 'b/new'], { withinDays: 30, now: () => now });
@@ -44,7 +44,7 @@ test('skips repos scanned inside the window — this is the whole point', async 
 });
 
 test('re-offers a repo once the window has passed', async () => {
-  reset();
+  await reset();
   const scannedAt = Date.parse('2026-01-01T00:00:00Z');
   await recordScanned({ repo: 'a/old', outcome: SCAN_OUTCOME.CLEAN, now: () => new Date(scannedAt).toISOString() });
   const later = Date.parse('2026-09-11T00:00:00Z');
@@ -53,7 +53,7 @@ test('re-offers a repo once the window has passed', async () => {
 });
 
 test('an errored scan is retried sooner than a clean one', async () => {
-  reset();
+  await reset();
   const at = Date.parse('2026-09-10T00:00:00Z');
   await recordScanned({ repo: 'a/err', outcome: SCAN_OUTCOME.ERROR, now: () => new Date(at).toISOString() });
   const next = Date.parse('2026-09-13T00:00:00Z');
@@ -62,12 +62,12 @@ test('an errored scan is retried sooner than a clean one', async () => {
 });
 
 test('preserves the order the candidates arrived in', async () => {
-  reset();
+  await reset();
   const fresh = await selectUnscanned(['c/3', 'a/1', 'b/2'], {});
   assert.deepEqual(fresh, ['c/3', 'a/1', 'b/2']);
 });
 
 test('handles an empty candidate list', async () => {
-  reset();
+  await reset();
   assert.deepEqual(await selectUnscanned([], {}), []);
 });

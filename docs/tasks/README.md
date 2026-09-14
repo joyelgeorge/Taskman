@@ -30,6 +30,12 @@ who pays it?** (see `docs/READ-FIRST.md`).
 - **[No outreach attempt is ever counted](2026-09-12-no-outreach-attempt-has-ever-been-counted.md)**
   Kill criteria exist and can never fire, so no lane can be honestly proven or
   retired.
+- **[Four test resets clear memory and leave PostgreSQL untouched](2026-09-14-test-resets-do-not-reset-postgresql.md)**
+  Measured: `test/outreach-log.test.js` is 13/13 green in memory and 8 failures
+  against PostgreSQL, because its reset only empties an array. The kill-criterion
+  guard that decides whether a lane lives or dies is verified **only** in the mode
+  where nothing persists. Same defect shape as the ledger bug: a helper named for
+  the property it is supposed to establish, observing something weaker.
 - **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**
   Minutes to fix; contributing nothing to every run.
 - **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**

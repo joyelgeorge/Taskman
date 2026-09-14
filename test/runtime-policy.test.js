@@ -5,8 +5,9 @@ import { readFile } from 'node:fs/promises';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('all runtime surfaces enforce the pinned Node 24 policy', async () => {
-  const [version, packageText, workflow, render] = await Promise.all([
+  const [version, nvmrc, packageText, workflow, render] = await Promise.all([
     read('.node-version'),
+    read('.nvmrc'),
     read('package.json'),
     read('.github/workflows/test.yml'),
     read('render.yaml')
@@ -14,6 +15,11 @@ test('all runtime surfaces enforce the pinned Node 24 policy', async () => {
   const packageJson = JSON.parse(packageText);
 
   assert.match(version.trim(), /^24\.\d+\.\d+$/);
+  // .nvmrc exists because nvm does not read .node-version, so without it `nvm use`
+  // in a fresh container silently leaves you on whatever Node it shipped with —
+  // which is how a suite that is green on the pinned runtime came to look like it
+  // had four permanent failures.
+  assert.equal(nvmrc.trim(), version.trim(), '.nvmrc and .node-version must not drift');
   assert.equal(packageJson.engines.node, '>=24 <25');
   assert.match(workflow, /node-version-file:\s*['"]?\.node-version/);
   assert.match(workflow, /run:\s*npm ci/);

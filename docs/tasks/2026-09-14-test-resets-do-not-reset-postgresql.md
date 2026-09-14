@@ -103,9 +103,19 @@ load-bearing today.
 ## Result
 
 `test/outreach-log.test.js` and `test/scan-memory.test.js` now match across
-modes. Affected suites: **24 pass / 0 fail** against PostgreSQL run serially,
-**30 pass / 0 fail** in memory (the difference is the memory-only metering
-cases).
+modes, and the PostgreSQL suite went from **14 failures to 5**.
+
+A fifth module turned out to have the same defect, found by chasing the last
+PostgreSQL-only failure: **`src/revenue-store.js` had no reset at all.**
+`Execute recomputes current capability state` passed alone and failed in the
+full suite because `runExecuteWorker` takes whatever is at the head of the
+queue, so a row left by another file became its input and the executor it
+asserted was never called, ran. `resetRevenueStoreForTesting` now exists and
+clears `revenue_records` and `revenue_scan_state`.
+
+With that and the runtime fix below, the suite is green in both modes:
+**816 pass / 0 fail** in memory, **831 pass / 0 fail** against PostgreSQL run
+serially.
 
 ## Testing it properly
 
@@ -117,6 +127,40 @@ before fixing it.
 
 Note the trap that hid this for so long: run the suite in memory mode and
 everything passes. The bug is only visible with `DATABASE_URL` set.
+
+## The four "permanent" failures were the wrong Node, not a bug
+
+For most of this session the suite was treated as having four immovable
+failures — three in `test/shutdown.test.js`, one in `test/runtime-policy.test.js`
+— because they failed in **both** storage modes, which made them look like a
+deep pre-existing defect.
+
+They were not. This repository pins Node 24 (`.node-version`, `engines:
+">=24 <25"`), the container shipped Node 22, and
+`status contract exposes safe runtime compatibility metadata` asserts
+`process.versions.node` major is 24. It was doing its job: correctly reporting
+that the environment violated the project's own runtime policy. The shutdown
+failures were the same cause — `cancelledByParent`, an event-loop timing
+difference between the two majors.
+
+On Node 24 all four pass untouched, and the whole suite is green:
+
+| | Node 22 | Node 24 |
+|---|---|---|
+| memory | 4 fail | **0 fail** (816 pass) |
+| PostgreSQL, serial | 5 fail | **0 fail** (831 pass) |
+
+**No code needed changing for these.** Weakening those assertions to match a
+non-compliant environment would have deleted the only signal that the
+environment was wrong — the same mistake as every other entry in this file,
+committed at a higher altitude.
+
+What did need fixing was that the pin was unreachable: nvm reads `.nvmrc`, not
+`.node-version`, so `nvm use` in a fresh container found nothing and silently
+left Node 22 in place. `.nvmrc` now exists, and the runtime-policy test asserts
+the two files agree so they cannot drift.
+
+**Run `nvm use` before trusting a test result here.**
 
 ## Also worth knowing
 

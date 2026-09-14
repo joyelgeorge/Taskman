@@ -1,4 +1,4 @@
-import { databaseEnabled, query, withTransaction } from './db.js';
+import { databaseEnabled, query, withTransaction, truncateForTesting } from './db.js';
 
 const queues = new Map();
 const state = new Map();
@@ -136,3 +136,18 @@ export async function getRevenueState(key) {
 }
 
 export function revenueStorageMode() { return databaseEnabled ? 'postgres' : 'memory'; }
+
+/**
+ * Empty both queues and scan state, in whichever storage mode is active.
+ *
+ * Worker tests take whatever is at the head of a queue, so a row left behind by
+ * another file silently becomes their input. That is how `Execute recomputes
+ * current capability state` passed alone and failed in the full suite: it
+ * asserted its executor was never called, and the executor ran against someone
+ * else's record.
+ */
+export async function resetRevenueStoreForTesting() {
+  queues.clear();
+  state.clear();
+  await truncateForTesting(['revenue_records', 'revenue_scan_state']);
+}

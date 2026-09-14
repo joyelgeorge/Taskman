@@ -11,7 +11,7 @@ import {
   unregisterCapability
 } from '../src/capability-registry.js';
 import { CANONICAL_QUEUES, QUALIFICATION_PROFILES } from '../src/orchestration-profiles.js';
-import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js';
+import { listRevenueRecords, upsertRevenueRecord, resetRevenueStoreForTesting } from '../src/revenue-store.js';
 import { runDiscoverWorker } from '../src/workers/discover.js';
 import { runValidateWorker } from '../src/workers/validate.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
@@ -144,6 +144,7 @@ test('Validate classifies evidence-passing work as setup required when runtime c
 });
 
 test('Execute recomputes current capability state and blocks an unavailable write adapter', async () => {
+  await resetRevenueStoreForTesting();
   const noveltyKey = `cap-execute-${crypto.randomUUID()}`;
   await upsertRevenueRecord({
     queue: CANONICAL_QUEUES.execution,

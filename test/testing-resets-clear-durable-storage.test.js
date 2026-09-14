@@ -7,6 +7,10 @@ import {
 import {
   recordScanned, listScanned, resetScanMemoryForTesting, SCAN_OUTCOME
 } from '../packages/core/targets/scan-memory.js';
+import {
+  upsertRevenueRecord, listRevenueRecords, resetRevenueStoreForTesting
+} from '../src/revenue-store.js';
+import { CANONICAL_QUEUES } from '../src/orchestration-profiles.js';
 
 /**
  * A reset helper that cannot be shown to reset is the same class of bug as a
@@ -53,4 +57,33 @@ test('resetting the scan memory actually empties it', async () => {
   await resetScanMemoryForTesting();
 
   assert.deepEqual(await listScanned(), [], 'the reset must clear the durable store too');
+});
+
+/**
+ * revenue-store had no reset at all, which is why a worker test could claim a
+ * queue row left behind by an entirely different file: `Execute recomputes
+ * current capability state` passed alone and failed in the full suite, because
+ * runExecuteWorker takes whatever is at the head of the queue.
+ */
+test('resetting the revenue store actually empties it', async () => {
+  await resetRevenueStoreForTesting();
+
+  await upsertRevenueRecord({
+    queue: CANONICAL_QUEUES.execution,
+    noveltyKey: 'reset-probe',
+    status: 'NEW',
+    priority: 1,
+    payload: {}
+  });
+  assert.equal(
+    (await listRevenueRecords(CANONICAL_QUEUES.execution)).length, 1,
+    'precondition: the row has to exist before clearing it proves anything'
+  );
+
+  await resetRevenueStoreForTesting();
+
+  assert.deepEqual(
+    await listRevenueRecords(CANONICAL_QUEUES.execution), [],
+    'a queue left dirty makes every worker test depend on which file ran first'
+  );
 });

@@ -31,11 +31,12 @@ who pays it?** (see `docs/READ-FIRST.md`).
   Kill criteria exist and can never fire, so no lane can be honestly proven or
   retired.
 - **[Test resets clear memory and leave PostgreSQL untouched](2026-09-14-test-resets-do-not-reset-postgresql.md)**
-  *Fixed 2026-09-14.* `test/outreach-log.test.js` was 13/13 green in memory and 8
-  failures against PostgreSQL because its reset only emptied an array — so the
+  *Fixed 2026-09-14.* Four modules' test resets never cleared their tables, so the
   kill-criterion guard deciding whether a lane lives or dies was verified only in
-  the mode where nothing persists. Kept for the measurement and for the two
-  further defects the fix exposed.
+  the mode where nothing persists. Also records that the four "permanent" failures
+  in both modes were **the wrong Node version, not a bug** — the suite is green on
+  the pinned runtime. **Run `nvm use` before trusting a test result here.**
+  The suite now passes fully: 816/0 memory, 831/0 PostgreSQL.
 - **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**
   Minutes to fix; contributing nothing to every run.
 - **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**

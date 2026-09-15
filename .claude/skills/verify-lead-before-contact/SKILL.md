@@ -32,6 +32,37 @@ against fresh clones, **4 had an actual exposed secret.**
 `missing-rls` is emitted **once per table**, so one systemic issue in one
 `schema.current.sql` dump becomes seventy criticals.
 
+## First: is the business even real?
+
+**Before verifying a single finding, verify the target is a real operating
+business.** A perfect finding in a test repo, a tutorial, a portfolio piece or an
+abandoned experiment is a wasted disclosure and a wasted outreach slot. Check,
+every time:
+
+| Signal | Real business | Test / throwaway |
+|---|---|---|
+| Repo age & cadence | months old, commits over time | days old, one burst |
+| Repo size | MB, many files | a few files |
+| Deployed site | loads, custom domain | none, or a raw *.vercel.app |
+| Storefront | real products, real prices, checkout | placeholder, lorem ipsum, `$0.00` only |
+| Contact | phone, address, business email | none, or a personal gmail only |
+| Payments | Stripe/live checkout wired | none |
+
+One row is not enough; a real business clears most of them. **A custom domain
+serving a working storefront with real prices is the strongest single signal** —
+it costs money and effort nobody spends on a demo.
+
+Do this from the **public storefront only** — the pages any customer sees. Never
+probe admin endpoints, never send a request to test a finding against the live
+site; static analysis of the public code already told you what you need, and
+poking their live system crosses from reading into attacking.
+
+Measured 2026-09-15: easternLM looked like just another scanner hit until
+checked — it is Eastern Landscape & Mason Supply, a family-owned NY supply yard
+with a live catalogue priced $11–$140 and same-day delivery. That verdict is what
+made its auth-bypass finding worth a careful private disclosure rather than a
+form email.
+
 ## The procedure
 
 ```bash

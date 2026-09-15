@@ -12,8 +12,9 @@ differ by roughly 5x, and the gap always flatters us. Before a number reaches a
 stranger, re-derive it from a fresh clone.
 
 **The first thing a competent developer does with your email is check the
-number.** If it is inflated, the conversation is over and the lane's reputation
-goes with it.
+number.** An inflated count is not a small embarrassment — it is the end of that
+conversation and, because they will say so publicly, of the cheap ones after it.
+Verification is the least expensive sales work available.
 
 ## Measured, 2026-09-15
 

@@ -2,6 +2,21 @@
 
 Taskman is an autonomous revenue, telemetry, and execution engine designed with strict economic verification, human gating, and deterministic safety rules.
 
+## ▶ START OF EVERY SESSION — do this before anything else, unprompted
+
+1. `npm run next` runs automatically via the SessionStart hook in
+   `.claude/settings.json`. Read its output. It is the verified position.
+2. **Invoke `deciding-the-next-step`** and say which band the chosen action is
+   in. Do this without being asked, including when the user opens with a
+   specific request — if the request is band 4 while a band 1 or 2 action is
+   available, say so in one sentence, then do what they asked.
+3. When the user says **"revenue"**, that means: find the missing skill on the
+   path to real revenue and add it to this repo. Not analyse, not report.
+
+The pipeline skills load themselves from their triggers. The ones that need a
+deliberate call are `deciding-the-next-step` at session start and
+`brainstorming-revenue-moves` whenever a lane is waiting, blocked or dead.
+
 ## 📌 READ FIRST — `docs/READ-FIRST.md`
 
 Before writing any code in this repository, read `docs/READ-FIRST.md`. It holds
@@ -119,6 +134,7 @@ firebase deploy --only hosting
 
 ## Available Custom Skills (`.claude/skills/`)
 
+- `brainstorming-revenue-moves`: generate money-making options without filtering, then score on distribution, fulfilment, rail and price. Use when a lane is waiting or dead.
 - `deciding-the-next-step`: run `npm run next`, then pick by what the action produces — not by what is easiest to start. Waiting is a valid answer and usually the right one.
 
 **The revenue pipeline, in order. Every step downstream of a lead has a skill;

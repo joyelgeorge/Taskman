@@ -66,6 +66,21 @@ message is credible because a person sent it.**
 6. **Record the outcome** when it arrives: `PENDING → NO_RESPONSE | REPLIED |
    DECLINED | INTERESTED | PAID`.
 
+## Why there is no price in message one — this is a conversion rule, not a scruple
+
+Measured 2026-09-15: **"beg bounty"** is an established, widely-despised pattern
+— report a minor issue, withhold the detail until payment is promised. It has
+made small businesses skittish about answering *any* disclosure, which is the
+market we are selling into.
+
+The line between a welcome disclosure and a beg bounty is exactly two things:
+**the finding is real**, and **the detail is given free with nothing asked**.
+Our first message clears both. Putting a price in it does not make the sale
+faster; it moves us into the category the recipient has been warned about, and
+the reply rate goes to zero for every future message too.
+
+The money is in the reply, and the reply is bought with the free finding.
+
 ## What goes in the first message
 
 | Include | Leave out |

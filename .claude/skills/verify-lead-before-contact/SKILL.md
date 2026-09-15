@@ -57,6 +57,14 @@ probe admin endpoints, never send a request to test a finding against the live
 site; static analysis of the public code already told you what you need, and
 poking their live system crosses from reading into attacking.
 
+**Never pull real data through the exposed hole to "get specifics".** Calling a
+target's unauthenticated endpoint to count their customers or read their records
+is not verification — it is the breach, committed by you, against real people's
+PII, under CFAA and state law. Size the business from PUBLIC signals only: the
+storefront, business listings, reviews, industry revenue benchmarks, whether it
+is an established name or a rebrand. That is specific enough to price the exposure
+and never crosses the line.
+
 Measured 2026-09-15: easternLM looked like just another scanner hit until
 checked — it is Eastern Landscape & Mason Supply, a family-owned NY supply yard
 with a live catalogue priced $11–$140 and same-day delivery. That verdict is what

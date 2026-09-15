@@ -5,7 +5,7 @@ import {
   recordResearchNote, listResearchNotes, renderResearchMirror, resetResearchLogForTesting
 } from '../src/research-log.js';
 
-test.beforeEach(() => resetResearchLogForTesting());
+test.beforeEach(async () => resetResearchLogForTesting());
 
 test('a note with a checkable source is REFERENCED', async () => {
   const note = await recordResearchNote({

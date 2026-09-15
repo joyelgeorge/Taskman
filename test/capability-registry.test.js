@@ -15,9 +15,17 @@ import { listRevenueRecords, upsertRevenueRecord } from '../src/revenue-store.js
 import { runDiscoverWorker } from '../src/workers/discover.js';
 import { runValidateWorker } from '../src/workers/validate.js';
 import { runExecuteWorker } from '../src/workers/execute.js';
+import { truncateForTesting } from '../src/db.js';
 
 const noProviders = [];
 const noRails = [];
+
+// The workers read from and write to named queues in revenue_records. Running
+// serially against a real PostgreSQL database, records from one test bleed into
+// the next — the execute worker picks the highest-priority record, which may
+// belong to a test that already ran. Truncate before every test so each one
+// starts from the same blank slate the in-memory path gets for free.
+test.beforeEach(async () => truncateForTesting(['revenue_records']));
 
 test('registry reports runtime truth and fails closed for missing adapters', () => {
   const capabilities = buildCapabilityRegistry({ env: {}, providers: noProviders, rails: noRails });

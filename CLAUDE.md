@@ -110,6 +110,15 @@ firebase deploy --only hosting
 ```
 
 ## Available Custom Skills (`.claude/skills/`)
+
+**The revenue pipeline, in order. Every step downstream of a lead has a skill;
+this is where the project has always stalled.**
+- `verify-lead-before-contact`: re-derive the finding counts before a number reaches a stranger. Measured 2026-09-15: the sweep's 19 "critical" leads are 4 with a real exposed secret.
+- `send-and-log-outreach`: draft it, the **operator** sends it, log the attempt. An unlogged send leaves the lane looking untried.
+- `handle-the-reply`: what to do the moment somebody answers — the thing this project has never had.
+- `price-and-deliver-the-fix`: the scan is marketing, the fix is the product. $80–125 per fix, or ~20% contingency.
+- `close-to-settlement`: a real `externalRef`, the right rail, and minor units (₹500 is `50000`).
+
 - `taskman-verify`: Check claims against reality before believing or acting on them.
 - `taskman-bounty-triage`: 5-gate deterministic bounty triage & anti-auto-submit guard.
 - `taskman-db-migration`: Migration protocol, dual storage patterns, and schema agreement.

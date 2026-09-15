@@ -1,6 +1,6 @@
 ---
 name: bounty-radar
-description: Deep scanner across GitHub, Algora, Gitcoin, Immunefi, Hugging Face, and developer challenge boards to find all active bounties, grants, and paid work opportunities.
+description: Use when searching for paid work, bounties, grants or challenges to attempt, and when checking whether a bounty platform still has live funded listings. Deep scanner across GitHub, Algora, Gitcoin, Immunefi, Hugging Face, and developer challenge boards to find all active bounties, grants, and paid work opportunities.
 metadata:
   version: 1.0.0
   author: taskman-engine

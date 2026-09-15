@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 import { scrubSecrets } from './adapters/coding-agent-adapter.js';
 import { EVIDENCE_TIER } from './evidence-tier.js';
 
@@ -113,6 +113,7 @@ export function renderResearchMirror(notes = []) {
   return lines.join('\n');
 }
 
-export function resetResearchLogForTesting() {
+export async function resetResearchLogForTesting() {
   mem.notes.length = 0;
+  await truncateForTesting(['research_notes']);
 }

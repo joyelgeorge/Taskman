@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { databaseEnabled, query } from './db.js';
+import { databaseEnabled, query, truncateForTesting } from './db.js';
 import { scrubSecrets } from './adapters/coding-agent-adapter.js';
 
 /**
@@ -155,6 +155,7 @@ export async function outreachSummary(lane) {
   return { lane, attempts: attempts.length, replies, paid, killCriterionReached, verdict };
 }
 
-export function resetOutreachLogForTesting() {
+export async function resetOutreachLogForTesting() {
   mem.attempts.length = 0;
+  await truncateForTesting(['outreach_attempts']);
 }

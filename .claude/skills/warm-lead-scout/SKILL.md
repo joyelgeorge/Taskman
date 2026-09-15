@@ -1,6 +1,6 @@
 ---
 name: warm-lead-scout
-description: Find people ALREADY asking for help securing their AI-built (vibe-coded) app, and draft a welcomed reply offering the free scan. The primary lead engine — warm inbound intent, not cold outreach.
+description: Use when looking for the next person to contact, when the question is who to reach out to or where the next customer comes from, and whenever cold outreach is about to be chosen over someone already asking for help. Find people ALREADY asking for help securing their AI-built (vibe-coded) app, and draft a welcomed reply offering the free scan. The primary lead engine — warm inbound intent, not cold outreach.
 ---
 
 # Warm Lead Scout

@@ -148,6 +148,11 @@ export async function runJob(job, { approval = null, context = {}, log = recordJ
 
     if (run.outcome !== STAGE_OUTCOME.OK) { stopped = stage; break; }
 
+    // Each stage's result is visible to the stages after it, under its own name,
+    // so a job reads `context.detect` rather than smuggling state through a
+    // closure the gates cannot see.
+    shared[stage] = run.result ?? null;
+
     // verify hands its evidence to charge. Nothing else may put it there.
     if (stage === JOB_STAGE.VERIFY) shared.evidence = run.result ?? null;
     if (stage === JOB_STAGE.MEASURE) shared.measured = run.result ?? null;

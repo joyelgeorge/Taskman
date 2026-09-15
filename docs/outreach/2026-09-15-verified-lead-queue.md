@@ -44,12 +44,21 @@ schema dump becomes seventy criticals.
 These are real findings and a real offer, but they are **not** "your key is
 public" emergencies and must not be pitched as such.
 
-### Not verified
+### The last three, now verified (2026-09-15, after freeing disk)
 
-`Addy48/AIIMIN`, `shipking-ai/AuraMind-App-2`, and a re-check of
-`danielphillippe27-netizen/flyrpro`. All three are **public and live** — the
-clones failed on `No space left on device`, not on the repositories. 137 MB,
-219 MB and 442 MB respectively; check free space before retrying.
+| Repo | `exposed-secret` | Also |
+|---|---|---|
+| `danielphillippe27-netizen/flyrpro` | **1** | **4 command-injection**, 70 missing-RLS, 2 ssrf |
+| `Addy48/AIIMIN` | 0 | 35 missing-table, 1 open-cors, 1 ssrf |
+| `shipking-ai/AuraMind-App-2` | 0 | **1 command-injection**, 3 missing-RLS |
+
+flyrpro's exposed-secret count confirms the hand verification. The **4
+command-injection findings are new** and were not in the earlier draft — they
+belong in it, and they are more serious than the RLS pile it currently leads on.
+
+All 22 leads are now verified. **Total with a compelling finding: 7** — five with
+an exposed secret, plus `celljprimevini-eng/fortixx-saas` and
+`shipking-ai/AuraMind-App-2` on command injection.
 
 ## Status
 

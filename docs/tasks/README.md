@@ -49,8 +49,6 @@ Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md
 `settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
 the revenue is zero.
 
-- **[Refactor fulfilment onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md)** — phase 4, **do last**
-  Touches the only two finished settlement paths. If it fights, stop.
 
 ### P3 — parked, with stated revisit conditions
 
@@ -74,6 +72,12 @@ the revenue is zero.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~Refactor fulfilment onto the job contract~~ — **closed as not worth it**, the
+  outcome the task explicitly allowed. `vibe-app-security` proves the contract
+  against a real lane without touching `audit-fulfilment` or `scan-fulfilment`,
+  which remain the only two finished settlement paths and have never run in
+  production. The contract is worth less than the paths.
 
 - ~~Claim–reality agreement tests~~ — `test/claim-reality-agreement.test.js`
   checks the settlement-path count and names, every file and npm script the
@@ -129,7 +133,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_11 open, 0 done, 11 task files._
+_10 open, 0 done, 10 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -142,7 +146,6 @@ _11 open, 0 done, 11 task files._
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
-| [Refactor the two fulfilment modules onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md) | blocked | P3 | 4 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
 <!-- /generated:tasks -->
 

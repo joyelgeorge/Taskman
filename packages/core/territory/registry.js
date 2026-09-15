@@ -1,3 +1,5 @@
+import { vibeAppSecurityDescriptor } from '../jobs/vibe-app-security-default.js';
+
 /**
  * The memory that stops the money machine from rediscovering the same few
  * lanes. Every territory we have actually explored is recorded here with its
@@ -60,6 +62,9 @@ export const EXPLORED_TERRITORIES = [
     note: 'Healthcare claim denials, legal invoice audits, manufacturing yield loss, construction overruns. Detection is tractable; the '
       + 'INTERVENE step needs a licensed or expert human to act, which rebuilds the consultancy overhead this project exists to avoid. '
       + 'Killed on fulfilment, not on market size - the market size is real and is what keeps proposing them.' },
+  // The only lane in this list that is a runnable job rather than a note: its
+  // stages are real and the runner's gates apply to them.
+  { ...vibeAppSecurityDescriptor, verdict: VERDICT.UNPROVEN },
   { key: 'taskforce-moltjobs', distribution: 'buyers_already_searching', verdict: VERDICT.KILLED,
     note: 'Effectively zero settled volume measured. Shipped DISABLED.' }
 ];

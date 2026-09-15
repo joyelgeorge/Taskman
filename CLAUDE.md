@@ -86,6 +86,11 @@ Consequences that now govern revenue work:
 ## Essential Commands
 
 ```bash
+# List revenue lanes; RUNNABLE ones have stages the runner executes
+npm run job -- list
+# Run the wired lane. Without --approve it stops at intervene, by design.
+npm run job -- run vibe-app-security --repos owner/name
+
 # Reconstruct the verified position — run this FIRST in any session.
 # Exits non-zero if a store could not be read; never substitutes a zero.
 npm run brief

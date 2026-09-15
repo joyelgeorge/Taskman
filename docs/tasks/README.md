@@ -23,6 +23,10 @@ both of which produced finished machinery and no revenue.
 
 ### P1
 
+- **[`listSettlements` cannot tell "no money" from "no database"](2026-09-15-empty-is-not-unknown.md)**
+  A live correctness bug: with no `DATABASE_URL` the ledger returns `[]`, which
+  is identical to a reachable database holding zero rows. Harmless only while
+  the true answer is zero. Phase 0 of the accumulating-architecture spec.
 - **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
   `warm-lead-scout` is called the primary engine and has no cron, no script and
   no persistence. Same principle as the Tally wedge — warm inbound beats cold —

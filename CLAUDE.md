@@ -156,6 +156,7 @@ firebase deploy --only hosting
 
 ## Available Custom Skills (`.claude/skills/`)
 
+- `self-serve-revenue-lane`: earn without contacting anyone — a freemium product where the customer scans their own app and pays to unlock the fixes. Use when outreach is the bottleneck.
 - `brainstorming-revenue-moves`: generate money-making options without filtering, then score on distribution, fulfilment, rail and price. Use when a lane is waiting or dead.
 - `deciding-the-next-step`: run `npm run next`, then pick by what the action produces — not by what is easiest to start. Waiting is a valid answer and usually the right one.
 

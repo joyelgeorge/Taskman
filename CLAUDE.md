@@ -96,7 +96,7 @@ npm run research -- add "claim" --source "where it can be checked"
 # Regenerate the counted block in docs/tasks/README.md
 npm run tasks
 
-# Run unit test suite (582+ tests)
+# Run unit test suite (895 tests as of 2026-09-15)
 npm test
 
 # Verify schema-code agreement

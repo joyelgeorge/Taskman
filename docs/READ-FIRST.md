@@ -21,9 +21,11 @@ Every hour spent here has felt productive. Very little of it has been revenue.
 
 Verified against the source, not recalled:
 
-- **Six code paths can record a settlement** — `audit-fulfilment`,
-  `scan-fulfilment`, `workers/execute`, `autonomous-engine`, `orders`, and the
-  Stripe `settlement-verifier`. The machinery is finished.
+- **Seven code paths can record a settlement** — `audit-fulfilment`,
+  `scan-fulfilment`, `workers/execute`, `autonomous-engine`, `orders`, the
+  Stripe `settlement-verifier`, and the job `runner`. The machinery is finished,
+  and it keeps growing while the count of travelled paths stays at zero — which
+  is the whole diagnosis in one line.
 - **None of them has ever been travelled.** The ledger refuses self-reported
   revenue by construction (`money-ledger.js`: `source` must be stripe, paypal,
   bank or manual_receipt, and `externalRef` must be non-empty), so the absence

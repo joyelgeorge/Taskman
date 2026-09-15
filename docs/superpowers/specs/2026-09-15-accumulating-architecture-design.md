@@ -167,12 +167,12 @@ goal; the rest is maintenance and must be called that.
 
 | Phase | Work | Exit criterion | Level |
 |---|---|---|---|
-| **0** | `npm run brief` + the empty-vs-unreachable fix | A session with no `DATABASE_URL` cannot be told the revenue is $0 | 4 |
-| **1** | `research_notes`, task front-matter, generated index | A finding from a past session is retrievable without its transcript | 4 |
-| **2** | Job descriptors merged into the registry; scorer rework | The scorer ranks the Tally wedge above a cold lane | 4 |
-| **3** | Runner, four gates, `036_job_runs.sql`, mutation tests | A job cannot charge without verified evidence, proven by breaking it | 4 |
-| **4** | Refactor `audit-fulfilment` and `scan-fulfilment` onto the contract | Both still pass, unchanged in behaviour | 4 |
-| **5** | Claim–reality agreement tests | READ-FIRST cannot drift silently | 4 |
+| **0** ✅ | `npm run brief` + the empty-vs-unreachable fix | A session with no `DATABASE_URL` cannot be told the revenue is $0 | 4 |
+| **1** ✅ | `research_notes`, task front-matter, generated index | A finding from a past session is retrievable without its transcript | 4 |
+| **2** ✅ | Job descriptors merged into the registry; scorer rework | The scorer ranks the Tally wedge above a cold lane | 4 |
+| **3** ✅ | Runner, four gates, `036_job_runs.sql`, mutation tests | A job cannot charge without verified evidence, proven by breaking it | 4 |
+| **4** (open, do last) | Refactor `audit-fulfilment` and `scan-fulfilment` onto the contract | Both still pass, unchanged in behaviour | 4 |
+| **5** ✅ | Claim–reality agreement tests | READ-FIRST cannot drift silently | 4 |
 
 Phase 0 is worth more than phases 2–5 combined for the stated goal and is the
 smallest. Phase 4 is last because it touches the only two finished settlement

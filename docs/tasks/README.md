@@ -49,8 +49,6 @@ Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md
 `settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
 the revenue is zero.
 
-- **[Claim–reality agreement tests](2026-09-15-claim-reality-agreement-tests.md)** — phase 5
-  Numbers our own documents assert, checked against the primary store.
 - **[Refactor fulfilment onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md)** — phase 4, **do last**
   Touches the only two finished settlement paths. If it fights, stop.
 
@@ -76,6 +74,14 @@ the revenue is zero.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~Claim–reality agreement tests~~ — `test/claim-reality-agreement.test.js`
+  checks the settlement-path count and names, every file and npm script the
+  trusted docs point at, and the advertised test count, each against the
+  filesystem rather than a cached summary. It immediately caught real drift: the
+  job runner had made READ-FIRST's "six code paths" wrong. The ledger assertion
+  is opt-in via `TASKMAN_VERIFY_LEDGER=1`, because CI's throwaway database is
+  empty by construction and would have made it a test of nothing.
 
 - ~~The revenue-job runner and its four gates~~ — `packages/core/jobs/runner.js`,
   `src/job-run-log.js`, migration `036_job_runs.sql`. All four gates verified by
@@ -123,7 +129,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_12 open, 0 done, 12 task files._
+_11 open, 0 done, 11 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -136,7 +142,6 @@ _12 open, 0 done, 12 task files._
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
-| [Test the numbers our own documents assert](2026-09-15-claim-reality-agreement-tests.md) | open | P2 | 4 |
 | [Refactor the two fulfilment modules onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md) | blocked | P3 | 4 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
 <!-- /generated:tasks -->

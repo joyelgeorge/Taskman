@@ -133,7 +133,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_11 open, 0 done, 11 task files._
+_12 open, 0 done, 12 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -148,6 +148,7 @@ _11 open, 0 done, 11 task files._
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
 | [`findUnauthenticatedAdminRoutes` reports guarded routes as unauthenticated](2026-09-15-admin-route-detector-false-positives.md) | open | P1 | 3 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
+| [Scan deployed bundles, not GitHub repos](2026-09-15-scan-deployed-bundles-not-repos.md) | open | P1 | 3 |
 <!-- /generated:tasks -->
 
 ## Writing one

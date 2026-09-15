@@ -26,9 +26,6 @@ that remains true however interesting the architecture is.**
 
 ### P1
 
-- **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)** — *level 2*
-  `warm-lead-scout` is called the primary engine and has no cron, script or
-  persistence. Warm inbound — the same principle that makes Tally P0.
 - **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)** — *level 1*
   Listed P0 in the source discussion; demoted for a crowded category and the
   liability a filing draft carries.
@@ -67,6 +64,12 @@ the revenue is zero.
   replaced `existsSync`-as-"tests passed".
 
 ## Closed
+
+- ~~The primary lead engine is not running~~ — **automated** (option 1). `npm run
+  warm-scout` searches GitHub for people asking for help securing their app,
+  persists the open threads as warm leads flagged for human read, and a daily
+  cron runs it. A live run surfaced 65 real warm-intent threads. The reply and
+  the intent-judgement stay human, which is correct; the discovery no longer does.
 
 - ~~Lead drones have no dedupe~~ — `runLeadDrone` now reads existing leads for
   the campaign, keys them by a signal's url (falling back to title), and skips
@@ -148,11 +151,10 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_8 open, 0 done, 8 task files._
+_7 open, 0 done, 7 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
-| [The primary lead engine is not running at all](2026-09-12-primary-lead-engine-is-not-running.md) | open | P1 | 2 |
 | [The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md) | open | P3 | 4 |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |

@@ -4,7 +4,8 @@ name: cron · vibe-lead-sweep
 # (Supabase + Stripe), scan their PUBLIC source, and list the ones that are both
 # a real business AND have a confirmed finding. Read-only. Submits and sends
 # nothing — a human reviews the leads and does any disclosure. This is the
-# LOW-YIELD background funnel; warm-lead-scout is the primary engine.
+# LOW-YIELD background funnel; the daily warm-lead-scout (cron-warm-lead-scout.yml)
+# is the primary engine.
 
 on:
   workflow_dispatch:

@@ -1,5 +1,5 @@
 import { getCollector } from '../drones/index.js';
-import { createLead, LEAD_SOURCE, getCampaign } from './store.js';
+import { createLead, listLeads, LEAD_SOURCE, getCampaign } from './store.js';
 
 /**
  * Flies a drone designed to collect candidate buyers (leads) rather than signals.
@@ -15,7 +15,13 @@ import { createLead, LEAD_SOURCE, getCampaign } from './store.js';
  * @param {Function} options.qualifyFn   (rawSignal) => { qualified: boolean, contactHint?: string }
  *                                        When omitted every signal qualifies.
  */
-export async function runLeadDrone(drone, campaignKey, { fetchImpl, qualifyFn } = {}) {
+/** A signal's natural identity: its url, or failing that its title. Mirrors the
+ * dedupe key lead-persistence.js uses (rawRecord.repo) for the scan path. */
+function signalKey(raw = {}) {
+  return raw.url || raw.link || raw.guid || raw.title || null;
+}
+
+export async function runLeadDrone(drone, campaignKey, { fetchImpl, qualifyFn, collectorImpl } = {}) {
   const started = Date.now();
   try {
     const campaign = await getCampaign(campaignKey);
@@ -23,11 +29,17 @@ export async function runLeadDrone(drone, campaignKey, { fetchImpl, qualifyFn } 
       throw new Error(`Campaign not found: ${campaignKey}`);
     }
 
-    const collector = getCollector(drone.kind);
+    const collector = collectorImpl || getCollector(drone.kind);
     const { signals, meta } = await collector.collect(drone, { fetchImpl });
 
     let qualifiedCount = 0;
     let insertedCount = 0;
+    let duplicateCount = 0;
+
+    // What this drone has already turned into a lead. Flying twice over a feed
+    // that still carries the same items must not insert the same lead again.
+    const existing = await listLeads({ campaignKey });
+    const seen = new Set(existing.map(l => signalKey(l.rawRecord)).filter(Boolean));
 
     for (const raw of signals) {
       let qualified = true;
@@ -44,12 +56,18 @@ export async function runLeadDrone(drone, campaignKey, { fetchImpl, qualifyFn } 
 
       if (qualified) {
         qualifiedCount++;
+        const key = signalKey(raw);
+        if (key && seen.has(key)) {
+          duplicateCount++;
+          continue;
+        }
         await createLead({
           campaignKey,
           source: LEAD_SOURCE.DRONE,
           rawRecord: raw,
           contactHint
         });
+        if (key) seen.add(key);   // also dedupe within a single flight
         insertedCount++;
       }
     }
@@ -60,6 +78,7 @@ export async function runLeadDrone(drone, campaignKey, { fetchImpl, qualifyFn } 
       seen: signals.length,
       qualified: qualifiedCount,
       inserted: insertedCount,
+      duplicates: duplicateCount,
       latencyMs: meta?.latencyMs ?? Date.now() - started
     };
   } catch (error) {

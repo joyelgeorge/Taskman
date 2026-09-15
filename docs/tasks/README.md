@@ -65,9 +65,13 @@ the revenue is zero.
 - **[The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md)**
   Fails under the full suite, passes standalone. It guards the function that
   replaced `existsSync`-as-"tests passed".
-- **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~Lead drones have no dedupe~~ — `runLeadDrone` now reads existing leads for
+  the campaign, keys them by a signal's url (falling back to title), and skips
+  ones already seen, across flights and within one flight. Mirrors the scan
+  path's dedupe. Verified by mutation.
 
 - ~~Is public GitHub the right surface?~~ — answered. Repo scanning works but is
   the small, closing surface: 4 exposed secrets from 199 candidates, and the
@@ -144,11 +148,10 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_9 open, 0 done, 9 task files._
+_8 open, 0 done, 8 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
-| [runLeadDrone creates duplicate leads on re-run](2026-09-12-lead-drones-have-no-dedupe.md) | open | P3 | 4 |
 | [The primary lead engine is not running at all](2026-09-12-primary-lead-engine-is-not-running.md) | open | P1 | 2 |
 | [The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md) | open | P3 | 4 |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |

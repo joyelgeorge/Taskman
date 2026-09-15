@@ -49,9 +49,6 @@ Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md
 `settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
 the revenue is zero.
 
-- **[Job descriptors and a distribution scorer](2026-09-15-job-descriptors-and-distribution-scorer.md)** — phase 2
-  `scoring.js` still encodes the *old* ranking and cannot express "a relationship
-  already exists" at all.
 - **[The revenue-job runner and its four gates](2026-09-15-revenue-job-runner-and-gates.md)** — phase 3
   Human, evidence, ledger, attempt. The attempt gate is what justifies it.
 - **[Claim–reality agreement tests](2026-09-15-claim-reality-agreement-tests.md)** — phase 5
@@ -81,6 +78,13 @@ the revenue is zero.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~Job descriptors and a distribution scorer~~ — `packages/core/jobs/job-spec.js`
+  holds the shape, the registry holds the data, and `scoring.js` now weights
+  distribution at 0.35 with a `relationship_exists` label it previously could not
+  express. Proven by mutation: the old weight, a missing label, a cold lane made
+  fatal, a job charging without verify, and a lane given a flattering label each
+  turn a test red.
 
 - ~~Research notes and countable tasks~~ — `research_notes` (migration 035) plus
   `npm run research`, and task front matter with a generated index block that a
@@ -115,7 +119,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_14 open, 0 done, 14 task files._
+_13 open, 0 done, 13 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -129,7 +133,6 @@ _14 open, 0 done, 14 task files._
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
 | [Test the numbers our own documents assert](2026-09-15-claim-reality-agreement-tests.md) | open | P2 | 4 |
-| [Job descriptors, and a scorer that encodes the ranking principle](2026-09-15-job-descriptors-and-distribution-scorer.md) | open | P2 | 4 |
 | [Refactor the two fulfilment modules onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md) | blocked | P3 | 4 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
 | [The revenue-job runner, and the four gates that justify it](2026-09-15-revenue-job-runner-and-gates.md) | open | P2 | 4 |

@@ -63,3 +63,14 @@ and a promise to pay is not revenue.
 | Fixing before the yes | Free work, and it sets the price at zero |
 | Delivering without a before/after re-run | They cannot tell you did anything |
 | Editing the key out instead of rotating | The credential is still live in history |
+
+## The pipeline
+
+This is one step of five. Each hands to the next; a step skipped is a step
+somebody improvises later, under pressure, badly.
+
+- **Before this:** `handle-the-reply`
+- **After this:** `close-to-settlement` — Once they agree to pay.
+
+Choosing between them, or between this and anything else on the board, is
+`deciding-the-next-step`.

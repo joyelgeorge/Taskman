@@ -48,6 +48,8 @@ export const KILL_AFTER_ATTEMPTS = 50;
 const mem = { attempts: [] };
 const nowIso = () => new Date().toISOString();
 
+const toIso = (v) => v instanceof Date ? v.toISOString() : (v ? String(v) : null);
+
 const normalize = (row) => row && ({
   id: row.id,
   lane: row.lane,
@@ -55,8 +57,8 @@ const normalize = (row) => row && ({
   prospect: row.prospect,
   outcome: row.outcome,
   note: row.note ?? null,
-  attemptedAt: row.attempted_at ?? row.attemptedAt,
-  respondedAt: row.responded_at ?? row.respondedAt ?? null
+  attemptedAt: toIso(row.attempted_at ?? row.attemptedAt),
+  respondedAt: toIso(row.responded_at ?? row.respondedAt)
 });
 
 /**

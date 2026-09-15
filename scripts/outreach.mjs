@@ -19,7 +19,15 @@ import { databaseEnabled } from '../src/db.js';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
-const flag = (name) => readFlag(argv ?? args, name);
+const flag = (name) => {
+  const withEq = args.find(a => a.startsWith(`--${name}=`));
+  if (withEq) return withEq.slice(name.length + 3);
+  const idx = args.indexOf(`--${name}`);
+  if (idx !== -1 && idx + 1 < args.length && !args[idx + 1].startsWith('--')) {
+    return args[idx + 1];
+  }
+  return null;
+};
 
 // A write that vanishes is worse than no write: it leaves someone believing the
 // attempt was recorded, which is precisely the confusion this module exists to

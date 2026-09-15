@@ -80,3 +80,35 @@ test('every skill description says when to use it, not only what it does', async
   }
   assert.deepEqual(vague, [], `descriptions that never say when to use them:\n${vague.join('\n')}`);
 });
+test('every skill a skill points at exists', async () => {
+  const names = new Set((await skills()).map(s => s.name));
+  const broken = [];
+  for (const s of await skills()) {
+    // `REQUIRED: use x` / "see the `x` skill" — the forms our skills use to chain.
+    // Three forms our skills actually use to point at each other. A checker that
+    // misses a form silently blesses a broken link, which is worse than no
+    // checker — this one missed the pipeline form until a mutation exposed it.
+    const forms = [
+      /`([a-z][a-z0-9-]{4,})`\s+skill/gi,               // "the `x` skill"
+      /REQUIRED:?\s*use\s+`?([a-z][a-z0-9-]{4,})`?/gi, // "REQUIRED: use x"
+      /\*\*(?:Before|After) this:\*\*\s*`([a-z][a-z0-9-]{4,})`/gi, // pipeline chain
+      /->\s*`([a-z][a-z0-9-]{4,})`/g                    // "a -> `b`"
+    ];
+    for (const m of forms.flatMap(re => [...s.text.matchAll(re)])) {
+      const ref = m[1].toLowerCase();
+      if (!names.has(ref) && !ref.startsWith('superpowers')) broken.push(`${s.name} -> ${ref}`);
+    }
+  }
+  assert.deepEqual(broken, [], `skills referencing skills that do not exist:\n${broken.join('\n')}`);
+});
+
+test('every supporting file a skill links to exists', async () => {
+  const { existsSync } = await import('node:fs');
+  const broken = [];
+  for (const s of await skills()) {
+    for (const m of s.text.matchAll(/\]\((?!https?:)([^)]+\.md)\)/g)) {
+      if (!existsSync(join(ROOT, s.name, m[1]))) broken.push(`${s.name} -> ${m[1]}`);
+    }
+  }
+  assert.deepEqual(broken, [], `skills linking to files that do not exist:\n${broken.join('\n')}`);
+});

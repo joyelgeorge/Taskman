@@ -53,3 +53,14 @@ attachments, no deck, no list of everything you could do.
 | Waiting for a "better" moment to mention price | The moment was when they asked "can you fix it" |
 | Three follow-ups | The lane gets a reputation before it gets a customer |
 | Accepting access to their production system | Liability you cannot carry, and you did not need it |
+
+## The pipeline
+
+This is one step of five. Each hands to the next; a step skipped is a step
+somebody improvises later, under pressure, badly.
+
+- **Before this:** `send-and-log-outreach`
+- **After this:** `price-and-deliver-the-fix` — Once they ask what a fix costs.
+
+Choosing between them, or between this and anything else on the board, is
+`deciding-the-next-step`.

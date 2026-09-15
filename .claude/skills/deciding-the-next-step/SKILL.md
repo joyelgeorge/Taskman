@@ -86,3 +86,13 @@ State three things, briefly:
 | Treating an empty store as a verified zero | `UNKNOWN` is not zero; see `src/store-state.js` |
 | Counting a blocked level-1 task as unavailable | It is the constraint, not an obstacle to route around |
 | Producing a plan instead of an action | One action. The plan is how band 4 grows |
+
+## Where the bands lead
+
+Band 2 and 3 actions are almost always one of these five, in order:
+
+`verify-lead-before-contact` -> `send-and-log-outreach` -> `handle-the-reply`
+-> `price-and-deliver-the-fix` -> `close-to-settlement`
+
+If the next step is not one of those and not a named band-1 action, check that
+it is not band 4 wearing a better name.

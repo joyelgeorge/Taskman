@@ -49,13 +49,17 @@ Then report **distinct issues and distinct files per class**, never the total.
 
 ## Quick reference
 
-| Finding class | What it means to the owner | Compels action? |
+| Finding class | Compels action? | Before you believe it |
 |---|---|---|
-| `exposed-secret` | A live credential is public right now | **Yes** — lead with it |
-| `command-injection` | Remote code execution | **Yes** |
-| `unauthenticated-admin-route` | Anyone can reach admin | Yes |
-| `missing-rls` | One architectural gap, counted per table | Say "RLS is off", never the count |
-| `date-shift`, `storage-divergence` | Code smells | Not a disclosure |
+| `exposed-secret` | **Yes — lead with it** | Hash occurrences: usually one key in N files |
+| `command-injection` | Only if request-tainted | **4 of 4 were env vars in a local script** |
+| `unauthenticated-admin-route` | **Assume wrong** | **6 of 6 were guarded.** Open the file |
+| `missing-rls` | Secondary | Count tables, not findings |
+| `ssrf`, `open-cors` | Not without hand-tracing | — |
+| `date-shift`, `storage-divergence`, `silent-fallback` | No | Code smells; including them reads as noise |
+
+**Full taxonomy, with the measurements behind each row:**
+[references/finding-classes.md](references/finding-classes.md)
 
 ## Rules
 
@@ -70,6 +74,22 @@ Then report **distinct issues and distinct files per class**, never the total.
 - Record the verified counts as a research note (`npm run research -- add`), or
   the next session re-derives them.
 
+## Real-world impact
+
+Measured on 2026-09-15 across the 22 leads in the queue:
+
+- The sweep called **19** leads critical. **7** carried a compelling finding.
+  **4** had an exposed secret.
+- Two consecutive drafts were about to send findings that do not exist: four
+  `command-injection` findings that were environment variables in a local
+  script, and six `unauthenticated-admin-route` findings that were all guarded.
+- Both were caught only because a file was opened to get details **for the
+  draft**. Neither would have survived first contact with the developer.
+
+The cost of being wrong is not embarrassment. A developer who disproves your
+first claim correctly concludes the rest is noise — **including the real
+finding**, which in both cases was a live `service_role` key.
+
 ## Common mistakes
 
 | Mistake | Why it costs you |
@@ -78,3 +98,13 @@ Then report **distinct issues and distinct files per class**, never the total.
 | Treating `missing-rls` count as severity | One issue counted per table |
 | Ranking leads by total findings | Ranks RLS dumps above real key leaks |
 | Assuming a clone failure means the repo is gone | Check `gh api repos/<r>` and `df -h` before concluding |
+
+## The pipeline
+
+This is one step of five. Each hands to the next; a step skipped is a step
+somebody improvises later, under pressure, badly.
+
+- **After this:** `send-and-log-outreach` — Once the numbers are verified, the message is drafted and handed over.
+
+Choosing between them, or between this and anything else on the board, is
+`deciding-the-next-step`.

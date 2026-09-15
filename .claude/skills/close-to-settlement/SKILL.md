@@ -5,6 +5,10 @@ description: Use when a customer has agreed to pay, when an invoice or payment l
 
 # Close to a settlement row
 
+**This is a low-freedom procedure.** The steps below are exact because the
+failure modes are silent and land on the first revenue this project has ever
+recorded. Do not improvise around them.
+
 ## Overview
 
 `settlements` is the only place revenue exists in this project. An invoice is
@@ -69,6 +73,14 @@ runner records it** — never call the ledger from a job body.
   job.
 - Say the number plainly, once, with its external reference.
 
+## Real-world impact
+
+`settlements` has been empty for the life of this project, verified against the
+database rather than recalled. Seven code paths can write to it and none has
+ever been travelled, so **every trap below is untested in production** — which is
+the argument for following the steps exactly rather than discovering which ones
+mattered.
+
 ## Common mistakes
 
 | Mistake | Reality |
@@ -78,3 +90,14 @@ runner records it** — never call the ledger from a job body.
 | `grossCents: 500` for ₹500 | Off by 100x |
 | Leaving `currency` at the default | Reports rupees as dollars |
 | Announcing revenue before the row exists | The exact fabrication this repo is built to prevent |
+
+## The pipeline
+
+The last of five steps, and the only one that changes the number that matters.
+
+- **Before this:** `price-and-deliver-the-fix`
+- **After this:** nothing. Update the documents that say `settlements` is empty,
+  in the same commit, and tell the operator the figure once with its external
+  reference.
+
+Choosing what to do next is `deciding-the-next-step`.

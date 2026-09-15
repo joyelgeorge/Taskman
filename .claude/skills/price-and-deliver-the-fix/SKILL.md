@@ -10,6 +10,30 @@ description: Use when a prospect has asked what a fix costs or agreed to buy one
 The scan is the marketing. **The fix is the product.** The scan-only niche is
 crowded and free; the proven paying work is remediation with evidence it worked.
 
+## Size the exposure before you price the fix
+
+The fix is worth a fraction of the loss it removes, so estimate that loss — it is
+what turns a few-hundred-dollar quote into an obvious yes. **Expected loss avoided
+= chance of exploitation x cost if exploited.** You cannot know the probability,
+but a flaw in public code that a scanner found is demonstrably discoverable, which
+is not zero.
+
+Separate the vectors, because they are not the same size:
+
+- **Writable/financial endpoints** (charge, credit adjust, anything that moves
+  money) are direct-fraud exposure, bounded only by their float. This is the
+  urgent one and no breach-cost table captures it.
+- **Data exposure** (PII readable) is quantifiable from cited ranges: small-business
+  breaches run **$120K-$1.24M** (Verizon DBIR), recovery averages **~$120K**
+  (VikingCloud), and state breach laws add per-record notification duties and
+  penalties (e.g. NY SHIELD: $20/person capped at $250K, $5,000/violation).
+
+**Do not** apply IBM's enterprise per-record figure to a small business, and
+**do not** put a dollar figure in the first message — a cold disclosure that
+leads with a scary number is the scaremongering pattern that gets ignored. The
+number is for two later moments: answering "how bad is this really?" with ranges,
+and justifying the top of the price band rather than the floor.
+
 ## Prices that are known to clear
 
 | Offer | Price | Evidence |

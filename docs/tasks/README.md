@@ -35,10 +35,6 @@ that remains true however interesting the architecture is.**
 
 ### P2 — the cold-scan funnel
 
-- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)** — *level 3*
-  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. Its untested
-  half is response rate, and its next step is a message from the operator, not
-  code. Closes when one attempt is logged.
 - **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)** — *level 1*
   Blocked on the first wedge producing a settlement, not a demo.
 
@@ -72,6 +68,16 @@ the revenue is zero.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~Is public GitHub the right surface?~~ — answered. Repo scanning works but is
+  the small, closing surface: 4 exposed secrets from 199 candidates, and the
+  keys it finds are being auto-revoked by Supabase's GitHub partnership. Deployed
+  bundles are ~50x the hit rate (11% of 20,052 URLs) and immune to that
+  revocation. See docs/research/2026-09-15-is-this-lane-worth-48-more-attempts.md.
+- ~~Scan deployed bundles, not GitHub repos~~ — built: `packages/core/jobs/bundle-scan.js`
+  fetches a deployed app and runs the existing secret detector over its JS,
+  flagging service_role and never anon. Target-list sourcing from indie-launch
+  directories is the remaining operator step, not code.
 
 - ~~`findUnauthenticatedAdminRoutes` reports guarded routes as unauthenticated~~ —
   it missed guards delegated to a named helper. Fixed and mutation-tested; the
@@ -138,11 +144,10 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_11 open, 0 done, 11 task files._
+_9 open, 0 done, 9 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
-| [Question the premise: are vibe-coded businesses even on public GitHub?](2026-09-12-is-public-github-the-right-surface.md) | open | P2 | 3 |
 | [runLeadDrone creates duplicate leads on re-run](2026-09-12-lead-drones-have-no-dedupe.md) | open | P3 | 4 |
 | [The primary lead engine is not running at all](2026-09-12-primary-lead-engine-is-not-running.md) | open | P1 | 2 |
 | [The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md) | open | P3 | 4 |
@@ -152,7 +157,6 @@ _11 open, 0 done, 11 task files._
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
-| [Scan deployed bundles, not GitHub repos](2026-09-15-scan-deployed-bundles-not-repos.md) | open | P1 | 3 |
 <!-- /generated:tasks -->
 
 ## Writing one

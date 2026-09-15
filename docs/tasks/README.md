@@ -5,25 +5,52 @@ instead of blocking whoever found it.
 
 ## Open, by priority
 
-Priority is against one question: **which settlement row does this produce, and
-who pays it?** (see `docs/READ-FIRST.md`).
+Two questions set priority. **Which settlement row does this produce, and who
+pays it?** (`docs/READ-FIRST.md`), and then, between lanes that could both
+produce one: **who will say yes without a sales conversation?**
 
-### Critical — may invalidate or unblock a whole lane
+The second question was adopted on 2026-09-14 and reordered this list. It
+replaced "sort by revenue ceiling" and "sort by how autonomous the loop is",
+both of which produced finished machinery and no revenue.
+
+### P0 — warm distribution, the constraint that has blocked every lane
+
+- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)**
+  The first wedge where the trusted relationship is claimed to **already exist** —
+  one real retailer, no cold outreach. READ-FIRST names that as the load-bearing
+  constraint nothing else has cleared. **Verify the access claim before building:
+  it is one question to the operator and the entire P0 rests on it.**
+
+### P1
 
 - **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
-  The repo calls `warm-lead-scout` the primary engine. It has no cron, no script
-  and no persistence. All the engineering went to the funnel labelled low-yield.
-  **Now the highest-value open task**: the cold-scan funnel is fixed and full,
-  and the bottleneck has moved from finding leads to contacting them.
+  `warm-lead-scout` is called the primary engine and has no cron, no script and
+  no persistence. Same principle as the Tally wedge — warm inbound beats cold —
+  which is why it stays high even as the cold-scan funnel gets deprioritized.
+- **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)**
+  Listed P0 in the source discussion; demoted here because the category is
+  commercially crowded and a filing draft carries liability a flagged duplicate
+  does not.
 
-### High
+### P2 — the cold-scan funnel
 
 - **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
-  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. The lane is
-  not dead. Held open only until the first outreach attempt is logged, because
-  response rate is the untested half.
+  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. The lane
+  works as a lead source. Its untested half is response rate, and its next step
+  is the operator sending a message, not code. Closes when one attempt is logged.
+- **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)**
+  Deliberately blocked on the first wedge producing a settlement, not a demo.
 
-### Medium
+### P3 — parked, with stated revisit conditions
+
+- **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
+  Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
+  all blocked on credibility with strangers.
+- **[Wedges needing a licensed human](2026-09-14-wedges-needing-a-licensed-human.md)**
+  Healthcare, legal, manufacturing, construction. Killed on fulfilment, not on
+  market size.
+
+### Maintenance — label it as such
 
 - **[The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md)**
   Fails under the full suite, passes standalone. It guards the function that

@@ -38,6 +38,15 @@ export const EXPLORED_TERRITORIES = [
     note: 'Measured 73% prompt-exfiltration honeypots, ~2-5 of 232 listings real, crypto-only rails.' },
   { key: 'algora-bounties', verdict: VERDICT.KILLED,
     note: 'Terms prohibit robotic/automated access. That is the kill, and it holds regardless of country — the rail (Stripe Express) is fine almost everywhere.' },
+  { key: 'tally-smb-leakage-audit', verdict: VERDICT.UNPROVEN,
+    note: 'Duplicate-invoice and shrinkage detection in a small retailer\'s Tally ledger, priced as a contingency on what they recover. '
+      + 'Same model as audit-tool-contingency; the difference is distribution, which is the only thing that has ever blocked this project. '
+      + 'The operator states they already have permitted access to one real retailer, so no cold outreach is required. UNPROVEN until that '
+      + 'access is confirmed and one payment clears - the access claim is the whole basis of its priority and has not been verified here.' },
+  { key: 'licensed-human-verticals', verdict: VERDICT.KILLED,
+    note: 'Healthcare claim denials, legal invoice audits, manufacturing yield loss, construction overruns. Detection is tractable; the '
+      + 'INTERVENE step needs a licensed or expert human to act, which rebuilds the consultancy overhead this project exists to avoid. '
+      + 'Killed on fulfilment, not on market size - the market size is real and is what keeps proposing them.' },
   { key: 'taskforce-moltjobs', verdict: VERDICT.KILLED,
     note: 'Effectively zero settled volume measured. Shipped DISABLED.' }
 ];

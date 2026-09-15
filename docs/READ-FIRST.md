@@ -47,6 +47,32 @@ Improving the machine is not forbidden. Mistaking it for progress toward the
 goal is. Both can be true: a change can be worth making *and* be zero dollars.
 Say which one it is, out loud, before starting.
 
+## Which lane to work: rank by distribution difficulty
+
+The question above decides whether a change is worth making. This one decides
+*which lane* to work when several could produce a settlement row.
+
+The ranking method has changed twice. It was **"sort by revenue ceiling"**,
+which produced lanes with big theoretical markets and no way in. It was then
+**"sort by how autonomous the AI loop is"**, which produced the most finished
+machine in this repository's history and zero dollars. Both are replaced by:
+
+> **Rank by distribution difficulty — who will say yes without a sales
+> conversation?**
+
+This sits directly on the constraint recorded further down this document: a
+machine cannot originate a trusted relationship. Ranking by ceiling or by
+autonomy both ignore that constraint, which is why both produced supply. Ranking
+by distribution makes it the first filter instead of the last discovery.
+
+In practice it inverts the board. A small wedge aimed at somebody who already
+trusts the operator outranks a large wedge aimed at strangers, **even when the
+large one is more interesting to build and worth more if it lands**. Interest
+and ceiling are why the previous two methods failed.
+
+Decided 2026-09-14, from the operator's wedge-selection discussion. Applied in
+`docs/tasks/` — see the Tally wedge, which is P0 on distribution alone.
+
 ## What counts as progress
 
 In descending order. Only the first is the goal.

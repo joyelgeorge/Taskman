@@ -12,7 +12,7 @@ AI tools (Cursor, Lovable, Bolt, v0, Windsurf) build functional web apps in hour
 1. **Hardcoded Supabase `service_role` keys** (bypasses all security rules; full DB read/write).
 2. **Missing Row-Level Security (RLS)** (every table is world-readable via the public anon key).
 3. **Unauthenticated Admin & Mutating API Routes** (endpoints exposed without session verification).
-4. **Permissive / Reflective CORS** (attacker sites can issue authenticated requests with victim cookies).
+4. **Permissive / Reflective CORS** (a malicious site can issue authenticated requests using the signed-in user's session).
 5. **SSRF & Command Injection** (unfiltered server-side fetches or shell interpolations).
 
 We audit your codebase with a specialized, precision-first scanner, manually verify every finding, and provide a verified remediation Pull Request.

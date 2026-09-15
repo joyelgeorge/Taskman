@@ -5,6 +5,10 @@ description: Use before sending anything to a lead the scanner produced, wheneve
 
 # Verify a lead before contacting anyone
 
+*This is defensive disclosure work: reading public code, telling owners, offering
+a fix. The verification below is the diligence that keeps it accurate and
+welcome — not adversarial.*
+
 ## Overview
 
 A sweep headline is a count of **findings**, not a count of **problems**. The two

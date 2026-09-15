@@ -29,7 +29,7 @@ schema dump becomes seventy criticals.
 | Repo | Finding | Status |
 |---|---|---|
 | `celljprimevini-eng/fortixx-saas` | 5 command-injection | **Unverified.** flyrpro's 4 of this class were env-var interpolation in a local script, not exploitable. Check before believing. |
-| `afintech510/easternLM` | privileged-route auth bypass | **CONFIRMED real by hand** 2026-09-15. A live commercial site (landscaping/e-commerce, Stripe). Exploit specifics are deliberately NOT in this public repo — operator has them directly. Strong lead. |
+| `afintech510/easternLM` | privileged-route auth bypass | **CONFIRMED real by hand** 2026-09-15. A live commercial site (landscaping/e-commerce, Stripe). Vulnerability details are deliberately NOT in this public repo — operator has them directly. Strong lead. |
 | `Mehdi-Safraoui/lms-platform` | (was 4 admin routes) | **FALSE POSITIVE**, cleared. Only missing-RLS remains. |
 
 The detector was fixed 2026-09-15 (it missed delegated guard helpers). Of the
@@ -38,7 +38,7 @@ and one — easternLM — is a genuine, hand-confirmed auth bypass. The lesson h
 nothing from any detector class goes in a message without a file read by hand
 first.
 
-**easternLM's finding is a working exploit against a live site.** Its specifics
+**easternLM's finding is a live, unpatched vulnerability on a running site.** Its specifics
 are kept out of this public repository on purpose (the same reason a service_role
 key value is never written down). The operator has the detail; the disclosure
 draft for it must be handled privately, not committed here.

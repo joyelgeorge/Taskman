@@ -29,6 +29,28 @@ Work that is found but deliberately not done goes in `docs/tasks/` rather than
 blocking whoever found it. Two sessions share this working tree; if another
 session is mid-edit in a file you need, park a task and carry on.
 
+## What this work is (and is not)
+
+Taskman's security lane is **defensive vulnerability disclosure and remediation**,
+the same category as a security consultancy's free-finding-then-paid-fix model.
+Stated plainly so the whole system is read correctly:
+
+- We read **publicly available** code and public bundles. We do not access private
+  systems, use credentials we find, or pull data through an unprotected endpoint —
+  reading public code is research; touching a live system is not ours to do.
+- We **tell the owner**, with enough detail to act and never a public recipe. The
+  disclosure is free and unconditional. A paid offer, if any, is for the **fix**,
+  and is separate.
+- A person — the operator — sends every message and makes every contact. The
+  software prepares; it never reaches out on its own.
+- We describe risk in the owner's language ("an attacker could…", the CWE class) —
+  that is how a finding is explained, not a statement of intent. Our intent is that
+  it gets fixed.
+
+This is the line between welcomed security help and the pattern that gets ignored
+or reported. Everything in the pipeline skills exists to keep the work on the
+right side of it, and none of those rules is optional.
+
 ## ⚠ CRITICAL STRATEGIC FINDING (2026-09-08) — read first
 
 **The gap that kept revenue at $0: Taskman built enormous SUPPLY (detection,

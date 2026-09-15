@@ -396,7 +396,7 @@ export function findExposedSecret(file, text) {
  * A CORS policy that reflects or wildcards the origin WHILE allowing
  * credentials. `origin: '*'` with `credentials: true` is invalid per the fetch
  * spec, so vibe-coded backends instead reflect the request origin back, which
- * lets any site make authenticated cross-origin calls with the victim's cookies.
+ * lets any site make authenticated cross-origin calls with the signed-in user's session.
  */
 export function findOpenCors(file, text) {
   const findings = [];
@@ -414,7 +414,7 @@ export function findOpenCors(file, text) {
         file, line: lineOf(text, m.index),
         evidence: m[0].slice(0, 60),
         why: 'CORS ' + (kind === 'reflect' ? 'reflects the request origin' : 'wildcards the origin')
-          + ' while credentials are allowed. Any website the victim visits can make authenticated '
+          + ' while credentials are allowed. Any website the signed-in user visits can make authenticated '
           + 'cross-origin requests carrying their cookies/session. CWE-942 permissive CORS.',
         confirm: 'From another origin, make a credentialed request and check the response is readable. '
           + 'Restrict the origin to an explicit allowlist.'

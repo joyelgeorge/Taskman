@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 4
+opened: 2026-09-15
+---
+
 # Job descriptors, and a scorer that encodes the ranking principle
 
 **Priority: P2. Phase 2 of the accumulating-architecture spec. Progress level 4.**

@@ -1,3 +1,10 @@
+---
+status: open
+priority: P3
+level: 4
+opened: 2026-09-14
+---
+
 # The deliverable-staging test fails intermittently
 
 **Priority: MEDIUM.** Found 2026-09-14, while closing out parked tasks.

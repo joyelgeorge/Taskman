@@ -1,3 +1,10 @@
+---
+status: open
+priority: P1
+level: 1
+opened: 2026-09-14
+---
+
 # GST input-credit mismatch detector (Tally, second variant)
 
 **Priority: P1, not P0.** Raised 2026-09-14 (`taskman-repo-tasks.pdf`, Task 2,

@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 3
+opened: 2026-09-12
+---
+
 # Question the premise: are vibe-coded businesses even on public GitHub?
 
 **Priority: CRITICAL — this may invalidate the whole lane.** Raised 2026-09-12.

@@ -1,3 +1,10 @@
+---
+status: blocked
+priority: P3
+level: 1
+opened: 2026-09-14
+---
+
 # The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)
 
 **Priority: P3 — parked as a group.** Raised 2026-09-14

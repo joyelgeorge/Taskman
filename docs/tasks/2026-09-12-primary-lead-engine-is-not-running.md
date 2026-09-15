@@ -1,3 +1,10 @@
+---
+status: open
+priority: P1
+level: 2
+opened: 2026-09-12
+---
+
 # The primary lead engine is not running at all
 
 **Priority: CRITICAL.** Found 2026-09-12 while questioning the search premise.

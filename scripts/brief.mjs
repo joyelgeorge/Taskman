@@ -12,6 +12,7 @@ import { promisify } from 'node:util';
 import { databaseEnabled, query } from '../src/db.js';
 import { buildBrief, renderBrief } from '../src/brief.js';
 import { EXPLORED_TERRITORIES, VERDICT } from '../packages/core/territory/registry.js';
+import { readTasks, TASK_STATUS } from '../src/task-index.js';
 
 const run = promisify(execFile);
 
@@ -29,9 +30,12 @@ const readers = [
   sql('outreach attempts', 'SELECT id, lane, outcome FROM outreach_attempts'),
   sql('leads', 'SELECT id FROM leads'),
   sql('scanned repos', 'SELECT repo FROM scanned_repos'),
+  sql('research notes', 'SELECT id, tier FROM research_notes'),
 
   local('open tasks', async () =>
-    (await readdir('docs/tasks')).filter(f => f.endsWith('.md') && f !== 'README.md')),
+    (await readTasks('docs/tasks')).filter(t => t.status !== TASK_STATUS.DONE)),
+  local('tasks at level 1', async () =>
+    (await readTasks('docs/tasks')).filter(t => t.valid && t.level === 1 && t.status === TASK_STATUS.OPEN)),
   local('migrations on disk', async () => [
     ...(await readdir('db/migrations')).filter(f => f.endsWith('.sql')),
     ...(await readdir('packages/db/migrations')).filter(f => f.endsWith('.sql'))

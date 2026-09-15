@@ -1,3 +1,10 @@
+---
+status: open
+priority: P3
+level: 4
+opened: 2026-09-12
+---
+
 # runLeadDrone creates duplicate leads on re-run
 
 **Found:** 2026-09-12, merging in-flight work.

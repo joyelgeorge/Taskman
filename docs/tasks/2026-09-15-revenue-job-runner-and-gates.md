@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 4
+opened: 2026-09-15
+---
+
 # The revenue-job runner, and the four gates that justify it
 
 **Priority: P2. Phase 3 of the accumulating-architecture spec. Progress level 4.**
@@ -6,7 +13,7 @@ Raised 2026-09-15.
 ## What
 
 `packages/core/jobs/runner.js` executes a job descriptor's stages under four
-gates, plus migration `035_job_runs.sql` and its memory-mode mirror
+gates, plus migration `036_job_runs.sql` and its memory-mode mirror
 (`CLAUDE.md` rule 4: dual storage, numbered migration, schema-agreement test).
 
 | Gate | Rule |

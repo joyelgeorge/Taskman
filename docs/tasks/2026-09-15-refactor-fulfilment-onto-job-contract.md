@@ -1,3 +1,10 @@
+---
+status: blocked
+priority: P3
+level: 4
+opened: 2026-09-15
+---
+
 # Refactor the two fulfilment modules onto the job contract
 
 **Priority: P3 — deliberately last. Phase 4 of the accumulating-architecture

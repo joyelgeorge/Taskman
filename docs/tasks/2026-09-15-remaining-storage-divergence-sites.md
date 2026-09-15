@@ -1,3 +1,10 @@
+---
+status: open
+priority: P3
+level: 4
+opened: 2026-09-15
+---
+
 # Ten more reads still cannot say "I could not answer"
 
 **Priority: P3 — honest remainder of Phase 0.** Raised 2026-09-15.

@@ -81,6 +81,12 @@ Consequences that now govern revenue work:
 # Exits non-zero if a store could not be read; never substitutes a zero.
 npm run brief
 
+# Record what a research pass found, so it outlives this session
+npm run research -- add "claim" --source "where it can be checked"
+
+# Regenerate the counted block in docs/tasks/README.md
+npm run tasks
+
 # Run unit test suite (582+ tests)
 npm test
 

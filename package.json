@@ -25,7 +25,8 @@
     "fulfil": "node scripts/fulfil-audit.js",
     "outreach": "node scripts/outreach.mjs",
     "brief": "node scripts/brief.mjs",
-    "research": "node scripts/research.mjs"
+    "research": "node scripts/research.mjs",
+    "tasks": "node scripts/tasks.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

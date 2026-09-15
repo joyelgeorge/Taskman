@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 4
+opened: 2026-09-15
+---
+
 # Test the numbers our own documents assert
 
 **Priority: P2. Phase 5 of the accumulating-architecture spec. Progress level 4.**

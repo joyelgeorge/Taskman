@@ -1,3 +1,10 @@
+---
+status: blocked
+priority: P3
+level: 4
+opened: 2026-09-14
+---
+
 # Parked wedge class: anything whose INTERVENE step needs a licensed human
 
 **Status: backlog, with a stated revisit condition.** Raised 2026-09-14

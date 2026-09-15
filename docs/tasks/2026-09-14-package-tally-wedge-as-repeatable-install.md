@@ -1,3 +1,10 @@
+---
+status: blocked
+priority: P2
+level: 1
+opened: 2026-09-14
+---
+
 # Package the Tally wedge as a repeatable install
 
 **Priority: P2 — blocked, deliberately.** Raised 2026-09-14

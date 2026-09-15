@@ -4,6 +4,10 @@
 
 Prepared 2026-09-12 from sweep run
 [34688151638](https://github.com/joyelgeorge/Taskman/actions/runs/34688151638).
+**Re-verified 2026-09-15** against a fresh clone, since deleted: the
+`service_role` finding is unchanged, and the four `command-injection` findings
+that the sweep reports are examined below and deliberately **not** raised as
+vulnerabilities.
 
 ---
 
@@ -45,11 +49,50 @@ breakdown:
 - `missing-rls` — **70**, but across 12 files: 14 in `supabase/migrations/`,
   56 in `supabase/schema.current.sql`. That is one systemic issue — RLS not
   enabled on many tables — not seventy separate holes.
-- `ssrf` — 2. Plus non-security classes the scan also reports.
+- `ssrf` — 2.
+- `command-injection` — **4**, and the label overstates them. See below.
 
 Saying "71 critical vulnerabilities" would be technically defensible and
 practically dishonest, and would be the first thing a competent developer
 disproves.
+
+### The command-injection findings, examined — and mostly stood down
+
+**Re-verified 2026-09-15.** All four are in one local data-loading script,
+`scripts/load-regional-data.ts:88–93`:
+
+```js
+exec(`SET s3_access_key_id='${process.env.AWS_ACCESS_KEY_ID}';`);
+exec(`SET s3_secret_access_key='${process.env.AWS_SECRET_ACCESS_KEY}';`);
+exec(`SET s3_region='${process.env.AWS_REGION || 'us-east-1'}';`);
+exec(`SET memory_limit = '${DUCKDB_MEMORY_LIMIT}';`);
+```
+
+The interpolated values are **environment variables and a module constant**, not
+request data. This is not a server route and there is no path from a user to
+these strings. To exploit it as command injection an attacker would already need
+to control the environment — at which point they do not need this bug.
+
+**Do not tell them they have four command-injection vulnerabilities.** That is
+the same inflation as the "71 crit" headline, one level down, and it is the kind
+of claim that ends the conversation.
+
+### But there is a real, smaller issue in the same lines
+
+Lines 88–89 pass `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` **through a
+shell command line**. Anything on a shell command line is visible in `ps` output
+to other users on the host, and is commonly captured by shell history and by
+process-level logging and monitoring agents.
+
+That is a genuine secret-handling problem, it is cheap to fix (pass them to
+DuckDB as parameters or via its config API rather than through `exec`), and it
+is honest to raise. It is **secondary** — mention it after the service_role key,
+as "while I was looking", not as a second emergency.
+
+The two `ssrf` findings (`app/api/.../address-candidates/route.ts:299` and
+`app/api/editor/subscriptions/billing/route.ts:15`) are `fetch()` calls on
+variables the scanner tracked as tainted. **Not verified as reachable** — do not
+raise them without tracing the taint by hand first.
 
 ---
 
@@ -85,6 +128,13 @@ disproves.
 > the usual second half of this problem: once the key is rotated, RLS is what
 > stands between an anon key and your data. Happy to send the specific tables if
 > useful.
+>
+> One smaller thing while I was in there: `scripts/load-regional-data.ts` lines
+> 88–89 pass `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to DuckDB through a
+> shell command line. Anything on a command line shows up in `ps` for other users
+> on the host and often in shell history and monitoring agents, so those two keys
+> are more exposed than they look. Passing them through DuckDB's config instead
+> of `exec` closes it. Not urgent like the first one.
 >
 > No pitch attached — rotate the key whether or not you ever reply. If you do
 > want help closing the RLS side properly I do that kind of work, but that's

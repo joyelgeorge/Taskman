@@ -1,0 +1,44 @@
+To: daniel.phillippe27@gmail.com
+Subject: Security issue in the public flyrpro repo - service_role key
+
+Hi Daniel,
+
+I run automated security scans of public repos built on Supabase, and flyrpro
+came up with something I think you'll want to fix today.
+
+scripts/stamp-addresses-with-gers.ts line 70 has your Supabase
+service_role key as a hardcoded fallback, and the comment there says the
+same fallback exists in lib/supabase/server.ts. The project URL is
+hardcoded next to it. A service_role key bypasses RLS completely, so anyone
+who reads that file has full read/write on your database.
+
+I only read the public source — I haven't used the key or touched anything of
+yours, and I'm not including it in this email.
+
+What I'd do, in this order:
+
+1. Rotate the service_role key in the Supabase dashboard now. That invalidates
+   the exposed one immediately.
+2. Remove the hardcoded fallbacks so the code fails loudly without the env var
+   instead of quietly using a committed key.
+3. Note that the old key stays in your git history after you change the file —
+   rotating is what actually fixes it, not the commit.
+
+Separately, the scan also flagged that Row-Level Security doesn't look enabled
+on a lot of tables in supabase/migrations/ and schema.current.sql. That's
+the usual second half of this problem: once the key is rotated, RLS is what
+stands between an anon key and your data. Happy to send the specific tables if
+useful.
+
+One smaller thing while I was in there: scripts/load-regional-data.ts lines
+88–89 pass AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to DuckDB through a
+shell command line. Anything on a command line shows up in ps for other users
+on the host and often in shell history and monitoring agents, so those two keys
+are more exposed than they look. Passing them through DuckDB's config instead
+of exec closes it. Not urgent like the first one.
+
+No pitch attached — rotate the key whether or not you ever reply. If you do
+want help closing the RLS side properly I do that kind of work, but that's
+entirely separate and I'd rather you were safe either way.
+
+Joyel

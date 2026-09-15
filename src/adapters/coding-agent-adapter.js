@@ -8,12 +8,35 @@ const runsMemoryStore = new Map(); // id -> run
 /**
  * Scrubs potential secrets (tokens, keys, auth headers) from text.
  */
+/**
+ * Names that mean the value after them is a secret. Kept as one list so adding a
+ * name covers every shape below rather than one of them.
+ */
+const SECRET_NAME = 'pass(?:wd|word)?|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth';
+
 export function scrubSecrets(text) {
   if (!text || typeof text !== 'string') return text;
   return text
-    .replace(/ghp_[a-zA-Z0-9]{30,}/g, '[REDACTED_GITHUB_TOKEN]')
-    .replace(/sk-[a-zA-Z0-9_-]{20,}/g, '[REDACTED_API_KEY]')
-    .replace(/bearer\s+[a-zA-Z0-9._-]{20,}/gi, 'Bearer [REDACTED_TOKEN]');
+    // Credentials inside a connection string. The host is deliberately kept:
+    // "they hardcoded credentials for db.example.com" is the finding, and the
+    // password is the part that must never be written down. Note the character
+    // class excludes `@` so the match ends at the FIRST `@` — a greedy `[^\s]+@`
+    // would run past an `@` inside a later path or query and mangle the URL.
+    .replace(/\b([a-z][a-z0-9+.-]*:\/\/[^\s:/@]+):[^\s@]+@/gi, '$1:[REDACTED]@')
+    // JSON Web Tokens — the shape of a Supabase service_role key, which is the
+    // single most damaging thing this project's own scanner finds in other
+    // people's repositories.
+    .replace(/\beyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}/g, '[REDACTED_JWT]')
+    .replace(/\bghp_[a-zA-Z0-9]{30,}/g, '[REDACTED_GITHUB_TOKEN]')
+    .replace(/\bsk-[a-zA-Z0-9_-]{20,}/g, '[REDACTED_API_KEY]')
+    .replace(/bearer\s+[a-zA-Z0-9._-]{20,}/gi, 'Bearer [REDACTED_TOKEN]')
+    // Assignment style: PASSWORD=..., api_key: "...". The NAME is kept, because
+    // "they hardcoded a service key" is the finding and the value is the part
+    // that must never be written down.
+    .replace(
+      new RegExp(`\\b(${SECRET_NAME})(\\s*[:=]\\s*)(["']?)([^\\s"',;)]{8,})\\3`, 'gi'),
+      (_m, name, sep, quote) => `${name}${sep}${quote}[REDACTED]${quote}`
+    );
 }
 
 /**

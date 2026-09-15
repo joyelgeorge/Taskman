@@ -24,7 +24,8 @@
     "build:audit-site": "node scripts/build-audit-site.js",
     "fulfil": "node scripts/fulfil-audit.js",
     "outreach": "node scripts/outreach.mjs",
-    "brief": "node scripts/brief.mjs"
+    "brief": "node scripts/brief.mjs",
+    "research": "node scripts/research.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

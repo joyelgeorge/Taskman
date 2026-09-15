@@ -6,6 +6,7 @@
  *   npm run research -- list [--lane <lane>]
  *   npm run research -- export          # writes the git-side mirror
  */
+import { readFlag } from '../src/cli-flags.js';
 import { writeFile } from 'node:fs/promises';
 import { databaseEnabled } from '../src/db.js';
 import {
@@ -14,10 +15,7 @@ import {
 
 const argv = process.argv.slice(2);
 const command = argv[0];
-const flag = (name) => {
-  const i = argv.indexOf(`--${name}`);
-  return i === -1 ? null : argv[i + 1];
-};
+const flag = (name) => readFlag(argv ?? args, name);
 
 const MIRROR = 'docs/research/NOTES.md';
 

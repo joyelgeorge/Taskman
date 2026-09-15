@@ -9,6 +9,7 @@
  * prepares and a person decides. Every stage, refusals included, lands in
  * job_runs.
  */
+import { readFlag } from '../src/cli-flags.js';
 import { EXPLORED_TERRITORIES, VERDICT } from '../packages/core/territory/registry.js';
 import { isRunnableJob } from '../packages/core/jobs/job-spec.js';
 import { runJob } from '../packages/core/jobs/runner.js';

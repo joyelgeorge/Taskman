@@ -10,6 +10,7 @@
  * Deliberately blunt. The friction of recording an attempt has to be lower than
  * the friction of not recording one, or it will not happen on the day it matters.
  */
+import { readFlag } from '../src/cli-flags.js';
 import {
   OUTREACH_OUTCOME, logOutreachAttempt, updateOutreachOutcome,
   listOutreachAttempts, outreachSummary
@@ -18,10 +19,7 @@ import { databaseEnabled } from '../src/db.js';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
-const flag = (name) => {
-  const hit = args.find(a => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : null;
-};
+const flag = (name) => readFlag(argv ?? args, name);
 
 // A write that vanishes is worse than no write: it leaves someone believing the
 // attempt was recorded, which is precisely the confusion this module exists to

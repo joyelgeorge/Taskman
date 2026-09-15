@@ -9,41 +9,63 @@ Two questions set priority. **Which settlement row does this produce, and who
 pays it?** (`docs/READ-FIRST.md`), and then, between lanes that could both
 produce one: **who will say yes without a sales conversation?**
 
-The second question was adopted on 2026-09-14 and reordered this list. It
-replaced "sort by revenue ceiling" and "sort by how autonomous the loop is",
-both of which produced finished machinery and no revenue.
+The second question was adopted on 2026-09-14. It replaced "sort by revenue
+ceiling" and "sort by how autonomous the loop is", both of which produced
+finished machinery and no revenue.
+
+Every task below is labelled with the progress level it targets. Only level 1 is
+the goal. **Revenue work outranks everything in the Architecture section, and
+that remains true however interesting the architecture is.**
 
 ### P0 — warm distribution, the constraint that has blocked every lane
 
-- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)**
+- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)** — *level 1*
   The first wedge where the trusted relationship is claimed to **already exist** —
-  one real retailer, no cold outreach. READ-FIRST names that as the load-bearing
-  constraint nothing else has cleared. **Verify the access claim before building:
+  one real retailer, no cold outreach. **Verify the access claim before building:
   it is one question to the operator and the entire P0 rests on it.**
 
 ### P1
 
-- **[`listSettlements` cannot tell "no money" from "no database"](2026-09-15-empty-is-not-unknown.md)**
-  A live correctness bug: with no `DATABASE_URL` the ledger returns `[]`, which
-  is identical to a reachable database holding zero rows. Harmless only while
-  the true answer is zero. Phase 0 of the accumulating-architecture spec.
-- **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
-  `warm-lead-scout` is called the primary engine and has no cron, no script and
-  no persistence. Same principle as the Tally wedge — warm inbound beats cold —
-  which is why it stays high even as the cold-scan funnel gets deprioritized.
-- **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)**
-  Listed P0 in the source discussion; demoted here because the category is
-  commercially crowded and a filing draft carries liability a flagged duplicate
-  does not.
+- **[`listSettlements` cannot tell "no money" from "no database"](2026-09-15-empty-is-not-unknown.md)** — *level 4*
+  A live correctness bug. With no `DATABASE_URL` the ledger returns `[]`,
+  identical to a reachable database holding zero rows. Harmless only while the
+  true answer is zero. One boolean from correct.
+- **[`npm run brief` reconstructs the position](2026-09-15-brief-reconstructs-the-position.md)** — *level 4*
+  The command a session runs first, so it knows what it may claim. Depends on
+  the bug above.
+- **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)** — *level 2*
+  `warm-lead-scout` is called the primary engine and has no cron, script or
+  persistence. Warm inbound — the same principle that makes Tally P0.
+- **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)** — *level 1*
+  Listed P0 in the source discussion; demoted for a crowded category and the
+  liability a filing draft carries.
 
 ### P2 — the cold-scan funnel
 
-- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
-  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. The lane
-  works as a lead source. Its untested half is response rate, and its next step
-  is the operator sending a message, not code. Closes when one attempt is logged.
-- **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)**
-  Deliberately blocked on the first wedge producing a settlement, not a demo.
+- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)** — *level 3*
+  **Answered on yield** — 112 scanned, 27 leads, 19 with criticals. Its untested
+  half is response rate, and its next step is a message from the operator, not
+  code. Closes when one attempt is logged.
+- **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)** — *level 1*
+  Blocked on the first wedge producing a settlement, not a demo.
+
+### Architecture — accumulate, don't re-derive (all level 4)
+
+Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md`.
+Phase 0 is the two P1 items above; it is the smallest and is worth more than
+phases 2–5 combined for the stated goal.
+
+- **[Research notes and countable tasks](2026-09-15-research-notes-and-countable-tasks.md)** — phase 1
+  A finding retrievable without its transcript; a generated task index.
+- **[Job descriptors and a distribution scorer](2026-09-15-job-descriptors-and-distribution-scorer.md)** — phase 2
+  `scoring.js` still encodes the *old* ranking and cannot express "a relationship
+  already exists" at all.
+- **[The revenue-job runner and its four gates](2026-09-15-revenue-job-runner-and-gates.md)** — phase 3
+  Human, evidence, ledger, attempt. The attempt gate is what justifies it.
+- **[Claim–reality agreement tests](2026-09-15-claim-reality-agreement-tests.md)** — phase 5
+  Numbers our own documents assert, checked against the primary store.
+- **[Refactor fulfilment onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md)** — phase 4, **do last**
+  Touches the only two finished settlement paths. If it fights, stop.
 
 ### P3 — parked, with stated revisit conditions
 
@@ -51,14 +73,14 @@ both of which produced finished machinery and no revenue.
   Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
   all blocked on credibility with strangers.
 - **[Wedges needing a licensed human](2026-09-14-wedges-needing-a-licensed-human.md)**
-  Healthcare, legal, manufacturing, construction. Killed on fulfilment, not on
+  Healthcare, legal, manufacturing, construction. Killed on fulfilment, not
   market size.
 
 ### Maintenance — label it as such
 
 - **[The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md)**
   Fails under the full suite, passes standalone. It guards the function that
-  replaced `existsSync`-as-"tests passed", so a random red here is dangerous.
+  replaced `existsSync`-as-"tests passed".
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed

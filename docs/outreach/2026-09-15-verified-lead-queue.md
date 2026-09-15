@@ -18,19 +18,23 @@ schema dump becomes seventy criticals.
 
 | # | Repo | Verified `exposed-secret` | Also | Note |
 |---|---|---|---|---|
-| 1 | `Chalmers007/ordering-platform` | **9** | 6 no-auth admin routes, 5 missing-RLS | Strongest target on the board |
+| 1 | `Chalmers007/ordering-platform` | **1 key in 9 files** | 4 tables without RLS | **Draft written.** The 6 "no-auth admin routes" are FALSE POSITIVES — all six are guarded |
 | 2 | `themosthappypiano/thewoofingoven` | **2** | 2 missing-table | |
 | 3 | `danielphillippe27-netizen/flyrpro` | **1** | 70 missing-RLS / 12 files, 2 ssrf | Draft already written, not sent |
 | 4 | `asjames18/melanatedintech` | **1** | 1 no-auth admin route, 3 missing-RLS | |
 | 5 | `Harshanandhan/yt-repurposer-web` | **1** | — | Single clean finding |
 
-### Different class, still serious
+### Different class — now in doubt
 
-| Repo | Finding |
-|---|---|
-| `celljprimevini-eng/fortixx-saas` | **5 command-injection** |
-| `afintech510/easternLM` | 14 unauthenticated admin routes |
-| `Mehdi-Safraoui/lms-platform` | 4 unauthenticated admin routes |
+| Repo | Finding | Status |
+|---|---|---|
+| `celljprimevini-eng/fortixx-saas` | 5 command-injection | **Unverified.** flyrpro's 4 of this class were env-var interpolation in a local script, not exploitable. Check before believing. |
+| `afintech510/easternLM` | 14 unauthenticated admin routes | **Suspect.** The detector had a 100% false-positive rate on this class against Chalmers007. |
+| `Mehdi-Safraoui/lms-platform` | 4 unauthenticated admin routes | **Suspect**, same reason. |
+
+Both of these classes have now been caught overstating. Nothing from either goes
+in a message without a file read by hand first — see
+`docs/tasks/2026-09-15-admin-route-detector-false-positives.md`.
 
 ### Verified as missing-RLS only — zero secrets
 

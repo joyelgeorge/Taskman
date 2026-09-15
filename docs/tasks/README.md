@@ -133,7 +133,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_10 open, 0 done, 10 task files._
+_11 open, 0 done, 11 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -146,6 +146,7 @@ _10 open, 0 done, 10 task files._
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
+| [`findUnauthenticatedAdminRoutes` reports guarded routes as unauthenticated](2026-09-15-admin-route-detector-false-positives.md) | open | P1 | 3 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
 <!-- /generated:tasks -->
 

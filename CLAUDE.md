@@ -86,6 +86,9 @@ Consequences that now govern revenue work:
 ## Essential Commands
 
 ```bash
+# What to do next, decided against the stores rather than from memory
+npm run next
+
 # List revenue lanes; RUNNABLE ones have stages the runner executes
 npm run job -- list
 # Run the wired lane. Without --approve it stops at intervene, by design.
@@ -115,6 +118,8 @@ firebase deploy --only hosting
 ```
 
 ## Available Custom Skills (`.claude/skills/`)
+
+- `deciding-the-next-step`: run `npm run next`, then pick by what the action produces — not by what is easiest to start. Waiting is a valid answer and usually the right one.
 
 **The revenue pipeline, in order. Every step downstream of a lead has a skill;
 this is where the project has always stalled.**

@@ -27,7 +27,8 @@
     "brief": "node scripts/brief.mjs",
     "research": "node scripts/research.mjs",
     "tasks": "node scripts/tasks.mjs",
-    "job": "node scripts/job.mjs"
+    "job": "node scripts/job.mjs",
+    "next": "node scripts/next.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

@@ -1,5 +1,11 @@
 # Read this before you write any code
 
+**Run `npm run brief` first.** It reconstructs the position from the stores
+rather than recalling it, and labels every row `verified`, `empty`, or
+`UNKNOWN — store unreachable`. It exits non-zero when it could not reach a store,
+because an incomplete position must not be readable as a complete one. Do not
+quote a number it did not print — including a zero.
+
 The goal of this repository is **money that has arrived** — a row in
 `settlements` with a verified `source` and a real `externalRef`. Not a pipeline
 that could produce one. Not a scanner that finds things worth selling. Not a

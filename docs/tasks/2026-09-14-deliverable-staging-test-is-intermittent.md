@@ -19,6 +19,12 @@ Observed once. Measured immediately afterwards on an unchanged tree:
 
 So it fails only under the full suite, and not every time.
 
+**Second observation, 2026-09-15** (while building Phase 0): failed once more,
+same test, same assertion, same ~3s runtime. Measured immediately after on the
+same tree: **5 of 6 full-suite runs green**, and a stashed baseline without that
+session's changes also green. Two sessions, two failures, no correlation with any
+change — it is the test, not the code under it.
+
 ## Why it matters more than an ordinary flake
 
 This test guards `verifyDeliverableTests()` — the function added specifically

@@ -1,4 +1,5 @@
 import { databaseEnabled, query, truncateForTesting } from './db.js';
+import { readStore } from './store-state.js';
 
 /**
  * Settlement-verified money ledger.
@@ -294,6 +295,23 @@ export async function listAttempts({ rail = null, limit = 200 } = {}) {
     `SELECT * FROM rail_attempts ${where} ORDER BY started_at DESC LIMIT $${params.length}`, params
   );
   return result.rows.map(normalizeAttempt);
+}
+
+/**
+ * The settlement position, carrying how the ledger answered.
+ *
+ * `listSettlements` below returns an empty array when no database is configured,
+ * which is byte-identical to the answer from a reachable database holding zero
+ * rows. That is harmless only while the true count is zero. Ask through this
+ * when the answer will be reported as fact — it returns `unknown` with a null
+ * count rather than a zero somebody would quote.
+ */
+export async function settlementPosition({ enabled = databaseEnabled, read = null } = {}) {
+  return readStore({
+    label: 'settlements',
+    enabled,
+    read: read || (async () => (await query('SELECT * FROM settlements')).rows)
+  });
 }
 
 export async function listSettlements({ rail = null, limit = 200 } = {}) {

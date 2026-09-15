@@ -77,6 +77,10 @@ Consequences that now govern revenue work:
 ## Essential Commands
 
 ```bash
+# Reconstruct the verified position — run this FIRST in any session.
+# Exits non-zero if a store could not be read; never substitutes a zero.
+npm run brief
+
 # Run unit test suite (582+ tests)
 npm test
 

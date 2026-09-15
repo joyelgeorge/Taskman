@@ -26,13 +26,6 @@ that remains true however interesting the architecture is.**
 
 ### P1
 
-- **[`listSettlements` cannot tell "no money" from "no database"](2026-09-15-empty-is-not-unknown.md)** — *level 4*
-  A live correctness bug. With no `DATABASE_URL` the ledger returns `[]`,
-  identical to a reachable database holding zero rows. Harmless only while the
-  true answer is zero. One boolean from correct.
-- **[`npm run brief` reconstructs the position](2026-09-15-brief-reconstructs-the-position.md)** — *level 4*
-  The command a session runs first, so it knows what it may claim. Depends on
-  the bug above.
 - **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)** — *level 2*
   `warm-lead-scout` is called the primary engine and has no cron, script or
   persistence. Warm inbound — the same principle that makes Tally P0.
@@ -52,8 +45,9 @@ that remains true however interesting the architecture is.**
 ### Architecture — accumulate, don't re-derive (all level 4)
 
 Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md`.
-Phase 0 is the two P1 items above; it is the smallest and is worth more than
-phases 2–5 combined for the stated goal.
+**Phase 0 is built** — `npm run brief`, `src/store-state.js`, and
+`settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
+the revenue is zero.
 
 - **[Research notes and countable tasks](2026-09-15-research-notes-and-countable-tasks.md)** — phase 1
   A finding retrievable without its transcript; a generated task index.
@@ -68,6 +62,11 @@ phases 2–5 combined for the stated goal.
   Touches the only two finished settlement paths. If it fights, stop.
 
 ### P3 — parked, with stated revisit conditions
+
+- **[Ten more storage-divergence sites](2026-09-15-remaining-storage-divergence-sites.md)**
+  Phase 0 closed the revenue read. Ten `if (!databaseEnabled)` branches in the
+  ledger still cannot say "I could not answer" — and we ship a scanner that
+  flags exactly this pattern in other people's code.
 
 - **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
   Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
@@ -84,6 +83,13 @@ phases 2–5 combined for the stated goal.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~`listSettlements` cannot tell "no money" from "no database"~~ — `src/store-state.js`
+  gives reads a `verified / empty / unknown` state, and `settlementPosition()`
+  uses it. Proven by mutation: reinstating the empty-array fallback turns the
+  test red.
+- ~~`npm run brief` reconstructs the position~~ — built, wired into `CLAUDE.md`
+  and `READ-FIRST.md`, exits non-zero on an unreachable store.
 
 - ~~Star filter selects against businesses~~ — removed; the search now sorts by
   `updated` and the pool went from 25 reachable repos to 199 candidates.

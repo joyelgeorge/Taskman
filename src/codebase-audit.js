@@ -497,8 +497,23 @@ export function findUnauthenticatedAdminRoutes(file, text) {
 
   if (!isAdminFile && !hasAdminRouteDef) return findings;
 
-  // Check for common auth guards: auth, session, token, req.user, requireAuth, verifyToken, getServerSession, createServerComponentClient
-  const hasAuthGuard = /\b(auth|session|token|user|requireAuth|verifyToken|authenticate|isAuthenticated|getServerSession|createRouteHandlerClient|authMiddleware|supabase\.auth)\b/i.test(text);
+  // Literal guards: the check is written in the route file itself.
+  const hasInlineGuard = /\b(auth|session|token|user|requireAuth|verifyToken|authenticate|isAuthenticated|getServerSession|createRouteHandlerClient|authMiddleware|supabase\.auth)\b/i.test(text);
+
+  // Delegated guards: the check is a named helper from elsewhere. Measured
+  // 2026-09-15 against Chalmers007/ordering-platform, where six of six routes
+  // called requireSuperAdmin() and this detector reported all six as
+  // unauthenticated — because "requireSuperAdmin" contains none of the words
+  // above, and "unauthenticated" in an error string does not match \bauth\b.
+  //
+  // Any codebase that centralises its auth check trips this, which is most of
+  // the well-built ones. The call matters, not the import: a helper imported and
+  // never invoked protects nothing.
+  const hasDelegatedGuard =
+    /\b(?:require|assert|ensure|verify|check|validate)[A-Z]\w*\s*\(/.test(text) ||
+    /\b\w*(?:Guard|Permission|Authoriz|Authoris)\w*\s*\(/i.test(text);
+
+  const hasAuthGuard = hasInlineGuard || hasDelegatedGuard;
 
   if (!hasAuthGuard) {
     findings.push({

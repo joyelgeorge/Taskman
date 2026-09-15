@@ -29,12 +29,19 @@ schema dump becomes seventy criticals.
 | Repo | Finding | Status |
 |---|---|---|
 | `celljprimevini-eng/fortixx-saas` | 5 command-injection | **Unverified.** flyrpro's 4 of this class were env-var interpolation in a local script, not exploitable. Check before believing. |
-| `afintech510/easternLM` | 14 unauthenticated admin routes | **Suspect.** The detector had a 100% false-positive rate on this class against Chalmers007. |
-| `Mehdi-Safraoui/lms-platform` | 4 unauthenticated admin routes | **Suspect**, same reason. |
+| `afintech510/easternLM` | privileged-route auth bypass | **CONFIRMED real by hand** 2026-09-15. A live commercial site (landscaping/e-commerce, Stripe). Exploit specifics are deliberately NOT in this public repo — operator has them directly. Strong lead. |
+| `Mehdi-Safraoui/lms-platform` | (was 4 admin routes) | **FALSE POSITIVE**, cleared. Only missing-RLS remains. |
 
-Both of these classes have now been caught overstating. Nothing from either goes
-in a message without a file read by hand first — see
-`docs/tasks/2026-09-15-admin-route-detector-false-positives.md`.
+The detector was fixed 2026-09-15 (it missed delegated guard helpers). Of the
+three repos it had flagged on this class, two were false positives now cleared
+and one — easternLM — is a genuine, hand-confirmed auth bypass. The lesson holds:
+nothing from any detector class goes in a message without a file read by hand
+first.
+
+**easternLM's finding is a working exploit against a live site.** Its specifics
+are kept out of this public repository on purpose (the same reason a service_role
+key value is never written down). The operator has the detail; the disclosure
+draft for it must be handled privately, not committed here.
 
 ### Verified as missing-RLS only — zero secrets
 

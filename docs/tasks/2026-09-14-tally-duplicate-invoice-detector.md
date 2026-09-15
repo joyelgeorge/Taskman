@@ -1,5 +1,5 @@
 ---
-status: open
+status: blocked
 priority: P0
 level: 1
 opened: 2026-09-14
@@ -9,6 +9,25 @@ opened: 2026-09-14
 
 **Priority: P0.** Raised 2026-09-14, from the operator's wedge-selection
 discussion (`taskman-repo-tasks.pdf`, Task 1).
+
+
+## Built, 2026-09-15 — the install-agnostic core is ready
+
+`packages/core/tally/duplicate-invoice.js` (+ tests, mutation-verified) detects,
+on a plain tabular export any Tally install can produce:
+- the same invoice number posted twice (a duplicate charge)
+- the same vendor + amount within a short window (a likely double-payment)
+- billed sales with no matching stock movement (shrinkage)
+
+It is DETECT-only, never mutates the ledger, and renders a draft report a human
+reviews. It needs **no knowledge of your specific install** and no parsing of
+Tally's proprietary format — it runs the moment you drop in one real XML/Excel
+export.
+
+**So this is no longer blocked on code. It is blocked only on the one question
+the task always rested on:** do you have permitted access to a real retailer's
+Tally data, and would they look at a report? Answer that and drop in one export,
+and the wedge is live. See the top of this file for the three questions.
 
 ## Why this outranks everything else in this directory
 

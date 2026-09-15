@@ -49,14 +49,18 @@ the revenue is zero.
 - **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
   Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
   all blocked on credibility with strangers.
-- **[Wedges needing a licensed human](2026-09-14-wedges-needing-a-licensed-human.md)**
-  Healthcare, legal, manufacturing, construction. Killed on fulfilment, not
-  market size.
 
 ### Maintenance — label it as such
 
 
 ## Closed
+
+- ~~Wedges needing a licensed human~~ — closed out of the active queue. It is a
+  kill-note (healthcare, legal, manufacturing, construction — detection tractable,
+  fulfilment needs a licensed human), and that verdict now lives permanently in
+  `packages/core/territory/registry.js` as `licensed-human-verticals`, which is
+  where a discovery run will meet it. A kill-note does not need to sit among open
+  work.
 
 - ~~The deliverable-staging test fails intermittently~~ — root cause was a fixed
   shared on-disk staging directory (`data/staged-deliverables/`) used by a
@@ -159,15 +163,14 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_5 open, 0 done, 5 task files._
+_4 open, 0 done, 4 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
-| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
+| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
-| [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

@@ -63,3 +63,26 @@ export async function scanDeployedApp(appUrl, { fetchImpl = fetch, maxBundles = 
 
   return { app: appUrl, reachable: true, bundlesScanned: bundles.length, findings };
 }
+
+/** Scan many deployed apps. Sequential and gentle — one public page + its bundles per app. */
+export async function scanDeployedApps(urls = [], opts = {}) {
+  const results = [];
+  for (const url of urls) results.push(await scanDeployedApp(url, opts));
+  return results;
+}
+
+/**
+ * Shape a bundle scan result for the lead store (packages/core/targets). The
+ * deployed app URL takes the `repo` slot, which is the store's dedupe key, and
+ * is also its own homepage signal — a working deployed URL is the strongest
+ * business-reality signal there is. Returns null when there is nothing to store.
+ */
+export function toBundleLeadResult(result = {}) {
+  const findings = Array.isArray(result.findings) ? result.findings : [];
+  if (!result.app || !findings.length) return null;
+  return {
+    repo: result.app,
+    findings,
+    meta: { homepage: result.app, surface: 'deployed-bundle' }
+  };
+}

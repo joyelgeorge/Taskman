@@ -28,7 +28,8 @@
     "research": "node --env-file-if-exists=.env scripts/research.mjs",
     "tasks": "node scripts/tasks.mjs",
     "job": "node --env-file-if-exists=.env scripts/job.mjs",
-    "next": "node --env-file-if-exists=.env scripts/next.mjs"
+    "next": "node --env-file-if-exists=.env scripts/next.mjs",
+    "scan-bundles": "node --env-file-if-exists=.env scripts/scan-bundles.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

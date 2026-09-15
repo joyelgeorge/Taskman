@@ -81,6 +81,19 @@ the reply rate goes to zero for every future message too.
 
 The money is in the reply, and the reply is bought with the free finding.
 
+## Match the tone to who is reading
+
+The facts stay fixed; the register does not. A family-owned business, a solo
+founder, a tradesperson — a warm peer-to-peer "heads up from someone who noticed"
+outconverts a corporate security-firm pitch, because it reads as a real person
+being straight rather than a vendor working an angle. A larger or more technical
+outfit may expect the formal version. Pick the register for the reader.
+
+Warm does not mean vague: the buddy tone must keep every credibility cue — how you
+found it (public code), that you haven't touched their systems, and the specific
+detail that proves you actually looked. A casual message about a security hole
+with no proof of competence reads as sketchier than a formal one, not friendlier.
+
 ## What goes in the first message
 
 | Include | Leave out |

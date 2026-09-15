@@ -31,6 +31,7 @@ const readers = [
   sql('leads', 'SELECT id FROM leads'),
   sql('scanned repos', 'SELECT repo FROM scanned_repos'),
   sql('research notes', 'SELECT id, tier FROM research_notes'),
+  sql('job stage runs', 'SELECT id, outcome FROM job_runs'),
 
   local('open tasks', async () =>
     (await readTasks('docs/tasks')).filter(t => t.status !== TASK_STATUS.DONE)),

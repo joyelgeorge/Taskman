@@ -49,8 +49,6 @@ Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md
 `settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
 the revenue is zero.
 
-- **[The revenue-job runner and its four gates](2026-09-15-revenue-job-runner-and-gates.md)** — phase 3
-  Human, evidence, ledger, attempt. The attempt gate is what justifies it.
 - **[Claim–reality agreement tests](2026-09-15-claim-reality-agreement-tests.md)** — phase 5
   Numbers our own documents assert, checked against the primary store.
 - **[Refactor fulfilment onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md)** — phase 4, **do last**
@@ -78,6 +76,12 @@ the revenue is zero.
 - **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
 
 ## Closed
+
+- ~~The revenue-job runner and its four gates~~ — `packages/core/jobs/runner.js`,
+  `src/job-run-log.js`, migration `036_job_runs.sql`. All four gates verified by
+  removing them. The gate-4 ordering test was vacuous on first write — it passed
+  when the log was made fire-and-forget — and now uses a genuinely slow log so it
+  can fail.
 
 - ~~Job descriptors and a distribution scorer~~ — `packages/core/jobs/job-spec.js`
   holds the shape, the registry holds the data, and `scoring.js` now weights
@@ -119,7 +123,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_13 open, 0 done, 13 task files._
+_12 open, 0 done, 12 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -135,7 +139,6 @@ _13 open, 0 done, 13 task files._
 | [Test the numbers our own documents assert](2026-09-15-claim-reality-agreement-tests.md) | open | P2 | 4 |
 | [Refactor the two fulfilment modules onto the job contract](2026-09-15-refactor-fulfilment-onto-job-contract.md) | blocked | P3 | 4 |
 | [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
-| [The revenue-job runner, and the four gates that justify it](2026-09-15-revenue-job-runner-and-gates.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

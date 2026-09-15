@@ -65,7 +65,16 @@ Consequences that now govern revenue work:
    - Code must run in both memory mode (`databaseEnabled: false`) and PostgreSQL mode (`databaseEnabled: true`).
    - Every new table or constrained column MUST have a numbered migration in `packages/db/migrations/` and be verified in `test/schema-code-agreement.test.js`.
 
-5. **Live Revenue Lane (`taskman-audit-lane`)**:
+5. **Revenue jobs run through the runner (`packages/core/jobs/runner.js`)**:
+   - A wedge is a descriptor in `EXPLORED_TERRITORIES` with `{distribution, economics, rail, stages}`.
+   - Four gates, each proven by mutation: `intervene` needs an operator approval
+     token; `charge` needs a checkable external reference from `verify`; the
+     charge stage *describes* a settlement and **the runner** writes it through
+     `recordSettlement`; every stage run is logged to `job_runs` before its
+     result returns.
+   - A job that declares `charge` without `verify` is refused at definition time.
+
+6. **Live Revenue Lane (`taskman-audit-lane`)**:
    - Live reconciliation audit tool: https://taskman-operator.web.app
    - Payment: **contingency, not a flat fee** — 20% of what the customer confirms they
      recovered, nothing if they recover nothing. Every established operator in this

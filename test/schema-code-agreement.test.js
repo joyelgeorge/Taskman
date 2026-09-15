@@ -9,6 +9,8 @@ import { EXPENSE_CATEGORIES, CANDIDATE_STATUS, TRIAGE_VERDICT } from '@taskman/c
 import { SCAN_OUTCOME } from '@taskman/core/targets/scan-memory.js';
 import { OUTREACH_OUTCOME } from '../src/outreach-log.js';
 import { EVIDENCE_TIER } from '../src/evidence-tier.js';
+import { JOB_STAGE } from '@taskman/core/jobs/job-spec.js';
+import { STAGE_OUTCOME } from '@taskman/core/jobs/runner.js';
 
 /**
  * The values the code can write must be values the schema will accept.
@@ -55,7 +57,9 @@ const cases = [
   ['expenses', 'category', Object.values(EXPENSE_CATEGORIES)],
   ['bounty_candidates', 'status', Object.values(CANDIDATE_STATUS)],
   ['bounty_triage_records', 'verdict', Object.values(TRIAGE_VERDICT)],
-  ['research_notes', 'tier', Object.values(EVIDENCE_TIER)]
+  ['research_notes', 'tier', Object.values(EVIDENCE_TIER)],
+  ['job_runs', 'stage', Object.values(JOB_STAGE)],
+  ['job_runs', 'outcome', Object.values(STAGE_OUTCOME)]
 ];
 
 for (const [table, column, codeValues] of cases) {

@@ -129,7 +129,11 @@ class AutonomousEngine {
     this.timer = null;
     this.isProcessingCycle = false;
     this.opportunityIndex = 0;
-    this.stagedDir = join(process.cwd(), 'data', 'staged-deliverables');
+    // Injectable so each test gets an isolated directory. node --test runs test
+    // files in parallel processes; a shared on-disk staging dir with existence
+    // checks races across them, which is the deliverable-staging flake. Production
+    // default is unchanged.
+    this.stagedDir = options.stagedDir || join(process.cwd(), 'data', 'staged-deliverables');
 
     this.metrics = {
       cyclesCompleted: 0,

@@ -45,10 +45,6 @@ the revenue is zero.
 
 ### P3 — parked, with stated revisit conditions
 
-- **[Ten more storage-divergence sites](2026-09-15-remaining-storage-divergence-sites.md)**
-  Phase 0 closed the revenue read. Ten `if (!databaseEnabled)` branches in the
-  ledger still cannot say "I could not answer" — and we ship a scanner that
-  flags exactly this pattern in other people's code.
 
 - **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
   Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
@@ -59,11 +55,23 @@ the revenue is zero.
 
 ### Maintenance — label it as such
 
-- **[The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md)**
-  Fails under the full suite, passes standalone. It guards the function that
-  replaced `existsSync`-as-"tests passed".
 
 ## Closed
+
+- ~~The deliverable-staging test fails intermittently~~ — root cause was a fixed
+  shared on-disk staging directory (`data/staged-deliverables/`) used by a
+  stateful engine with existence checks, raced across the parallel test
+  processes `node --test` spawns. `stagedDir` is now injectable (production
+  default unchanged) and each test gets an isolated temp dir. 8 of 8 full-suite
+  runs green, where the flake previously showed at ~1 in 6. The assertion was
+  not relaxed.
+
+- ~~Ten more storage-divergence reads~~ — **decided: documented, not migrated**,
+  the branch the task allowed. Verified both reporting surfaces (brief, next)
+  read through the store-state vocabulary, so no reported number comes from a raw
+  memory read. The convenience reads no session quotes are documented in
+  money-ledger.js as memory-mode-only; converting them would churn asserted
+  return shapes for no live risk.
 
 - ~~The primary lead engine is not running~~ — **automated** (option 1). `npm run
   warm-scout` searches GitHub for people asking for help securing their app,
@@ -151,17 +159,15 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_7 open, 0 done, 7 task files._
+_5 open, 0 done, 5 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
-| [The deliverable-staging test fails intermittently](2026-09-14-deliverable-staging-test-is-intermittent.md) | open | P3 | 4 |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Parked wedge class: anything whose INTERVENE step needs a licensed human](2026-09-14-wedges-needing-a-licensed-human.md) | blocked | P3 | 4 |
-| [Ten more reads still cannot say "I could not answer"](2026-09-15-remaining-storage-divergence-sites.md) | open | P3 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

@@ -10,3 +10,7 @@ dist/
 .firebase/
 data/runtime/
 data/staged-deliverables/staged-bounty-*.json
+
+# Local-only disclosure drafts for LIVE exploitable findings — never commit.
+# These describe working attacks against third-party production systems.
+private-outreach/

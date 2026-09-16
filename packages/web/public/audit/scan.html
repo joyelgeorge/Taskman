@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Is your app leaking secrets? — free scan</title>
-<meta name="description" content="Paste your app's URL. See exposed keys, missing RLS, and open CORS in seconds. Free scan; unlock the exact fixes for $5.">
+<meta name="description" content="Paste your app's URL. In seconds, see whether your Supabase service_role or other API keys are exposed in your JavaScript bundle. Free scan; unlock the exact fix for $5.">
 <style>
   :root { --bg:#0b0e14; --card:#131824; --fg:#e6edf3; --muted:#8b98a9; --line:#232a38;
           --bad:#ff6b6b; --warn:#ffb84d; --ok:#3fb950; --accent:#4d9fff; }
@@ -36,12 +36,13 @@
   .err { color:var(--bad); margin-top:14px; }
   .foot { color:var(--muted); font-size:.82rem; margin-top:40px; text-align:center; }
   a { color:var(--accent); }
+  code { background:#0a0d13; padding:1px 5px; border-radius:4px; font-size:.9em; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Is your app leaking secrets?</h1>
-  <p class="sub">Paste your app's URL. In seconds you'll see exposed keys, unprotected database tables, and open CORS — the mistakes AI coding tools leave behind. The scan is free.</p>
+  <p class="sub">Paste your app's URL. In seconds you'll see whether your Supabase <code>service_role</code> key or other API secrets are sitting in your JavaScript bundle, where anyone can read them — the single most common mistake AI coding tools leave behind. The scan is free.</p>
 
   <form id="scanForm">
     <input type="url" id="url" placeholder="https://your-app.vercel.app" required autocomplete="off">
@@ -101,7 +102,7 @@ function renderScan(data) {
   out.innerHTML = `
     <div class="card">
       <p class="headline">${total} issue${total>1?'s':''} found on your app</p>
-      <p class="muted">These are real and public right now. Below is the count; the exact fix for each — the SQL, the rotation steps, the config — is in the full report.</p>
+      <p class="muted">This is real and public right now — anyone can read it in your bundle. Below is the count; the exact fix — how to rotate safely and move it server-side — is in the full report.</p>
       ${rows}
       <div class="unlock">
         <p class="muted" style="margin-bottom:2px">Unlock the full report with the exact fixes</p>

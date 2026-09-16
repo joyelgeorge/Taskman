@@ -29,6 +29,7 @@
     "tasks": "node scripts/tasks.mjs",
     "job": "node --env-file-if-exists=.env scripts/job.mjs",
     "next": "node --env-file-if-exists=.env scripts/next.mjs",
+    "guard": "node --env-file-if-exists=.env scripts/guard.mjs",
     "scan-bundles": "node --env-file-if-exists=.env scripts/scan-bundles.mjs",
     "warm-scout": "node --env-file-if-exists=.env scripts/warm-lead-scout.mjs",
     "self-serve": "node --env-file-if-exists=.env scripts/self-serve-scan.mjs"

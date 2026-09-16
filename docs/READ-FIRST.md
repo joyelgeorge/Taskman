@@ -1,5 +1,15 @@
 # Read this before you write any code
 
+> **2026-09-16 — the first pull lane is live.** A self-serve security scanner runs
+> at https://taskman-operator.web.app/scan.html (frontend) backed by
+> https://taskman2.onrender.com (scan server). A stranger pastes their app URL,
+> sees real counts of exposed keys / missing RLS, pays \$5 via PayPal, and the
+> exact fixes unlock. The paywall is verified fail-closed. This is the first
+> revenue path that needs no per-customer outreach. It still needs one launch post
+> to get traffic, and settlements must be recorded via close-to-settlement (rail
+> paypal) when they land — the ledger does not fill itself.
+
+
 **Run `npm run brief` first.** It reconstructs the position from the stores
 rather than recalling it, and labels every row `verified`, `empty`, or
 `UNKNOWN — store unreachable`. It exits non-zero when it could not reach a store,

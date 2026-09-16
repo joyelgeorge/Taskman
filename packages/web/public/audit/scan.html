@@ -56,7 +56,9 @@
 <script>
 // ── Config — set after deploying the scan server and creating the PayPal button ──
 const SCAN_ENDPOINT = window.SCAN_ENDPOINT || "https://taskman2.onrender.com"; // e.g. https://scan-xxx.onrender.com
-const PAYPAL_CLIENT_ID = window.PAYPAL_CLIENT_ID || "AepDaMbQ0d3mHIBjX8iJu1NkZXFvt9al8oRDQI6lOxMzO1kWgbjXJZGyHrxmf4bMeSSau0rBhIPrveXQ";
+// No PayPal client id here on purpose: the order is created server-side and the
+// buyer is redirected to PayPal's hosted checkout, so no PayPal credential or
+// script is needed in the browser.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LABELS = {

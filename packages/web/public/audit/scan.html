@@ -113,26 +113,51 @@ function renderScan(data) {
   mountPayPal();
 }
 
-function mountPayPal() {
+// Load the PayPal SDK once, with the Buttons component made explicit, and only
+// resolve when Buttons is actually a function — the SDK can load without it.
+function ensurePayPalSdk() {
+  return new Promise((resolve, reject) => {
+    if (window.paypal && typeof window.paypal.Buttons === 'function') return resolve();
+    let s = document.getElementById('pp-sdk');
+    const check = () => (window.paypal && typeof window.paypal.Buttons === 'function')
+      ? resolve() : reject(new Error('PayPal SDK loaded but Buttons is unavailable'));
+    if (s) { s.addEventListener('load', check); s.addEventListener('error', () => reject(new Error('load failed'))); return; }
+    s = document.createElement('script');
+    s.id = 'pp-sdk';
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_CLIENT_ID)}&currency=USD&components=buttons`;
+    s.onload = check;
+    s.onerror = () => reject(new Error('PayPal SDK failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+// Never throws — a payment problem must not look like a scan failure, and the
+// visitor always has a way to pay even if the SDK is blocked.
+async function mountPayPal() {
+  const mount = document.getElementById('paypal');
+  if (!mount) return;
   if (PAYPAL_CLIENT_ID.startsWith('REPLACE')) {
-    document.getElementById('paypal').innerHTML =
-      '<p class="muted">Payment isn\'t configured yet. (Operator: set PAYPAL_CLIENT_ID.)</p>';
+    mount.innerHTML = '<p class="muted">Payment isn\'t configured yet. (Operator: set PAYPAL_CLIENT_ID.)</p>';
     return;
   }
-  const done = () => window.paypal.Buttons({
-    createOrder: (d, actions) => actions.order.create({
-      purchase_units: [{ amount: { value: currentPrice }, description: 'App security fix report' }]
-    }),
-    onApprove: async (d, actions) => {
-      await actions.order.capture();
-      await unlockReport(d.orderID);
-    }
-  }).render('#paypal');
-  if (window.paypal) return done();
-  const s = document.createElement('script');
-  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_CLIENT_ID)}&currency=USD`;
-  s.onload = done;
-  document.head.appendChild(s);
+  try {
+    await ensurePayPalSdk();
+    window.paypal.Buttons({
+      createOrder: (d, actions) => actions.order.create({
+        purchase_units: [{ amount: { value: currentPrice }, description: 'App security fix report' }]
+      }),
+      onApprove: async (d, actions) => {
+        await actions.order.capture();
+        await unlockReport(d.orderID);
+      }
+    }).render('#paypal');
+  } catch (e) {
+    // Fallback: a plain PayPal.me link so a blocked SDK never blocks a sale.
+    mount.innerHTML = `<a href="https://paypal.me/joyelgt/${encodeURIComponent(currentPrice)}" target="_blank" rel="noopener"
+      style="display:inline-block;background:var(--accent);color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600">
+      Pay $${esc(currentPrice)} via PayPal</a>
+      <p class="muted" style="margin-top:8px">After paying, email your receipt and this scan link and we'll send your report.</p>`;
+  }
 }
 
 async function unlockReport(orderId) {

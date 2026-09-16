@@ -1,11 +1,15 @@
 ---
-status: open
+status: blocked
 priority: P1
 level: 1
 opened: 2026-09-16
 ---
 
 # Ship the self-serve scanner: endpoint, checkout, launch
+
+**Endpoint + frontend BUILT 2026-09-16.** Remaining is operator-only: deploy the
+server (Render), set PayPal credentials, wire the page's two config constants,
+deploy hosting, and launch once. See `packages/web/scan-server/DEPLOY.md`.
 
 The value is built and runnable: `npm run self-serve -- --url <app> [--paid]`
 scans a deployed app and produces the free report (counts) or the paid report
@@ -15,11 +19,13 @@ message sent.
 
 ## What remains — plumbing and one launch
 
-1. **Public scan endpoint.** A function on the Firebase site (or a small Cloud
-   Function / Neon Data API route) that takes a URL, calls `scanDeployedApp`, and
-   returns `freeReport`. Read-only; rate-limit it.
-2. **Frontend.** A page in `packages/web/public/audit` — one input (your URL),
-   shows the counts, a "Unlock fixes — $X" button.
+1. **Public scan endpoint.** ✅ BUILT — `packages/web/scan-server/` is a tiny Node
+   service (POST /scan → freeReport + scanId; GET /report → paidReport after a
+   PayPal-verified payment). Deployable to Render free tier; `render.yaml` +
+   `DEPLOY.md` included. Paywall fails closed.
+2. **Frontend.** ✅ BUILT — `packages/web/public/audit/scan.html` ships in the
+   audit-site build: paste URL → counts → PayPal button → fixes. Set two config
+   constants (server URL + PayPal client id) after deploy.
 3. **Self-serve checkout.** A Stripe Payment Link / Gumroad / Lemon Squeezy link.
    On success, serve `paidReport` for that scan (store scans in Neon keyed by an
    id; unlock by the checkout reference). **No invoice email** — that reintroduces

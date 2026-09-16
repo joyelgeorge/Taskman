@@ -77,3 +77,29 @@ test('an unknown route is a 404', async () => {
   const res = await app().handle('GET', '/whatever', null);
   assert.equal(res.status, 404);
 });
+
+test('POST /checkout creates a PayPal order for a known scan and returns the approve url', async () => {
+  const a = createScanApp({
+    scanImpl: fakeScan,
+    verifyPayment: async () => false,
+    createOrder: async (scanId, price) => ({ orderId: 'ORD-' + scanId, approveUrl: 'https://paypal.com/approve/ORD-' + scanId })
+  });
+  const scan = await a.handle('POST', '/scan', { url: 'https://demo.app' });
+  const res = await a.handle('POST', '/checkout', { scanId: scan.body.scanId });
+  assert.equal(res.status, 200);
+  assert.match(res.body.approveUrl, /paypal\.com\/approve/);
+  assert.ok(res.body.orderId);
+});
+
+test('POST /checkout for an unknown scan is a 404', async () => {
+  const a = createScanApp({ scanImpl: fakeScan, verifyPayment: async () => false, createOrder: async () => ({}) });
+  const res = await a.handle('POST', '/checkout', { scanId: 'nope' });
+  assert.equal(res.status, 404);
+});
+
+test('POST /checkout with no createOrder configured is a clear 503, not a crash', async () => {
+  const a = app(); // no createOrder injected
+  const scan = await a.handle('POST', '/scan', { url: 'https://demo.app' });
+  const res = await a.handle('POST', '/checkout', { scanId: scan.body.scanId });
+  assert.equal(res.status, 503);
+});

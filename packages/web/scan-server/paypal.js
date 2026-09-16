@@ -1,12 +1,13 @@
 /**
- * Verify a PayPal order server-side. The frontend uses PayPal Smart Buttons to
- * get the buyer's approval and hands us the resulting order id; we confirm with
- * PayPal that it is actually COMPLETED and paid for at least the price before
- * unlocking the report. Never trust the client that it was paid.
+ * Server-side PayPal Orders API. This avoids the browser JS SDK entirely — the
+ * SDK is one of the most-blocked scripts on the web (ad blockers, privacy modes)
+ * and unreliable to load. Instead we create the order server-side, send the buyer
+ * to PayPal's own hosted approval page, and capture on their return. Immune to
+ * anything the visitor's browser blocks.
  *
- * Needs PAYPAL_CLIENT_ID / PAYPAL_SECRET (the operator's account). Without them
- * it refuses every unlock rather than failing open — a paywall that fails open
- * gives the product away.
+ * Needs PAYPAL_CLIENT_ID / PAYPAL_SECRET (the operator's REST app). Without them
+ * every operation fails CLOSED — no order, no unlock — so a misconfigured deploy
+ * never gives the report away.
  */
 const BASE = () => (process.env.PAYPAL_ENV === 'sandbox'
   ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com');
@@ -24,16 +25,51 @@ async function accessToken() {
   return (await res.json()).access_token;
 }
 
+/** Create an order and return its id + the hosted approval URL to redirect to. */
+export async function createPayPalOrder(scanId, { amountUsd = 5, returnUrl, cancelUrl } = {}) {
+  const token = await accessToken();
+  if (!token) return null;
+  const res = await fetch(`${BASE()}/v2/checkout/orders`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      intent: 'CAPTURE',
+      purchase_units: [{ custom_id: scanId, description: 'App security fix report',
+        amount: { currency_code: 'USD', value: String(amountUsd) } }],
+      application_context: { brand_name: 'App Security Scan', user_action: 'PAY_NOW',
+        return_url: returnUrl, cancel_url: cancelUrl }
+    })
+  });
+  if (!res.ok) return null;
+  const order = await res.json();
+  const approve = (order.links || []).find(l => l.rel === 'approve' || l.rel === 'payer-action');
+  return approve ? { orderId: order.id, approveUrl: approve.href } : null;
+}
+
+/**
+ * Verify (and, if still only approved, capture) an order. Unlocks only when the
+ * money is actually captured to us for at least the price. Fails closed.
+ */
 export async function verifyPayPalOrder(orderId, { minUsd = 5 } = {}) {
   if (!orderId) return false;
   const token = await accessToken();
-  if (!token) return false;                       // fail CLOSED: no creds, no unlock
-  const res = await fetch(`${BASE()}/v2/checkout/orders/${orderId}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  if (!token) return false;
+
+  let res = await fetch(`${BASE()}/v2/checkout/orders/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return false;
-  const order = await res.json();
+  let order = await res.json();
+
+  // Returned from approval but not yet captured — capture now.
+  if (order.status === 'APPROVED') {
+    const cap = await fetch(`${BASE()}/v2/checkout/orders/${orderId}/capture`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    if (cap.ok) order = await cap.json();
+  }
   if (order.status !== 'COMPLETED') return false;
-  const paid = (order.purchase_units || []).some(u => Number(u.amount?.value || 0) >= minUsd);
-  return paid;
+  return (order.purchase_units || []).some(u => {
+    const cap = u.payments?.captures?.[0];
+    const val = Number(cap?.amount?.value || u.amount?.value || 0);
+    return val >= minUsd && (!cap || cap.status === 'COMPLETED');
+  });
 }

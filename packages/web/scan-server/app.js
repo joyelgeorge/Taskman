@@ -26,7 +26,7 @@ function parseQuery(path) {
   return { path: path.slice(0, q), params };
 }
 
-export function createScanApp({ scanImpl, verifyPayment, store = new Map(), idgen = null } = {}) {
+export function createScanApp({ scanImpl, verifyPayment, createOrder = null, store = new Map(), idgen = null } = {}) {
   const newId = idgen || (() => 's_' + Math.random().toString(36).slice(2, 12));
 
   async function handle(method, rawPath, body) {
@@ -49,6 +49,15 @@ export function createScanApp({ scanImpl, verifyPayment, store = new Map(), idge
       const scanId = newId();
       store.set(scanId, { app: scan.app || target, findings: scan.findings || [] });
       return { status: 200, body: { scanId, ...freeReport({ app: scan.app || target, findings: scan.findings || [] }) } };
+    }
+
+    if (method === 'POST' && path === '/checkout') {
+      const id = body && body.scanId;
+      const record = id && store.get(id);
+      if (!record) return { status: 404, body: { error: 'unknown scan id' } };
+      if (!createOrder) return { status: 503, body: { error: 'checkout is not configured on this server' } };
+      const order = await createOrder(id);
+      return { status: 200, body: { orderId: order.orderId, approveUrl: order.approveUrl } };
     }
 
     if (method === 'GET' && path === '/report') {

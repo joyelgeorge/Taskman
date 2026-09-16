@@ -14,16 +14,23 @@
 import { createServer } from 'node:http';
 import { createScanApp } from './app.js';
 import { scanDeployedApp } from '../../core/jobs/bundle-scan.js';
-import { verifyPayPalOrder } from './paypal.js';
+import { verifyPayPalOrder, createPayPalOrder } from './paypal.js';
 
 const PRICE = process.env.REPORT_PRICE_USD || '5';
 const ORIGIN = process.env.ALLOW_ORIGIN || '*';
+// where the buyer's browser returns after paying — the scan page
+const SITE = process.env.SITE_URL || 'https://taskman-operator.web.app';
 
 const app = createScanApp({
   scanImpl: (url) => scanDeployedApp(url),
   // The token is a PayPal order id the frontend captured. Verify it server-side
   // against PayPal: it must be COMPLETED and paid to us for at least the price.
-  verifyPayment: (scanId, token) => verifyPayPalOrder(token, { minUsd: Number(PRICE) })
+  verifyPayment: (scanId, token) => verifyPayPalOrder(token, { minUsd: Number(PRICE) }),
+  createOrder: (scanId) => createPayPalOrder(scanId, {
+    amountUsd: Number(PRICE),
+    returnUrl: `${SITE}/scan.html?id=${encodeURIComponent(scanId)}`,
+    cancelUrl: `${SITE}/scan.html`
+  })
 });
 
 function send(res, status, body) {

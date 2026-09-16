@@ -42,6 +42,13 @@ Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md
 `settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
 the revenue is zero.
 
+- **[The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md)** — *level 4*
+  Schema-enforced OpenAPI/JSONSchema boundaries and topological DAG execution in `runner.js`.
+- **[The Creative Engine: Orthogonal candidate generator](2026-09-16-orthogonal-hypothesis-generator.md)** — *level 4*
+  Parallel contrasting generation pipelines (adversarial taint vs. defensive auth wrappers) with deterministic AST symbolic pruning.
+- **[The Bridge: Contract compiler and shadow execution](2026-09-16-contract-compiler-and-shadow-execution.md)** — *level 4*
+  Plan-to-DAG compiler, sandbox shadow execution, and hard human-in-the-loop gates for high-consequence state shifts.
+
 
 ### P3 — parked, with stated revisit conditions
 
@@ -163,7 +170,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_6 open, 0 done, 6 task files._
+_9 open, 0 done, 9 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -171,8 +178,11 @@ _6 open, 0 done, 6 task files._
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
+| [The Bridge: Contract compiler, shadow execution, and human gatekeeper](2026-09-16-contract-compiler-and-shadow-execution.md) | open | P2 | 4 |
+| [The Creative Engine: Orthogonal candidate generator with symbolic pruning](2026-09-16-orthogonal-hypothesis-generator.md) | open | P2 | 4 |
 | [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
 | [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
+| [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

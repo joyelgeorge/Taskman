@@ -103,3 +103,14 @@ test('POST /checkout with no createOrder configured is a clear 503, not a crash'
   const res = await a.handle('POST', '/checkout', { scanId: scan.body.scanId });
   assert.equal(res.status, 503);
 });
+
+test('POST /checkout returns 502 (not a crash) when the order cannot be created', async () => {
+  const a = createScanApp({
+    scanImpl: fakeScan, verifyPayment: async () => false,
+    createOrder: async () => null   // PayPal creds missing / API refused
+  });
+  const scan = await a.handle('POST', '/scan', { url: 'https://demo.app' });
+  const res = await a.handle('POST', '/checkout', { scanId: scan.body.scanId });
+  assert.equal(res.status, 502);
+  assert.match(res.body.error, /PayPal|credentials/i);
+});

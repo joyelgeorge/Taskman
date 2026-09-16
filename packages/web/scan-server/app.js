@@ -57,6 +57,11 @@ export function createScanApp({ scanImpl, verifyPayment, createOrder = null, sto
       if (!record) return { status: 404, body: { error: 'unknown scan id' } };
       if (!createOrder) return { status: 503, body: { error: 'checkout is not configured on this server' } };
       const order = await createOrder(id);
+      if (!order || !order.approveUrl) {
+        // createOrder fails closed (null) when PayPal credentials are missing or
+        // the Orders API rejected the request. Say so instead of crashing.
+        return { status: 502, body: { error: 'could not create a PayPal order — the server\'s PayPal credentials (PAYPAL_SECRET) may be missing or invalid' } };
+      }
       return { status: 200, body: { orderId: order.orderId, approveUrl: order.approveUrl } };
     }
 

@@ -113,21 +113,28 @@ function renderScan(data) {
   mountPayPal();
 }
 
-// Load the PayPal SDK once, with the Buttons component made explicit, and only
-// resolve when Buttons is actually a function — the SDK can load without it.
+// Load the PayPal SDK and wait until Buttons is actually a function. This POLLS
+// rather than checking once on `onload`: the SDK's `paypal.Buttons` is attached
+// slightly after the script's load event, so a single onload check races and
+// wrongly falls through. Polling resolves the instant it is ready and only gives
+// up after a real timeout.
 function ensurePayPalSdk() {
   return new Promise((resolve, reject) => {
-    if (window.paypal && typeof window.paypal.Buttons === 'function') return resolve();
-    let s = document.getElementById('pp-sdk');
-    const check = () => (window.paypal && typeof window.paypal.Buttons === 'function')
-      ? resolve() : reject(new Error('PayPal SDK loaded but Buttons is unavailable'));
-    if (s) { s.addEventListener('load', check); s.addEventListener('error', () => reject(new Error('load failed'))); return; }
-    s = document.createElement('script');
-    s.id = 'pp-sdk';
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_CLIENT_ID)}&currency=USD&components=buttons`;
-    s.onload = check;
-    s.onerror = () => reject(new Error('PayPal SDK failed to load'));
-    document.head.appendChild(s);
+    const ready = () => window.paypal && typeof window.paypal.Buttons === 'function';
+    if (ready()) return resolve();
+    if (!document.getElementById('pp-sdk')) {
+      const s = document.createElement('script');
+      s.id = 'pp-sdk';
+      s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_CLIENT_ID)}&currency=USD&components=buttons`;
+      s.onerror = () => { s.dataset.failed = '1'; };
+      document.head.appendChild(s);
+    }
+    let waited = 0;
+    const iv = setInterval(() => {
+      if (ready()) { clearInterval(iv); resolve(); }
+      else if (document.getElementById('pp-sdk')?.dataset.failed) { clearInterval(iv); reject(new Error('PayPal SDK failed to load')); }
+      else if ((waited += 150) > 10000) { clearInterval(iv); reject(new Error('PayPal SDK did not become ready in time')); }
+    }, 150);
   });
 }
 

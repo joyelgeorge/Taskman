@@ -14,7 +14,7 @@
 import { createServer } from 'node:http';
 import { createScanApp } from './app.js';
 import { scanDeployedApp } from '../../core/jobs/bundle-scan.js';
-import { verifyPayPalOrder, createPayPalOrder } from './paypal.js';
+import { verifyPayPalOrder, createPayPalOrder, paypalDiagnostic } from './paypal.js';
 
 const PRICE = process.env.REPORT_PRICE_USD || '5';
 const ORIGIN = process.env.ALLOW_ORIGIN || '*';
@@ -53,6 +53,11 @@ createServer((req, res) => {
     let body = null;
     if (raw) { try { body = JSON.parse(raw); } catch { return send(res, 400, { error: 'bad json' }); } }
     try {
+      // Operator diagnostic: reports credential PRESENCE and whether PayPal
+      // accepts them. Never returns the secret or a token.
+      if (req.method === 'GET' && req.url.startsWith('/paypal-check')) {
+        return send(res, 200, await paypalDiagnostic());
+      }
       const r = await app.handle(req.method, req.url, body);
       send(res, r.status, { ...r.body, priceUsd: PRICE });
     } catch (e) {

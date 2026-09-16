@@ -25,6 +25,31 @@ async function accessToken() {
   return (await res.json()).access_token;
 }
 
+/**
+ * Safe diagnostic: reports whether credentials are present and whether PayPal
+ * accepts them, WITHOUT ever returning the secret or the token. Exists because a
+ * failed order creation has several causes (missing secret, sandbox creds against
+ * the live API, a disabled app) that are indistinguishable from the outside.
+ */
+export async function paypalDiagnostic() {
+  const env = process.env.PAYPAL_ENV === 'sandbox' ? 'sandbox' : 'live';
+  const hasId = Boolean(process.env.PAYPAL_CLIENT_ID);
+  const hasSecret = Boolean(process.env.PAYPAL_SECRET);
+  if (!hasId || !hasSecret) return { env, hasId, hasSecret, auth: 'skipped - credentials missing' };
+  let status = null, ok = false;
+  try {
+    const res = await fetch(`${BASE()}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString('base64'),
+                 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials'
+    });
+    status = res.status; ok = res.ok;
+  } catch (e) { status = 'network error'; }
+  return { env, hasId, hasSecret, apiBase: BASE(), authHttpStatus: status,
+    auth: ok ? 'accepted' : 'REJECTED - credentials do not match this environment' };
+}
+
 /** Create an order and return its id + the hosted approval URL to redirect to. */
 export async function createPayPalOrder(scanId, { amountUsd = 5, returnUrl, cancelUrl } = {}) {
   const token = await accessToken();

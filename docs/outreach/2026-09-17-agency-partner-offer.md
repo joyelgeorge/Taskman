@@ -31,9 +31,16 @@ fix is the deliverable, not the list of problems.
 
 **What makes it different from the free scanners:** every finding has survived a
 refutation pass. No count without a unit, no route called naked when a helper
-guards it, no injection flagged in code no request reaches. The teardown in
-`docs/research/2026-09-17-vibe-scanner-accuracy-study.md` is the evidence, and it
-is our own miss rate, which is why it is credible.
+guards it, no injection flagged in code no request reaches. The published teardown
+is the evidence, and it is our own miss rate, which is why it is credible:
+https://gist.github.com/joyelgeorge/657593108ec060655ec7dcee2b2b426e
+
+> **One open item before anyone leans harder on "seven".** The lead queue counts
+> `fortixx-saas` among the seven, while an earlier row in the same file marks its
+> 5 command-injection findings **"Unverified. Check before believing."** The
+> closing line says all 22 are verified, which supersedes it — but nobody has
+> recorded the check. If it did not clear, the number is six. The published piece
+> says seven on the summary's authority; resolve this before it is quoted again.
 
 ## Pricing — proposed, and explicitly unvalidated
 
@@ -87,8 +94,9 @@ leaks because RLS was never switched on, it's the agency that hears about it,
 not the platform.
 
 I re-audited a batch of apps our own scanner flagged as critical and wrote up
-how often it was wrong — 4 of 19 headlines held up. It's here if useful:
-[link]. It's our own miss rate, not a competitor's.
+how often it was wrong: it called 19 critical, and after checking all 22 by hand,
+seven had something worth sending. It's here if useful:
+https://gist.github.com/joyelgeorge/657593108ec060655ec7dcee2b2b426e. It's our own miss rate, not a competitor's.
 
 Happy to do the first one free on an app you've already shipped, so you can see
 the report before deciding anything. No obligation, and I won't touch anything

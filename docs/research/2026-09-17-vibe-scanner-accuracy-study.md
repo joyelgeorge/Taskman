@@ -1,5 +1,7 @@
 # Our scanner called 19 apps critical. After hand-verifying all 22, seven had something worth sending.
 
+*Published 2026-09-17: https://gist.github.com/joyelgeorge/657593108ec060655ec7dcee2b2b426e*
+
 *Every number below is our own scanner's. We have not benchmarked anyone else's
 tool and are not making any claim about one. No repository or business is named,
 because several of these findings are real and still unfixed.*

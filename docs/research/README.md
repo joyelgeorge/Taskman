@@ -29,6 +29,15 @@ of how good it sounded in the session that produced it.
   derive. Notes the limit that a model cannot introspect its own training, so
   the method must be black-box.
 
+- **[We re-audited every app our own scanner called critical](2026-09-17-vibe-scanner-accuracy-study.md)**
+  — **Draft cleared for publication.** The teardown: 19 CRITICAL headlines, 4 real.
+  Four named failure modes with the measurement behind each — counting findings
+  not problems (70 criticals, one migration), grepping for auth instead of
+  understanding it (6/6 guarded by a helper), flagging code no request reaches
+  (4/4 env vars in a local script), and staleness. **Framed as our own miss rate,
+  not a competitor's**, because that is what was measured and because it is the
+  harder claim to attack. No target named — several findings are real and unfixed.
+
 - **[What the new model capabilities open](2026-09-17-what-the-new-model-capabilities-open.md)**
   — Written after the operator pushed back on a run of pessimistic findings, and
   the pushback was right. The "code barrier → commodity" rule is about **settled**

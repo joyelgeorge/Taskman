@@ -87,8 +87,8 @@ leaks because RLS was never switched on, it's the agency that hears about it,
 not the platform.
 
 I re-audited a batch of apps our own scanner flagged as critical and wrote up
-how often it was wrong — 4 of 19 headlines held up. It's here if useful:
-[link]. It's our own miss rate, not a competitor's.
+how often it was wrong — 7 of 19 headlines held up. It's here if useful:
+https://gist.github.com/joyelgeorge/657593108ec060655ec7dcee2b2b426e. It's our own miss rate, not a competitor's.
 
 Happy to do the first one free on an app you've already shipped, so you can see
 the report before deciding anything. No obligation, and I won't touch anything

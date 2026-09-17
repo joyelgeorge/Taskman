@@ -17,8 +17,8 @@
     "test": "node --test",
     "api": "node packages/api/server.js",
     "web": "node packages/web/server.js",
-    "cron": "node packages/crons/cli.js",
-    "scheduler": "node packages/crons/scheduler.js",
+    "cron": "node --env-file-if-exists=.env packages/crons/cli.js",
+    "scheduler": "node --env-file-if-exists=.env packages/crons/scheduler.js",
     "smoke": "node packages/crons/smoke.js",
     "sync:audit": "node scripts/sync-audit-assets.js",
     "build:audit-site": "node scripts/build-audit-site.js",
@@ -31,7 +31,9 @@
     "next": "node --env-file-if-exists=.env scripts/next.mjs",
     "scan-bundles": "node --env-file-if-exists=.env scripts/scan-bundles.mjs",
     "warm-scout": "node --env-file-if-exists=.env scripts/warm-lead-scout.mjs",
-    "self-serve": "node --env-file-if-exists=.env scripts/self-serve-scan.mjs"
+    "self-serve": "node --env-file-if-exists=.env scripts/self-serve-scan.mjs",
+    "scan-server": "node --env-file-if-exists=.env packages/web/scan-server/server.js",
+    "tally": "node --env-file-if-exists=.env scripts/tally-audit.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

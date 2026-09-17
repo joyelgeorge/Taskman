@@ -16,6 +16,9 @@ import {
   listOutreachAttempts, outreachSummary
 } from '../src/outreach-log.js';
 import { databaseEnabled } from '../src/db.js';
+import { dispatchOutreachEmail } from '../src/adapters/email.js';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -32,7 +35,7 @@ const flag = (name) => {
 // A write that vanishes is worse than no write: it leaves someone believing the
 // attempt was recorded, which is precisely the confusion this module exists to
 // end. Reads are fine to run empty; writes refuse.
-if (!databaseEnabled && (cmd === 'log' || cmd === 'outcome')) {
+if (!databaseEnabled && !args.includes('--dry-run') && (cmd === 'log' || cmd === 'outcome' || cmd === 'send')) {
   console.error('DATABASE_URL is not set. This would be written to memory and lost when the '
     + 'process exits, leaving you believing the attempt was recorded.\n'
     + 'Set DATABASE_URL and run `npm run migrate` first.');
@@ -63,9 +66,60 @@ try {
     const s = await outreachSummary(args[1] || flag('lane'));
     console.log(s.verdict);
     console.log(`  attempts ${s.attempts} · replies ${s.replies} · paid ${s.paid}`);
+  } else if (cmd === 'send') {
+    const draftPath = flag('draft');
+    const to = flag('to');
+    const dryRun = args.includes('--dry-run');
+    if (!to) {
+      console.error('--to=<email> is required');
+      process.exit(2);
+    }
+    let body = flag('body');
+    let subject = flag('subject');
+    if (draftPath) {
+      const raw = await readFile(resolve(draftPath), 'utf8');
+      const lines = raw.split('\n');
+      if (!subject) {
+        const titleLine = lines.find(l => l.startsWith('# '));
+        subject = titleLine ? titleLine.replace(/^#\s*/, '') : 'Security Audit & Remediation';
+      }
+      if (!body) {
+        body = raw;
+      }
+    }
+    if (!body) {
+      console.error('Either --draft=<file> or --body="..." is required');
+      process.exit(2);
+    }
+    const lane = flag('lane') || 'vibe-app-security';
+    const prospect = flag('prospect') || to;
+    const note = flag('note') || (draftPath ? `draft: ${draftPath}` : null);
+    const result = await dispatchOutreachEmail({
+      to,
+      subject,
+      body,
+      lane,
+      prospect,
+      note,
+      dryRun
+    });
+    if (dryRun) {
+      console.log(`[DRY RUN] Outreach email ready for: ${to}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Body preview:\n${result.body.slice(0, 300)}...`);
+    } else {
+      console.log(`Dispatched via ${result.transport} to ${to}`);
+      if (result.outboxPath) console.log(`  Staged file: ${result.outboxPath}`);
+      if (result.log) {
+        console.log(result.log.duplicate
+          ? `  Already recorded for ${result.log.prospect}`
+          : `  Logged attempt ${result.log.id}`);
+      }
+    }
   } else {
     console.log(`usage:
   npm run outreach -- log --lane=<lane> --channel=<where> --prospect=<handle|url> [--note="..."]
+  npm run outreach -- send --draft=<file> --to=<email> [--dry-run]
   npm run outreach -- outcome <id> ${Object.values(OUTREACH_OUTCOME).join('|')}
   npm run outreach -- list [--lane=<lane>]
   npm run outreach -- summary <lane>`);

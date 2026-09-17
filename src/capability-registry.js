@@ -75,11 +75,22 @@ export function buildCapabilityRegistry({
     adapter: 'revenue-store', reason: 'runtime_adapter_loaded'
   });
 
-  for (const id of ['web.search', 'web.fetch', 'web.read', 'github.read', 'github.write', 'gmail.read', 'gmail.send']) {
+  for (const id of ['web.search', 'web.fetch', 'web.read', 'github.read', 'github.write', 'gmail.read']) {
     put(capabilities, id, CAPABILITY_STATUS.UNAVAILABLE,
       id.endsWith('.write') || id.endsWith('.send') ? CAPABILITY_ACCESS.WRITE : CAPABILITY_ACCESS.READ,
       { reason: 'runtime_adapter_not_installed' });
   }
+
+  put(capabilities, 'gmail.send', (env.GMAIL_USER && env.GMAIL_APP_PASSWORD)
+    ? CAPABILITY_STATUS.AVAILABLE
+    : CAPABILITY_STATUS.UNAVAILABLE, CAPABILITY_ACCESS.WRITE, {
+      adapter: 'email-adapter',
+      reason: (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) ? 'credential_configured' : 'credential_required'
+    });
+  put(capabilities, 'email.send', CAPABILITY_STATUS.AVAILABLE, CAPABILITY_ACCESS.WRITE, {
+    adapter: 'email-adapter',
+    reason: 'runtime_adapter_loaded'
+  });
 
   put(capabilities, 'moltjobs.read', env.MOLTJOBS_API_KEY
     ? CAPABILITY_STATUS.AVAILABLE

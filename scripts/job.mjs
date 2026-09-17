@@ -15,9 +15,10 @@ import { isRunnableJob } from '../packages/core/jobs/job-spec.js';
 import { runJob } from '../packages/core/jobs/runner.js';
 import { vibeAppSecurityJob } from '../packages/core/jobs/vibe-app-security.js';
 import { scanRepo } from '../packages/core/jobs/vibe-app-security-default.js';
+import { tallyLeakageJob } from '../packages/core/jobs/tally-leakage.js';
 import { databaseEnabled } from '../src/db.js';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 
 const argv = process.argv.slice(2);
 const flag = (n) => { const i = argv.indexOf(`--${n}`); return i === -1 ? null : argv[i + 1]; };
@@ -34,13 +35,10 @@ if (argv[0] === 'list' || !argv[0]) {
 if (argv[0] !== 'run') { console.error('usage: npm run job -- <list|run>'); process.exit(2); }
 
 const key = argv[1];
-if (key !== 'vibe-app-security') {
+if (key !== 'vibe-app-security' && key !== 'tally-smb-leakage-audit') {
   console.error(`"${key}" has no wired stages yet. \`npm run job -- list\` shows what does.`);
   process.exit(2);
 }
-
-const repos = (flag('repos') || '').split(',').map(s => s.trim()).filter(Boolean);
-if (!repos.length) { console.error('--repos owner/name[,owner/name] is required'); process.exit(2); }
 
 const approval = flag('approve');
 if (!databaseEnabled) {
@@ -49,10 +47,26 @@ if (!databaseEnabled) {
   process.exit(1);
 }
 
-const job = vibeAppSecurityJob({
-  scan: async () => Promise.all(repos.map(r => scanRepo(r))),
-  write: async (p, text) => { await mkdir(dirname(p), { recursive: true }); await writeFile(p, text); }
-});
+let job = null;
+
+if (key === 'vibe-app-security') {
+  const repos = (flag('repos') || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!repos.length) { console.error('--repos owner/name[,owner/name] is required'); process.exit(2); }
+  job = vibeAppSecurityJob({
+    scan: async () => Promise.all(repos.map(r => scanRepo(r))),
+    write: async (p, text) => { await mkdir(dirname(p), { recursive: true }); await writeFile(p, text); }
+  });
+} else if (key === 'tally-smb-leakage-audit') {
+  const file = flag('file');
+  if (!file) { console.error('--file <path-to-export.csv> is required'); process.exit(2); }
+  const client = flag('client') || 'Retailer';
+  const content = await readFile(resolve(file), 'utf8');
+  job = tallyLeakageJob({
+    load: async () => content,
+    clientName: client,
+    write: async (p, text) => { await mkdir(dirname(p), { recursive: true }); await writeFile(p, text); }
+  });
+}
 
 const result = await runJob(job, { approval });
 for (const r of result.runs) {

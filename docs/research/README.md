@@ -29,6 +29,15 @@ of how good it sounded in the session that produced it.
   derive. Notes the limit that a model cannot introspect its own training, so
   the method must be black-box.
 
+- **[The lead run that found no leads, and the price that moved](2026-09-17-warm-lead-run-and-the-price-that-moved.md)**
+  — Ran the lead engines for real. Produced **zero** leads, and measured why:
+  searching for demand returned suppliers, six queries running. The finding that
+  matters is a **price correction** — CLAUDE.md's "Fiverr fix gigs $80–125" is not
+  what the market charges. Seven live gigs that day: **$10–40**, none above $40,
+  with free scanning below and a named firm at **€1,500** for the same audit. The
+  market went barbell and the tier the wedge targets is the hollowed-out middle.
+  The vulnerability data is unaffected and stronger. CLAUDE.md corrected.
+
 - **[What flat confidence cost](2026-09-13-what-flat-confidence-cost.md)** —
   The first probe from the cartography doc, run on this repo's own history. One
   $220 phantom settlement traced end to end from an invented opportunity to a

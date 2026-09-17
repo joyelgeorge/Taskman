@@ -25,9 +25,18 @@ Consequences that now govern revenue work:
 
 - **The validated paying market is securing "vibe-coded" apps** (Lovable / Cursor
   / Bolt / v0 / Replit on Supabase/Firebase). Proven paying: scanners at $5–29/mo,
-  Fiverr fix gigs $80–125, dedicated shops (humansfix.ai). 98% of scanned
+  ~~Fiverr fix gigs $80–125~~, dedicated shops (humansfix.ai). 98% of scanned
   vibe-coded apps had a flaw. This is CASH; OSS bounty disclosure is only a
   CREDENTIAL (see below).
+
+  > **Price correction, 2026-09-17.** The $80–125 Fiverr figure no longer holds.
+  > Seven live gigs measured that day price the same fix at **$10–40**, none above
+  > $40, while free scanning has arrived beneath the $5 tier (SafeToShip, CheckVibe)
+  > and a named firm charges **€1,500** for the same RLS audit (theswarm.at). The
+  > market went barbell and the $80–125 middle — the exact tier the wedge below
+  > targets — is the part that hollowed out. The vulnerability data is unaffected
+  > and if anything stronger. Evidence:
+  > `docs/research/2026-09-17-warm-lead-run-and-the-price-that-moved.md`.
 - **The vuln class that matters is NOT server-side injection.** It is exposed
   Supabase `service_role` keys, missing Row-Level Security, secrets in the client
   bundle, open CORS, no-auth admin routes (CWE-284/200/312/942/798). Detectors
@@ -38,8 +47,12 @@ Consequences that now govern revenue work:
   heaviest offenders) run no paid program. A confirmed OSS finding (e.g.
   project-golem, CWE-22) is a reputation credential and scan-service proof, not
   revenue. Do not chase OSS bounties for cash.
-- **Wedge:** the scan-only niche is crowded. Compete on FIX + verified proof at
-  the Fiverr-proven $80–125, not on being another free scanner.
+- **Wedge:** the scan-only niche is crowded — thirteen named competitors counted
+  on 2026-09-17, and scanning is now free at the bottom. ~~Compete on FIX +
+  verified proof at the Fiverr-proven $80–125~~ — that tier is gone (see the
+  price correction above). The open question is whether the money is at the
+  four-figure audit end, which is a trust business a machine cannot originate.
+  **Do not price new work against $80–125 without re-measuring.**
 - **Active plan:** demand-first tasks #212–#217. Revenue work must not deviate
   from the vibe-coded-app-security direction without a new demand-validation pass.
 

@@ -21,6 +21,11 @@ who pays it?** (see `docs/READ-FIRST.md`).
 - **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
   The repo calls `warm-lead-scout` the primary engine. It has no cron, no script
   and no persistence. All the engineering went to the funnel labelled low-yield.
+- **[Neither lead engine can run in a web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md)**
+  Measured by trying: `gh` is absent and repo scoping refuses third-party clones,
+  so the cold drone has no input; Reddit and Stack Overflow refuse the crawler, so
+  the warm engine cannot see the warmest intent. **Building more of either from a
+  web session cannot be tested from a web session.**
 - **[The star filter selects against businesses](2026-09-12-star-filter-selects-against-businesses.md)**
   Measured: the search sees 25 of 1,034 repos. Stars proxy for OSS popularity,
   not commerce, so the filter and the business qualifier fight each other.

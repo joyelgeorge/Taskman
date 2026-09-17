@@ -18,9 +18,17 @@ with no auth, open CORS.
 
 It ran a sweep and reported **19 repositories with CRITICAL findings.**
 
-We then re-audited every one by hand, from a fresh clone. **Four had a real
+We re-audited 20 repositories by hand from fresh clones. **Four had a real
 exposed secret.** The other fifteen headlines did not survive contact with the
 code.
+
+**What that is not: a 78% false-positive rate.** The other fifteen were not
+clean. Most had real missing-RLS findings — genuinely unprotected tables, worth
+fixing. What failed was the **headline**: the severity ranking that put all
+nineteen in the same CRITICAL bucket as an exposed `service_role` key, and the
+arithmetic underneath it. A true finding, counted wrongly and ranked wrongly, is
+a different failure from a finding that isn't there, and conflating the two
+would be the same inflation in the opposite direction.
 
 We are publishing the gap because we have not seen anyone else publish theirs,
 and because the specific ways a scanner is wrong turn out to be more useful than
@@ -105,7 +113,10 @@ it reaches a human. Freshness is part of correctness.
 This is not an argument that vibe-coded apps are fine. They are not, and our
 re-audit made the real findings sharper, not softer:
 
-- **Four repositories had a genuine exposed secret.** One had nine.
+- **Four repositories had a genuine exposed secret** present in the source. One
+  had nine. We did not test whether any of them still worked — that would mean
+  using someone else's credential, which we will not do. Present in a public
+  repo is enough to report; "exploitable" is a claim we have not earned.
 - **The missing-RLS findings were true** — the seventy tables really were
   unprotected. Only the arithmetic was misleading.
 - **We caught ourselves inflating while writing this.** An earlier draft of the

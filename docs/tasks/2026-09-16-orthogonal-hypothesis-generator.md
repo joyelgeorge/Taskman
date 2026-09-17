@@ -24,6 +24,10 @@ Symbolic evaluators (AST checks, route graph linters, dependency checkers) prune
 
 Standard LLM prompting defaults to median consensus and superficial pattern matching. In the vibe-coded app sweep, naive heuristic checks produced a 100% false-positive rate on admin route authentication because delegated helpers (`requireSuperAdmin`) were missed. Running parallel, contrasting perspectives with deterministic symbolic pruning filters out false alarms before they ever reach human review or outreach.
 
+## Built 2026-09-17
+
+Core built and mutation-tested. See the commit; the module is the first step, wiring it into the live sweep/runner is the remainder.
+
 ## Done looks like
 
 1. Discovery drones can output competing hypothesis candidates tagged with the generating perspective.

@@ -22,6 +22,10 @@ The bridge consists of three components:
 
 The greatest failure mode in autonomous agent architectures is unvalidated stochastic output mutating production state directly. Without a formal compiler and sandbox shadow execution, hallucinated findings or unverified assumptions leak into the ledger or external communication, destroying trust and burning sender reputation.
 
+## Built 2026-09-17
+
+Core built and mutation-tested. See the commit; the module is the first step, wiring it into the live sweep/runner is the remainder.
+
 ## Done looks like
 
 1. A `compilePlanToDAG()` module validates proposed step dependencies and rejects unmapped tool invocations.

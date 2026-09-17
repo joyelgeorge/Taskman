@@ -24,6 +24,10 @@ Key elements:
 
 The deterministic core must never rely on LLM intuition to guarantee state, consistency, or delivery. Treating the LLM as an untrusted, stochastic component requires that all state mutations flow through rigid, typed execution rails. Linear pipelines cannot model multi-perspective validation, parallel shadow simulation, or compensating transactions on failure.
 
+## Built 2026-09-17
+
+Core built and mutation-tested. See the commit; the module is the first step, wiring it into the live sweep/runner is the remainder.
+
 ## Done looks like
 
 1. `JobSpec` in `packages/core/jobs/job-spec.js` accepts DAG definitions with explicit `dependencies: []`.

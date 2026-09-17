@@ -88,3 +88,9 @@ export {
   triageAndRecordBounty, listTriageRecords, getBountyYieldReport, resetTriageMemory
 } from './bounties/triage-store.js';
 
+export * from './tally/index.js';
+
+export { validateDag, topoSort, runDag } from './jobs/dag.js';
+export { JOB_STAGE, DISTRIBUTION, isRunnableJob, assertValidJob } from './jobs/job-spec.js';
+export { compilePlanToDag, shadowExecute, describeEffects } from './bridge/compiler.js';
+

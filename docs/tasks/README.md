@@ -176,12 +176,12 @@ _9 open, 0 done, 9 task files._
 | --- | --- | --- | --- |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
-| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
+| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | open | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [The Bridge: Contract compiler, shadow execution, and human gatekeeper](2026-09-16-contract-compiler-and-shadow-execution.md) | open | P2 | 4 |
 | [The Creative Engine: Orthogonal candidate generator with symbolic pruning](2026-09-16-orthogonal-hypothesis-generator.md) | open | P2 | 4 |
 | [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
-| [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
+| [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | open | P1 | 1 |
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 

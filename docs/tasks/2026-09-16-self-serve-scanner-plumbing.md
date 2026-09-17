@@ -1,5 +1,5 @@
 ---
-status: blocked
+status: open
 priority: P1
 level: 1
 opened: 2026-09-16

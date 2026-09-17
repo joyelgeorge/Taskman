@@ -12,6 +12,9 @@ import { tallyLeakageJob } from '../packages/core/jobs/tally-leakage.js';
 import { runJob } from '../packages/core/jobs/runner.js';
 import { databaseEnabled } from '../src/db.js';
 
+import { reconcileGstRecords, renderGstAuditReport } from '../packages/core/tally/gst-reconcile.js';
+import { parseCsv } from '../packages/core/tally/parser.js';
+
 const argv = process.argv.slice(2);
 const flag = (n) => {
   const withEq = argv.find(a => a.startsWith(`--${n}=`));
@@ -21,10 +24,83 @@ const flag = (n) => {
 };
 const hasFlag = (n) => argv.some(a => a === `--${n}` || a.startsWith(`--${n}=`));
 
+// Handle GST Reconciliation Mode
+if (hasFlag('gst')) {
+  const gstr2bPath = flag('gstr2b') || flag('2b');
+  const purchasePath = flag('purchases') || flag('pr');
+  const tolerance = parseFloat(flag('tolerance') || '2');
+  const saveReport = hasFlag('save');
+
+  if (!gstr2bPath || !purchasePath) {
+    console.log(`usage:
+  npm run tally -- --gst --gstr2b=<path-to-gstr2b.csv> --purchases=<path-to-purchases.csv> [options]
+
+options:
+  --tolerance=<rupees>    Tax rounding difference tolerance (default 2)
+  --save                  Save markdown audit report to docs/outreach/
+`);
+    process.exit(0);
+  }
+
+  let gstr2bRaw, purchaseRaw;
+  try {
+    const [c1, c2] = await Promise.all([
+      readFile(resolve(gstr2bPath), 'utf8'),
+      readFile(resolve(purchasePath), 'utf8')
+    ]);
+    gstr2bRaw = parseCsv(c1);
+    purchaseRaw = parseCsv(c2);
+  } catch (err) {
+    console.error(`error reading CSVs: ${err.message}`);
+    process.exit(1);
+  }
+
+  const gstr2bRows = gstr2bRaw.map(r => ({
+    gstin: r.gstin,
+    vendor: r.vendorname || r.suppliername,
+    invoiceNo: r.invoicenumber || r.invoiceno,
+    date: r.invoicedate || r.date,
+    taxableValue: r.taxablevalue,
+    taxAmount: r.taxamount || r.integratedtax || r.centraltax
+  }));
+
+  const purchaseRows = purchaseRaw.map(r => ({
+    gstin: r.gstin,
+    vendor: r.vendorname || r.suppliername,
+    invoiceNo: r.invoicenumber || r.invoiceno,
+    date: r.invoicedate || r.date,
+    taxableValue: r.taxablevalue,
+    taxAmount: r.taxamount || r.tax
+  }));
+
+  const recon = reconcileGstRecords(gstr2bRows, purchaseRows, { toleranceRupees: tolerance });
+  const report = renderGstAuditReport(recon);
+
+  console.log('\n======================================================');
+  console.log('       GST INPUT TAX CREDIT (ITC) AUDIT RESULTS       ');
+  console.log('======================================================\n');
+  console.log(`Matched Verified ITC:    ₹${recon.summary.matchedItc.toLocaleString('en-IN')}`);
+  console.log(`Unclaimed ITC (Recovery):₹${recon.summary.unclaimedItcAmount.toLocaleString('en-IN')} (${recon.unclaimedItc.length} invoices)`);
+  console.log(`At-Risk ITC (Vendor Risk):₹${recon.summary.atRiskItcAmount.toLocaleString('en-IN')} (${recon.missingFrom2b.length} invoices)`);
+  console.log(`Value Discrepancies:     ${recon.valueMismatches.length} invoices`);
+  console.log(`Net Potential Recovery:  ₹${recon.summary.netOpportunity.toLocaleString('en-IN')}\n`);
+
+  if (saveReport) {
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const outPath = resolve(`docs/outreach/gst-audit-${timestamp}.md`);
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, report, 'utf8');
+    console.log(`Detailed audit report written to: ${outPath}\n`);
+  }
+
+  process.exit(0);
+}
+
 const filePath = argv.find(a => !a.startsWith('--'));
 if (!filePath) {
   console.log(`usage:
   npm run tally -- <path-to-export.csv> [options]
+  npm run tally -- --gst --gstr2b=<path-to-gstr2b.csv> --purchases=<path-to-purchases.csv>
 
 options:
   --window=<days>          Window in days for matching vendor + amount (default 5)

@@ -1,4 +1,4 @@
-# We re-audited every app our own scanner called critical. It was wrong about 15 of 19.
+# Our scanner called 19 apps critical. After hand-verifying all 22, seven had something worth sending.
 
 **Status: draft, cleared for publication.** Written 2026-09-17 for an outside
 reader — Hacker News, r/vibecoding, the Lovable and Bolt communities.
@@ -16,13 +16,15 @@ stack on Supabase. It looks for the things that actually leak: `service_role`
 keys in client bundles, tables with Row Level Security switched off, admin routes
 with no auth, open CORS.
 
-It ran a sweep and reported **19 repositories with CRITICAL findings.**
+It produced 22 leads, and reported **19 of them as carrying CRITICAL findings.**
 
-We re-audited 20 repositories by hand from fresh clones. **Four had a real
-exposed secret.** The other fifteen headlines did not survive contact with the
-code.
+We then hand-verified all 22 from fresh clones. **Five had a real exposed
+secret. Seven had a finding compelling enough to write to the owner about** —
+those five, plus two with genuinely reachable command injection.
 
-**What that is not: a 78% false-positive rate.** The other fifteen were not
+So: **19 CRITICAL headlines, 7 things worth sending.**
+
+**What that is not: a 68% false-positive rate.** The other fifteen were not
 clean. Most had real missing-RLS findings — genuinely unprotected tables, worth
 fixing. What failed was the **headline**: the severity ranking that put all
 nineteen in the same CRITICAL bucket as an exposed `service_role` key, and the
@@ -99,6 +101,11 @@ untrusted input actually get here? Code in a build script, a CLI or a test
 fixture is not an attack surface, and reporting it as one is how a report earns
 the label "noise".
 
+Worth being clear that this is a discriminator, not a dismissal: **two other
+repositories had command-injection findings that were reachable**, and both are
+on the list of seven worth sending. The class is not noise. The check is what
+tells the two apart.
+
 ### 4. Being right but stale
 
 Supabase auto-revokes keys it detects as leaked. A finding can be dead before
@@ -113,18 +120,23 @@ it reaches a human. Freshness is part of correctness.
 This is not an argument that vibe-coded apps are fine. They are not, and our
 re-audit made the real findings sharper, not softer:
 
-- **Four repositories had a genuine exposed secret** present in the source. One
+- **Five repositories had a genuine exposed secret** present in the source. One
   had nine. We did not test whether any of them still worked — that would mean
   using someone else's credential, which we will not do. Present in a public
   repo is enough to report; "exploitable" is a claim we have not earned.
 - **The missing-RLS findings were true** — the seventy tables really were
   unprotected. Only the arithmetic was misleading.
-- **We caught ourselves inflating while writing this.** An earlier draft of the
-  section above said the seventy findings were "one migration". Our own records
-  say 70 findings across 12 files; nobody ever counted distinct causes, so "one"
-  was a number that felt right rather than one that was measured. It is a small
-  thing and it is exactly the thing this piece is about, which is the honest
-  argument for why the discipline has to be procedural rather than intentional.
+- **We got this piece wrong twice while writing it, and both are worth telling
+  you about.** An earlier draft said the seventy findings were "one migration" —
+  our records say 70 findings across 12 files, and nobody ever counted distinct
+  causes, so "one" was a number that felt right rather than one that was
+  measured. Worse, the draft led on "4 had a real exposed secret", which was the
+  count after re-auditing 20 of the 22. The **final** pass over all 22 found
+  **five**, and seven worth sending. We nearly published the intermediate number
+  as the conclusion — which is failure mode 4 above, being right but stale,
+  committed by the article about it. Both were caught by re-reading the source
+  notes, not by being careful. That is the argument for making the check
+  procedural.
 - The independent numbers hold up: a June 2026 crawl of 1,072 Supabase-backed
   vibe-coded apps found **98% with at least one issue, 16% critical.**
   **CVE-2025-48757** hit 170+ Lovable apps on exactly the RLS pattern above.

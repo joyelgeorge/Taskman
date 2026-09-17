@@ -38,18 +38,25 @@ the fact that it is.
 
 Each row is a measurement, not an estimate. Each is our own detector.
 
-### 1. Counting findings instead of problems — 70 criticals, one cause
+### 1. Counting findings instead of problems — 70 criticals, 12 files
 
-The missing-RLS detector emits **one finding per unprotected table.** One
-`schema.current.sql` dump where nobody ran `ENABLE ROW LEVEL SECURITY` became
-**seventy CRITICAL findings** in the report.
+The missing-RLS detector emits **one finding per unprotected table.** In one
+repository that produced **70 CRITICAL findings, spread across 12 files.**
 
 Seventy is not a lie about the code — every one of those tables really is
-unprotected. It is a lie about the *work*. The developer reading "70 criticals"
-thinks they have weeks of remediation. They have one migration.
+unprotected. It is a lie about the *shape of the work*. The developer reading
+"70 criticals" is picturing seventy separate defects. The number that tells them
+what their afternoon looks like is **12**, and probably fewer distinct causes
+than that, since RLS omissions cluster in whole schema files rather than
+appearing one table at a time.
+
+We are deliberately not saying "it was really one migration." We measured 70
+findings and 12 files. We did not count distinct root causes, so we will not
+report one.
 
 **The fix:** report distinct problems and distinct files, never the raw total. A
-count without a unit is not a count.
+count without a unit is not a count — and if you have not counted causes, do not
+quote a cause count.
 
 ### 2. Grepping for auth instead of understanding it — 6 of 6 false
 
@@ -112,6 +119,12 @@ re-audit made the real findings sharper, not softer:
   repo is enough to report; "exploitable" is a claim we have not earned.
 - **The missing-RLS findings were true** — the seventy tables really were
   unprotected. Only the arithmetic was misleading.
+- **We caught ourselves inflating while writing this.** An earlier draft of the
+  section above said the seventy findings were "one migration". Our own records
+  say 70 findings across 12 files; nobody ever counted distinct causes, so "one"
+  was a number that felt right rather than one that was measured. It is a small
+  thing and it is exactly the thing this piece is about, which is the honest
+  argument for why the discipline has to be procedural rather than intentional.
 - The independent numbers hold up: a June 2026 crawl of 1,072 Supabase-backed
   vibe-coded apps found **98% with at least one issue, 16% critical.**
   **CVE-2025-48757** hit 170+ Lovable apps on exactly the RLS pattern above.

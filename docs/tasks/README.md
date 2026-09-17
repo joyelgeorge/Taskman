@@ -31,6 +31,26 @@ that remains true however interesting the architecture is.**
   Detector built and mutation-tested. Its claim to P0 was that the trusted
   relationship already existed. It does not.
 
+### New lanes — researched 2026-09-17, gate 1 checked first
+
+- **[Sell the detector as an agent, where distribution is provided](2026-09-17-lane-agent-marketplace.md)** — *level 1, P1*
+  The first lane here where **someone else solves distribution** — the half every
+  previous lane died on. Marketplace splits run 70–85% to the creator and the
+  named top-2026 niches include, verbatim, *"financial reconciliation bots for
+  small businesses"* — which is what the Tally detector already is. Its P0 died on
+  "access yes, relationship no"; a marketplace supplies the relationship. **Gate 1
+  open: which marketplace pays an Indian individual.**
+- **[Territory: the markets our research has never looked at](2026-09-17-territory-language-and-geography.md)** — *level 3, P2*
+  **Russia/CIS killed on the payment rail** — a granular infrastructure blockade
+  breaks payment mechanically; same shape as Algora, recorded in the registry.
+  China unproven and expensive to prove. **LATAM survives**, but the insight is not
+  a Workana seller account: all 13 competitors publish in English, so a *translated
+  teardown competes against nothing* at near-zero cost.
+- **[Free fixes, for the credential rather than the fee](2026-09-17-lane-free-fixes-for-reputation.md)** — *level 3, P2*
+  The agency pitch claims a re-run proving the fix landed. **No fix has ever been
+  delivered to anyone.** Three free ones buy a worked instance of the deliverable,
+  three warm named humans, and teardown material that is not self-referential.
+
 ### Sellman — free distribution, built from what the repo already measured
 
 The selling arm. Every item costs nothing but time, produces its own material
@@ -93,6 +113,20 @@ the revenue is zero.
 ### Maintenance — label it as such
 
 All level 4. Named as maintenance, per `deciding-the-next-step`.
+
+- **[Nothing reconciles a settlement against the provider](2026-09-17-reconcile-settlements-against-provider.md)** — *P1*
+  The half of the ledger fix that was not done. `READ-FIRST` argues this repo's $0
+  is real **because** the ledger refuses self-reported rows — that argument is
+  exactly as strong as this guard, and nothing yet asks a provider whether a
+  recorded row exists.
+- **[Findings carry no observation time](2026-09-17-findings-need-observation-timestamps.md)**
+  The published teardown states freshness as a rule; R6.1 is unimplemented, so
+  there is no window to be outside of. Seven findings are sitting unsent, measured
+  2026-09-15, and Supabase auto-revokes leaked keys.
+- **[scan-bundles: the highest-value surface is a dangling reference](2026-09-17-scan-bundles-the-missing-surface.md)**
+  The best axis in the repo's own expansion guide points at a skill that does not
+  exist. Bundles are **fetched, not cloned**, so this surface sidesteps the block
+  that stopped the cold drone — and a deployed storefront answers R1 for free.
 
 - **[The ledger guard tests presence, not verifiability](2026-09-13-ledger-guard-tests-presence-not-verifiability.md)**
   *Partly fixed 2026-09-14.* Clearing a settlement now requires naming an outside
@@ -237,7 +271,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_17 open, 1 done, 18 task files._
+_23 open, 1 done, 24 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -253,12 +287,18 @@ _17 open, 1 done, 18 task files._
 | [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
 | [Access without distribution: what to do with the Tally data now](2026-09-17-access-without-distribution.md) | open | P0 | 2 |
+| [Findings carry no observation time, so the freshness rule cannot be enforced](2026-09-17-findings-need-observation-timestamps.md) | open | P2 | 4 |
+| [Lane: sell the detector as an agent, where distribution is provided](2026-09-17-lane-agent-marketplace.md) | open | P1 | 1 |
+| [Lane: free fixes, for the credential rather than the fee](2026-09-17-lane-free-fixes-for-reputation.md) | open | P2 | 3 |
 | [Neither lead engine can run in a Claude Code web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md) | open | P2 | 4 |
 | [Lead generation for ourselves: the options that are not email, buying, or scraping](2026-09-17-lead-generation-for-ourselves.md) | open | P1 | 2 |
+| [Nothing reconciles a recorded settlement against the provider](2026-09-17-reconcile-settlements-against-provider.md) | open | P1 | 4 |
+| [scan-bundles: the highest-value surface is a dangling reference](2026-09-17-scan-bundles-the-missing-surface.md) | open | P2 | 3 |
 | [Sellman: be the answer when someone asks a model](2026-09-17-sellman-be-the-answer.md) | open | P2 | 3 |
 | [Sellman: the seven findings nobody has been told about](2026-09-17-sellman-disclosure-as-distribution.md) | open | P0 | 2 |
 | [Sellman: publish the refuter as a standalone package](2026-09-17-sellman-open-source-the-refuter.md) | open | P1 | 3 |
 | [Sellman: the teardown series](2026-09-17-sellman-teardown-series.md) | open | P2 | 3 |
+| [Territory: the markets our research has never looked at](2026-09-17-territory-language-and-geography.md) | open | P2 | 3 |
 <!-- /generated:tasks -->
 
 ## Writing one

@@ -65,6 +65,22 @@ export const EXPLORED_TERRITORIES = [
   // The only lane in this list that is a runnable job rather than a note: its
   // stages are real and the runner's gates apply to them.
   { ...vibeAppSecurityDescriptor, verdict: VERDICT.UNPROVEN },
+  { key: 'russia-cis-freelance', distribution: 'buyers_already_searching', verdict: VERDICT.KILLED,
+    note: 'Killed on the payment rail, not the market. Q1 2026 carries a granular infrastructure blockade - bank-specific SWIFT cutoffs, '
+      + 'correspondent-account bans, card-network exits - breaking payment mechanically whether or not any party is sanctioned; PayPal '
+      + 'effectively unavailable. Same shape as algora-bounties: volume is irrelevant when the money cannot arrive. Researched 2026-09-17.' },
+  { key: 'china-freelance', distribution: 'buyers_already_searching', verdict: VERDICT.UNPROVEN,
+    note: 'No usable data on India->China individual payment rails. Known shape (local entity, Alipay/WeChat) makes answering gate 1 expensive '
+      + 'in itself. Unproven rather than guessed - do not build toward it before the rail question is answered. Researched 2026-09-17.' },
+  { key: 'latam-non-english-content', distribution: 'must_create_demand', verdict: VERDICT.UNPROVEN,
+    note: 'Workana: 2M freelancers, 600k companies, Spanish/Portuguese, commission falling 20/10/5% with relationship depth. Competing there as '
+      + 'another freelancer is the $10-40 race already lost. The untested part is CONTENT: all 13 counted competitors publish in English, so a '
+      + 'translated teardown competes against nothing. Near-zero cost, the artifact exists. Researched 2026-09-17.' },
+  { key: 'ai-agent-marketplaces', distribution: 'buyers_already_searching', verdict: VERDICT.UNPROVEN,
+    note: 'Agent market $7.6B 2025 to a projected $47B 2030; marketplace splits 70-85% to creator; productised agents $20-100/mo per user. Named '
+      + 'top-2026 niches include "financial reconciliation bots for small businesses", which is what packages/core/tally/duplicate-invoice.js is. '
+      + 'The marketplace supplies distribution - the half every lane here has died on. Gate 1 open: which marketplace pays an Indian individual. '
+      + 'Researched 2026-09-17.' },
   { key: 'taskforce-moltjobs', distribution: 'buyers_already_searching', verdict: VERDICT.KILLED,
     note: 'Effectively zero settled volume measured. Shipped DISABLED.' }
 ];

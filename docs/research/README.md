@@ -29,6 +29,19 @@ of how good it sounded in the session that produced it.
   derive. Notes the limit that a model cannot introspect its own training, so
   the method must be black-box.
 
+- **[What the new model capabilities open](2026-09-17-what-the-new-model-capabilities-open.md)**
+  — Written after the operator pushed back on a run of pessimistic findings, and
+  the pushback was right. The "code barrier → commodity" rule is about **settled**
+  capability; applying it to a two-week-old one confuses *will* with *has*.
+  Verified against the API reference and live search: **Outcomes** (a separate
+  evaluator agent grading against a developer-written rubric) is a structural
+  answer to this repo's diagnosed failure — a success signal the producing agent
+  cannot satisfy from inside the building — and the rubric is already written, in
+  the security-check spec. Scheduled deployments and per-session containers
+  dissolve two blockers recorded yesterday as structural. Astra (OpenAI, released
+  2026-09-03) means agent-written code is a **growing** substrate, not a fixed
+  stock — flagged as inference, not measurement.
+
 - **[The lead run that found no leads, and the price that moved](2026-09-17-warm-lead-run-and-the-price-that-moved.md)**
   — Ran the lead engines for real. Produced **zero** leads, and measured why:
   searching for demand returned suppliers, six queries running. The finding that

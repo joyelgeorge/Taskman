@@ -1,11 +1,8 @@
 # Our scanner called 19 apps critical. After hand-verifying all 22, seven had something worth sending.
 
-**Status: draft, cleared for publication.** Written 2026-09-17 for an outside
-reader — Hacker News, r/vibecoding, the Lovable and Bolt communities.
-
-Two constraints shaped it, and both are load-bearing. **Every number is our own
-tool's**, not a competitor's. **No target is named**, because several findings are
-real and unfixed.
+*Every number below is our own scanner's. We have not benchmarked anyone else's
+tool and are not making any claim about one. No repository or business is named,
+because several of these findings are real and still unfixed.*
 
 ---
 

@@ -33,7 +33,8 @@
     "warm-scout": "node --env-file-if-exists=.env scripts/warm-lead-scout.mjs",
     "self-serve": "node --env-file-if-exists=.env scripts/self-serve-scan.mjs",
     "scan-server": "node --env-file-if-exists=.env packages/web/scan-server/server.js",
-    "tally": "node --env-file-if-exists=.env scripts/tally-audit.mjs"
+    "tally": "node --env-file-if-exists=.env scripts/tally-audit.mjs",
+    "jez-research": "node --env-file-if-exists=.env scripts/jez-research.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1"

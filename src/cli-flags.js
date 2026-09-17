@@ -19,3 +19,8 @@ export function readFlag(args = [], name) {
   // the next flag.
   return next && !next.startsWith('--') ? next : null;
 }
+
+export function hasFlag(args = [], name) {
+  return args.includes(`--${name}`) || args.some(a => a.startsWith(`--${name}=`));
+}
+

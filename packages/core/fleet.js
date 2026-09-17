@@ -185,7 +185,14 @@ export const CRON_DEFINITIONS = [
     schedule: '0 0 * * *',
     maxSilenceSeconds: 115200,
     description: 'Snapshots the finance report once a day to track net position, burn rate, and runway trends.'
+  },
+  {
+    cronName: 'jez-research',
+    schedule: '*/30 * * * *',
+    maxSilenceSeconds: 21600,
+    description: 'Autonomous empirical research pass via Jez AI Gateway; records findings in research_notes and feeds Jez training corpus.'
   }
 ];
 
 export const CRON_NAMES = CRON_DEFINITIONS.map(c => c.cronName);
+

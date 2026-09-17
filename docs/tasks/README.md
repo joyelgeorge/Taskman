@@ -31,6 +31,32 @@ that remains true however interesting the architecture is.**
   Detector built and mutation-tested. Its claim to P0 was that the trusted
   relationship already existed. It does not.
 
+### Sellman — free distribution, built from what the repo already measured
+
+The selling arm. Every item costs nothing but time, produces its own material
+from scan data the repo already holds, and requires no relationship to
+originate. Ordered by how close each is to a named human.
+
+- **[The seven findings nobody has been told about](2026-09-17-sellman-disclosure-as-distribution.md)** — *level 2, P0*
+  Seven compelling findings, two drafts written, **nothing sent**. A free
+  unconditional disclosure is welcome contact with someone selected *because*
+  they have the problem — the only free channel where the recipient is
+  pre-qualified by construction. Everything else here manufactures attention this
+  already has.
+- **[Publish the refuter as a standalone package](2026-09-17-sellman-open-source-the-refuter.md)** — *level 3, P1*
+  Thirteen competitors ship detection; **none ships refutation**, because it makes
+  your own numbers smaller. Giving away the half that makes reports honest
+  advertises the half that makes them actionable, and every install is
+  distribution nobody had to ask for.
+- **[The teardown series](2026-09-17-sellman-teardown-series.md)** — *level 3, P2*
+  One artifact is an anecdote; the second makes it a method. Each piece costs a
+  day because the evidence already exists. **Do not write a third before measuring
+  the first two.**
+- **[Be the answer when someone asks a model](2026-09-17-sellman-be-the-answer.md)** — *level 3, P2*
+  People ask a model, not a search box. A competitor already sells AEO checks,
+  which is the best evidence the channel is worth occupying — and self-critical
+  measured content is what gets cited and what a marketing-led rival cannot write.
+
 ### P1
 
 - **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)** — *level 1*
@@ -206,7 +232,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_13 open, 1 done, 14 task files._
+_17 open, 1 done, 18 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -224,6 +250,10 @@ _13 open, 1 done, 14 task files._
 | [Access without distribution: what to do with the Tally data now](2026-09-17-access-without-distribution.md) | open | P0 | 2 |
 | [Neither lead engine can run in a Claude Code web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md) | open | P2 | 4 |
 | [Lead generation for ourselves: the options that are not email, buying, or scraping](2026-09-17-lead-generation-for-ourselves.md) | open | P1 | 2 |
+| [Sellman: be the answer when someone asks a model](2026-09-17-sellman-be-the-answer.md) | open | P2 | 3 |
+| [Sellman: the seven findings nobody has been told about](2026-09-17-sellman-disclosure-as-distribution.md) | open | P0 | 2 |
+| [Sellman: publish the refuter as a standalone package](2026-09-17-sellman-open-source-the-refuter.md) | open | P1 | 3 |
+| [Sellman: the teardown series](2026-09-17-sellman-teardown-series.md) | open | P2 | 3 |
 <!-- /generated:tasks -->
 
 ## Writing one

@@ -213,8 +213,11 @@ Stated plainly so the gap is visible rather than implied:
    would refute gets no such check, and nothing composes refuters across
    detectors or records that a refutation happened. R4 asks for refutation as a
    pipeline stage with its own output; what exists is one hard-won conditional.
-   The reachability refuter (F4) and the finding-time business refuter (F6) have
-   no implementation at all.
+   **The reachability refuter is built as of 2026-09-17** —
+   `packages/core/findings/reachability.js`, honouring R4.3 (a deterministic
+   refutation kills the claim, no score) and R4.4 (disagreement surfaces as
+   `contested` rather than averaging). The finding-time business refuter (F6)
+   still has no implementation.
 2. ~~**R5.2 does not exist.**~~ **Built 2026-09-17** —
    `packages/core/findings/report.js`. `summarizeFindings()` collapses raw
    findings to problems per (kind, file) and reports the inflation factor;

@@ -32,12 +32,15 @@ fix is the deliverable, not the list of problems.
 > **Fulfilment status, 2026-09-17.** This offer made three technical promises
 > and two were unbuilt when it was written — a live case of selling ahead of the
 > product, which is the usual failure here running backwards.
-> **Now built** (`packages/core/findings/report.js`): distinct-problem counting,
-> so no count leaves without a unit, and `proveFixed()`, the re-run diff that is
-> the deliverable above. **Still unbuilt: the reachability refuter** — the claim
-> "no injection flagged in code no request reaches" is currently true only
-> because a human checked it once. Do not repeat that line to a customer until
-> it is code.
+> **All three are now built.** `packages/core/findings/report.js` gives
+> distinct-problem counting, so no count leaves without a unit, and
+> `proveFixed()`, the re-run diff that is the deliverable above.
+> `packages/core/findings/reachability.js` gives the refuter: two independent
+> signals — is this on a request path, and is the value attacker-settable —
+> kept separate rather than averaged, so a shell call in `scripts/` that
+> interpolates `req.body` comes back **contested** instead of dismissed.
+> Every promise in this document is code, and each was verified by breaking it
+> and watching a test go red.
 
 **What makes it different from the free scanners:** every finding has survived a
 refutation pass. No count without a unit, no route called naked when a helper

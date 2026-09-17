@@ -24,7 +24,7 @@ export async function buildAuditSite() {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
-  const files = ['index.html', ...AUDIT_ASSETS];
+  const files = ['index.html', 'scan.html', 'test-fixture.html', 'test-fixture.js', ...AUDIT_ASSETS];
   for (const name of files) await copyFile(join(sourceDir, name), join(outDir, name));
 
   // Static host, no build step, no framework — say so where the next person looks.

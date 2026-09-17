@@ -1,0 +1,51 @@
+name: cron · warm-lead-scout
+
+# The PRIMARY lead engine. Finds people ALREADY asking for help securing their
+# vibe-coded app (GitHub issue/discussion search), persists the open threads as
+# warm leads, and flags each for a human to read before any reply. Public and
+# read-only. Contacts nobody. Warm inbound converts on a different order from the
+# cold vibe-lead-sweep, which is the low-yield background funnel.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * *'   # daily 07:00 UTC — warm intent is perishable, check often
+
+permissions:
+  contents: read
+
+jobs:
+  scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+
+      - name: Apply pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is not set — skipping migrations so the scout reports the setup error itself."
+            exit 0
+          fi
+          npm run migrate
+
+      - name: Scout warm inbound intent
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node scripts/warm-lead-scout.mjs | tee warm.out
+          {
+            echo '## Warm-lead scout'
+            echo '```'
+            grep -E 'thread|persisted' warm.out || echo 'no warm threads this run'
+            echo '```'
+            echo '_Each still needs a human to read the thread and judge genuine intent before any reply._'
+          } >> "$GITHUB_STEP_SUMMARY"

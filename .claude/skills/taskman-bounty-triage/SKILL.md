@@ -1,7 +1,7 @@
 ---
 name: taskman-bounty-triage
 description: >-
-  Inspect, triage, and prepare candidate code fixes for open bounties and issues in Taskman.
+  Use when a bounty or paid issue is being considered, before any work is spent on it, and before any external pull request or disclosure is prepared. Inspect, triage, and prepare candidate code fixes for open bounties and issues in Taskman.
   Enforces P0 security rules: honeypot detection, anti-auto-submit invariant (Algora & 37 projects),
   verifiable escrow checks, repo AI policy scans, and human disclosure generation.
 metadata:

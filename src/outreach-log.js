@@ -48,8 +48,7 @@ export const KILL_AFTER_ATTEMPTS = 50;
 const mem = { attempts: [] };
 const nowIso = () => new Date().toISOString();
 
-/** timestamptz returns a Date from PostgreSQL and a string from memory. */
-const iso = v => (v ? (v instanceof Date ? v : new Date(v)).toISOString() : null);
+const toIso = (v) => v instanceof Date ? v.toISOString() : (v ? String(v) : null);
 
 const normalize = (row) => row && ({
   id: row.id,
@@ -58,8 +57,8 @@ const normalize = (row) => row && ({
   prospect: row.prospect,
   outcome: row.outcome,
   note: row.note ?? null,
-  attemptedAt: iso(row.attempted_at ?? row.attemptedAt),
-  respondedAt: iso(row.responded_at ?? row.respondedAt)
+  attemptedAt: toIso(row.attempted_at ?? row.attemptedAt),
+  respondedAt: toIso(row.responded_at ?? row.respondedAt)
 });
 
 /**

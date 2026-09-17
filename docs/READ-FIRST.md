@@ -1,5 +1,21 @@
 # Read this before you write any code
 
+> **2026-09-16 — the first pull lane is live.** A self-serve security scanner runs
+> at https://taskman-operator.web.app/scan.html (frontend) backed by
+> https://taskman2.onrender.com (scan server). A stranger pastes their app URL,
+> sees real counts of exposed keys / missing RLS, pays \$5 via PayPal, and the
+> exact fixes unlock. The paywall is verified fail-closed. This is the first
+> revenue path that needs no per-customer outreach. It still needs one launch post
+> to get traffic, and settlements must be recorded via close-to-settlement (rail
+> paypal) when they land — the ledger does not fill itself.
+
+
+**Run `npm run brief` first.** It reconstructs the position from the stores
+rather than recalling it, and labels every row `verified`, `empty`, or
+`UNKNOWN — store unreachable`. It exits non-zero when it could not reach a store,
+because an incomplete position must not be readable as a complete one. Do not
+quote a number it did not print — including a zero.
+
 The goal of this repository is **money that has arrived** — a row in
 `settlements` with a verified `source` and a real `externalRef`. Not a pipeline
 that could produce one. Not a scanner that finds things worth selling. Not a
@@ -15,9 +31,11 @@ Every hour spent here has felt productive. Very little of it has been revenue.
 
 Verified against the source, not recalled:
 
-- **Six code paths can record a settlement** — `audit-fulfilment`,
-  `scan-fulfilment`, `workers/execute`, `autonomous-engine`, `orders`, and the
-  Stripe `settlement-verifier`. The machinery is finished.
+- **Seven code paths can record a settlement** — `audit-fulfilment`,
+  `scan-fulfilment`, `workers/execute`, `autonomous-engine`, `orders`, the
+  Stripe `settlement-verifier`, and the job `runner`. The machinery is finished,
+  and it keeps growing while the count of travelled paths stays at zero — which
+  is the whole diagnosis in one line.
 - **None of them has ever been travelled.** The ledger refuses self-reported
   revenue by construction (`money-ledger.js`: `source` must be stripe, paypal,
   bank or manual_receipt, and `externalRef` must be non-empty), so the absence
@@ -46,6 +64,32 @@ supply again. That is the failure this project already diagnosed once:
 Improving the machine is not forbidden. Mistaking it for progress toward the
 goal is. Both can be true: a change can be worth making *and* be zero dollars.
 Say which one it is, out loud, before starting.
+
+## Which lane to work: rank by distribution difficulty
+
+The question above decides whether a change is worth making. This one decides
+*which lane* to work when several could produce a settlement row.
+
+The ranking method has changed twice. It was **"sort by revenue ceiling"**,
+which produced lanes with big theoretical markets and no way in. It was then
+**"sort by how autonomous the AI loop is"**, which produced the most finished
+machine in this repository's history and zero dollars. Both are replaced by:
+
+> **Rank by distribution difficulty — who will say yes without a sales
+> conversation?**
+
+This sits directly on the constraint recorded further down this document: a
+machine cannot originate a trusted relationship. Ranking by ceiling or by
+autonomy both ignore that constraint, which is why both produced supply. Ranking
+by distribution makes it the first filter instead of the last discovery.
+
+In practice it inverts the board. A small wedge aimed at somebody who already
+trusts the operator outranks a large wedge aimed at strangers, **even when the
+large one is more interesting to build and worth more if it lands**. Interest
+and ceiling are why the previous two methods failed.
+
+Decided 2026-09-14, from the operator's wedge-selection discussion. Applied in
+`docs/tasks/` — see the Tally wedge, which is P0 on distribution alone.
 
 ## What counts as progress
 

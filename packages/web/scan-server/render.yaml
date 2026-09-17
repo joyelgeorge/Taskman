@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: vibe-scan
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci
+    startCommand: node packages/web/scan-server/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: REPORT_PRICE_USD
+        value: "5"
+      - key: ALLOW_ORIGIN
+        sync: false        # your Firebase hosting origin, e.g. https://taskman-operator.web.app
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_SECRET
+        sync: false
+      - key: PAYPAL_ENV
+        value: "live"

@@ -1,4 +1,5 @@
 import { databaseEnabled, query, truncateForTesting } from './db.js';
+import { readStore } from './store-state.js';
 
 /**
  * Settlement-verified money ledger.
@@ -382,6 +383,42 @@ export async function listAttempts({ rail = null, limit = 200 } = {}) {
   return result.rows.map(normalizeAttempt);
 }
 
+/**
+ * The settlement position, carrying how the ledger answered.
+ *
+ * `listSettlements` below returns an empty array when no database is configured,
+ * which is byte-identical to the answer from a reachable database holding zero
+ * rows. That is harmless only while the true count is zero. Ask through this
+ * when the answer will be reported as fact — it returns `unknown` with a null
+ * count rather than a zero somebody would quote.
+ */
+export async function settlementPosition({ enabled = databaseEnabled, read = null } = {}) {
+  return readStore({
+    label: 'settlements',
+    enabled,
+    read: read || (async () => (await query('SELECT * FROM settlements')).rows)
+  });
+}
+
+/**
+ * Memory-mode reads in this module.
+ *
+ * The `if (!databaseEnabled)` branches below (listSettlements, listAttempts and
+ * friends) return in-memory data that a caller cannot, on its own, tell apart
+ * from a verified database answer. Our own scanner flags this exact pattern —
+ * findStorageDivergence in codebase-audit.js counts 11 here.
+ *
+ * They are left as-is on purpose. The dangerous case — the settlement position
+ * being REPORTED as fact — goes through settlementPosition() above, which carries
+ * a verified/empty/unknown state (src/store-state.js). Every reporting surface
+ * (scripts/brief.mjs, scripts/next.mjs) reads through that vocabulary, verified
+ * 2026-09-15, so no number a session states is sourced from a raw memory read.
+ *
+ * The rest are convenience reads no session quotes. Converting all of them would
+ * churn return shapes the suite asserts against for no live risk. If a NEW
+ * reporting surface needs one of these, give it a store state at that point —
+ * not pre-emptively.
+ */
 export async function listSettlements({ rail = null, limit = 200 } = {}) {
   if (!databaseEnabled) {
     return memory.settlements

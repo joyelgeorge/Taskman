@@ -204,12 +204,43 @@ export async function healthCheck() {
  * packages/db/index.js's truncateForTesting; src/ and packages/ hold separate
  * pools, so each needs its own. See that copy for why this exists.
  */
+/**
+ * Does this connection string point at a database it is safe to empty?
+ *
+ * Localhost, a loopback address, or a database whose name ends in `test`. Any
+ * managed host — Neon, Supabase, RDS — is production until proven otherwise, and
+ * anything unparseable is production too: failing open here would defeat the
+ * point of asking.
+ */
+export function looksEphemeral(url) {
+  if (!url || typeof url !== 'string') return false;
+  let parsed;
+  try { parsed = new URL(url); } catch { return false; }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local')) return true;
+
+  const name = parsed.pathname.replace(/^\//, '').toLowerCase();
+  return name === 'test' || /(^|[_-])test$/.test(name);
+}
+
 export async function truncateForTesting(tables = []) {
   if (!databaseEnabled || tables.length === 0) return;
   if (process.env.NODE_ENV !== 'test') {
     throw new Error(
       'truncateForTesting refuses to run with NODE_ENV=' + (process.env.NODE_ENV || 'unset')
       + '. It empties real tables and is only ever safe from the test suite; set NODE_ENV=test.'
+    );
+  }
+  // NODE_ENV=test is one `export` away on any machine, and five test files empty
+  // real tables through this. So also require the target to look like a database
+  // that exists to be thrown away.
+  if (!looksEphemeral(runtimeConfig.database.url) && process.env.TASKMAN_ALLOW_TRUNCATE !== '1') {
+    const host = (() => { try { return new URL(runtimeConfig.database.url).host; } catch { return 'unparseable'; } })();
+    throw new Error(
+      `truncateForTesting refuses to empty ${tables.join(', ')} on ${host}: that does not look like `
+      + 'a throwaway database. Point DATABASE_URL at localhost or a *_test database, or set '
+      + 'TASKMAN_ALLOW_TRUNCATE=1 if you are certain.'
     );
   }
   await query(`TRUNCATE TABLE ${tables.join(', ')} RESTART IDENTITY CASCADE`);

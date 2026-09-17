@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join as pathJoin } from 'node:path';
 import {
   getAutonomousEngine,
   resetAutonomousEngineForTesting,
@@ -7,16 +10,19 @@ import {
   DEFAULT_TWEAK_CONFIG
 } from '../src/autonomous-engine.js';
 
+let STAGING_ROOT = null;
 test.beforeEach(async () => {
   resetAutonomousEngineForTesting();
+  STAGING_ROOT = await mkdtemp(pathJoin(tmpdir(), 'staged-'));
 });
 
 test.afterEach(async () => {
   resetAutonomousEngineForTesting();
+  if (STAGING_ROOT) { await rm(STAGING_ROOT, { recursive: true, force: true }); STAGING_ROOT = null; }
 });
 
 test('AutonomousEngine: initializes with default stopped state and config', () => {
-  const engine = getAutonomousEngine();
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT });
   const status = engine.getStatus();
 
   assert.equal(status.state, ENGINE_STATE.STOPPED);
@@ -27,7 +33,7 @@ test('AutonomousEngine: initializes with default stopped state and config', () =
 });
 
 test('AutonomousEngine: transitions cleanly between start, pause, and stop', () => {
-  const engine = getAutonomousEngine({ cycleIntervalSec: 60 });
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT, cycleIntervalSec: 60 });
 
   const startRes = engine.start();
   assert.equal(startRes.ok, true);
@@ -43,7 +49,7 @@ test('AutonomousEngine: transitions cleanly between start, pause, and stop', () 
 });
 
 test('AutonomousEngine: updates tweak configuration parameters safely', () => {
-  const engine = getAutonomousEngine();
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT });
 
   const tweakRes = engine.tweak({
     cycleIntervalSec: 5,
@@ -65,8 +71,7 @@ test('AutonomousEngine: updates tweak configuration parameters safely', () => {
 });
 
 test('AutonomousEngine: runs a complete autonomous hunting, triage, and staging cycle', async () => {
-  const engine = getAutonomousEngine({
-    cycleIntervalSec: 100,
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT, cycleIntervalSec: 100,
     minRewardDollars: 10,
     minExpectedValue: 5,
     autoExecuteDeliverables: true
@@ -96,8 +101,7 @@ test('AutonomousEngine: runs a complete autonomous hunting, triage, and staging 
 });
 
 test('AutonomousEngine: filters out opportunities below reward or EV threshold', async () => {
-  const engine = getAutonomousEngine({
-    minRewardDollars: 500, // Very high minimum reward filter
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT, minRewardDollars: 500, // Very high minimum reward filter
     minExpectedValue: 400
   });
 
@@ -111,8 +115,7 @@ test('AutonomousEngine: filters out opportunities below reward or EV threshold',
 });
 
 test('AutonomousEngine: stages ground truth deliverables and accurately distinguishes tested code from pending items', async () => {
-  const engine = getAutonomousEngine({
-    cycleIntervalSec: 100,
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT, cycleIntervalSec: 100,
     minRewardDollars: 10,
     minExpectedValue: 5,
     autoExecuteDeliverables: true
@@ -157,8 +160,7 @@ test('AutonomousEngine: stages ground truth deliverables and accurately distingu
 });
 
 test('AutonomousEngine: enters idle state and prevents duplicate staging when all candidates are already staged', async () => {
-  const engine = getAutonomousEngine({
-    cycleIntervalSec: 100,
+  const engine = getAutonomousEngine({ stagedDir: STAGING_ROOT, cycleIntervalSec: 100,
     minRewardDollars: 10,
     minExpectedValue: 5,
     autoExecuteDeliverables: true

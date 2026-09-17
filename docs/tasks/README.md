@@ -5,52 +5,214 @@ instead of blocking whoever found it.
 
 ## Open, by priority
 
-Priority is against one question: **which settlement row does this produce, and
-who pays it?** (see `docs/READ-FIRST.md`).
+Two questions set priority. **Which settlement row does this produce, and who
+pays it?** (`docs/READ-FIRST.md`), and then, between lanes that could both
+produce one: **who will say yes without a sales conversation?**
 
-### Critical — may invalidate or unblock a whole lane
+The second question was adopted on 2026-09-14. It replaced "sort by revenue
+ceiling" and "sort by how autonomous the loop is", both of which produced
+finished machinery and no revenue.
+
+Every task below is labelled with the progress level it targets. Only level 1 is
+the goal. **Revenue work outranks everything in the Architecture section, and
+that remains true however interesting the architecture is.**
+
+### P0 — warm distribution, the constraint that has blocked every lane
+
+- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)** — *level 1*
+  The first wedge where the trusted relationship is claimed to **already exist** —
+  one real retailer, no cold outreach. **Verify the access claim before building:
+  it is one question to the operator and the entire P0 rests on it.**
+
+### P1
+
+- **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)** — *level 1*
+  Listed P0 in the source discussion; demoted for a crowded category and the
+  liability a filing draft carries.
+
+### P2 — the cold-scan funnel
+
+- **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)** — *level 1*
+  Blocked on the first wedge producing a settlement, not a demo.
+
+### Architecture — accumulate, don't re-derive (all level 4)
+
+Phases of `docs/superpowers/specs/2026-09-15-accumulating-architecture-design.md`.
+**Phase 0 is built** — `npm run brief`, `src/store-state.js`, and
+`settlementPosition()`. A session with no `DATABASE_URL` can no longer be told
+the revenue is zero.
+
+- **[The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md)** — *level 4*
+  Schema-enforced OpenAPI/JSONSchema boundaries and topological DAG execution in `runner.js`.
+- **[The Creative Engine: Orthogonal candidate generator](2026-09-16-orthogonal-hypothesis-generator.md)** — *level 4*
+  Parallel contrasting generation pipelines (adversarial taint vs. defensive auth wrappers) with deterministic AST symbolic pruning.
+- **[The Bridge: Contract compiler and shadow execution](2026-09-16-contract-compiler-and-shadow-execution.md)** — *level 4*
+  Plan-to-DAG compiler, sandbox shadow execution, and hard human-in-the-loop gates for high-consequence state shifts.
+
+
+### P3 — parked, with stated revisit conditions
+
+
+- **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
+  Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
+  all blocked on credibility with strangers.
+
+### Maintenance — label it as such
+
+All level 4. Named as maintenance, per `deciding-the-next-step`.
 
 - **[The ledger guard tests presence, not verifiability](2026-09-13-ledger-guard-tests-presence-not-verifiability.md)**
-  *Partly fixed 2026-09-14* — clearing a settlement now requires naming an outside
+  *Partly fixed 2026-09-14.* Clearing a settlement now requires naming an outside
   observation, so the fabricated $220 is refused. Still open: **nothing reconciles
-  recorded rows back against the provider**, which is the only check that leaves
-  the process. The claim that this repo's $0 is real rests on this guard.
-- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**
-  The scan lane assumes vibe-coded businesses publish their source. Untested, and
-  probably mostly false. **Measure before investing further in scanning.**
-- **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**
-  The repo calls `warm-lead-scout` the primary engine. It has no cron, no script
-  and no persistence. All the engineering went to the funnel labelled low-yield.
+  recorded rows back against the provider** — the only check that leaves the
+  process. The claim that this repo's $0 is real rests on this guard, which is why
+  it stays listed rather than closed.
 - **[Neither lead engine can run in a web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md)**
   Measured by trying: `gh` is absent and repo scoping refuses third-party clones,
   so the cold drone has no input; Reddit and Stack Overflow refuse the crawler, so
-  the warm engine cannot see the warmest intent. **Building more of either from a
-  web session cannot be tested from a web session.**
-- **[The star filter selects against businesses](2026-09-12-star-filter-selects-against-businesses.md)**
-  Measured: the search sees 25 of 1,034 repos. Stars proxy for OSS popularity,
-  not commerce, so the filter and the business qualifier fight each other.
-
-### High
-
-- **[No outreach attempt is ever counted](2026-09-12-no-outreach-attempt-has-ever-been-counted.md)**
-  Kill criteria exist and can never fire, so no lane can be honestly proven or
-  retired.
+  the warm engine cannot see the warmest intent. Relevant to the P2 funnel —
+  **building more of either from a web session cannot be tested from one.**
 - **[Test resets clear memory and leave PostgreSQL untouched](2026-09-14-test-resets-do-not-reset-postgresql.md)**
-  *Fixed 2026-09-14.* Four modules' test resets never cleared their tables, so the
+  *Fixed 2026-09-14.* Five modules' resets never cleared their tables, so the
   kill-criterion guard deciding whether a lane lives or dies was verified only in
-  the mode where nothing persists. Also records that the four "permanent" failures
-  in both modes were **the wrong Node version, not a bug** — the suite is green on
-  the pinned runtime. **Run `nvm use` before trusting a test result here.**
-  The suite now passes fully: 816/0 memory, 831/0 PostgreSQL.
-- **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**
-  Minutes to fix; contributing nothing to every run.
-- **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**
-  Needs a manual workflow run. Blocks the first real sweep.
+  the mode where nothing persists. Also records that four "permanent" failures were
+  **the wrong Node version, not a bug**. Suite is green both modes: 816/0 and 831/0.
+- **[No outreach attempt is ever counted](2026-09-12-no-outreach-attempt-has-ever-been-counted.md)**
+  Kill criteria exist and can never fire. *Tooling now exists* — `scripts/outreach.mjs`
+  logs and summarises — so what remains is that nobody has run it.
+- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**,
+  **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**,
+  **[The star filter selects against businesses](2026-09-12-star-filter-selects-against-businesses.md)**,
+  **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**,
+  **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**
+  — the cold-scan funnel's own defects. All subordinate to the P2 question of
+  whether that funnel is worth running at all.
 
-### Medium
 
-- **[Candidate cap is 75 against a 1,000 pool](2026-09-12-candidate-cap-is-75-against-a-1000-pool.md)**
-- **[Lead drones have no dedupe](2026-09-12-lead-drones-have-no-dedupe.md)**
+## Closed
+
+- ~~Wedges needing a licensed human~~ — closed out of the active queue. It is a
+  kill-note (healthcare, legal, manufacturing, construction — detection tractable,
+  fulfilment needs a licensed human), and that verdict now lives permanently in
+  `packages/core/territory/registry.js` as `licensed-human-verticals`, which is
+  where a discovery run will meet it. A kill-note does not need to sit among open
+  work.
+
+- ~~The deliverable-staging test fails intermittently~~ — root cause was a fixed
+  shared on-disk staging directory (`data/staged-deliverables/`) used by a
+  stateful engine with existence checks, raced across the parallel test
+  processes `node --test` spawns. `stagedDir` is now injectable (production
+  default unchanged) and each test gets an isolated temp dir. 8 of 8 full-suite
+  runs green, where the flake previously showed at ~1 in 6. The assertion was
+  not relaxed.
+
+- ~~Ten more storage-divergence reads~~ — **decided: documented, not migrated**,
+  the branch the task allowed. Verified both reporting surfaces (brief, next)
+  read through the store-state vocabulary, so no reported number comes from a raw
+  memory read. The convenience reads no session quotes are documented in
+  money-ledger.js as memory-mode-only; converting them would churn asserted
+  return shapes for no live risk.
+
+- ~~The primary lead engine is not running~~ — **automated** (option 1). `npm run
+  warm-scout` searches GitHub for people asking for help securing their app,
+  persists the open threads as warm leads flagged for human read, and a daily
+  cron runs it. A live run surfaced 65 real warm-intent threads. The reply and
+  the intent-judgement stay human, which is correct; the discovery no longer does.
+
+- ~~Lead drones have no dedupe~~ — `runLeadDrone` now reads existing leads for
+  the campaign, keys them by a signal's url (falling back to title), and skips
+  ones already seen, across flights and within one flight. Mirrors the scan
+  path's dedupe. Verified by mutation.
+
+- ~~Is public GitHub the right surface?~~ — answered. Repo scanning works but is
+  the small, closing surface: 4 exposed secrets from 199 candidates, and the
+  keys it finds are being auto-revoked by Supabase's GitHub partnership. Deployed
+  bundles are ~50x the hit rate (11% of 20,052 URLs) and immune to that
+  revocation. See docs/research/2026-09-15-is-this-lane-worth-48-more-attempts.md.
+- ~~Scan deployed bundles, not GitHub repos~~ — built: `packages/core/jobs/bundle-scan.js`
+  fetches a deployed app and runs the existing secret detector over its JS,
+  flagging service_role and never anon. Target-list sourcing from indie-launch
+  directories is the remaining operator step, not code.
+
+- ~~`findUnauthenticatedAdminRoutes` reports guarded routes as unauthenticated~~ —
+  it missed guards delegated to a named helper. Fixed and mutation-tested; the
+  re-audit cleared 10 false positives across two repos and confirmed a real
+  auth bypass in a third that the noise had been hiding.
+
+- ~~Refactor fulfilment onto the job contract~~ — **closed as not worth it**, the
+  outcome the task explicitly allowed. `vibe-app-security` proves the contract
+  against a real lane without touching `audit-fulfilment` or `scan-fulfilment`,
+  which remain the only two finished settlement paths and have never run in
+  production. The contract is worth less than the paths.
+
+- ~~Claim–reality agreement tests~~ — `test/claim-reality-agreement.test.js`
+  checks the settlement-path count and names, every file and npm script the
+  trusted docs point at, and the advertised test count, each against the
+  filesystem rather than a cached summary. It immediately caught real drift: the
+  job runner had made READ-FIRST's "six code paths" wrong. The ledger assertion
+  is opt-in via `TASKMAN_VERIFY_LEDGER=1`, because CI's throwaway database is
+  empty by construction and would have made it a test of nothing.
+
+- ~~The revenue-job runner and its four gates~~ — `packages/core/jobs/runner.js`,
+  `src/job-run-log.js`, migration `036_job_runs.sql`. All four gates verified by
+  removing them. The gate-4 ordering test was vacuous on first write — it passed
+  when the log was made fire-and-forget — and now uses a genuinely slow log so it
+  can fail.
+
+- ~~Job descriptors and a distribution scorer~~ — `packages/core/jobs/job-spec.js`
+  holds the shape, the registry holds the data, and `scoring.js` now weights
+  distribution at 0.35 with a `relationship_exists` label it previously could not
+  express. Proven by mutation: the old weight, a missing label, a cold lane made
+  fatal, a job charging without verify, and a lane given a flattering label each
+  turn a test red.
+
+- ~~Research notes and countable tasks~~ — `research_notes` (migration 035) plus
+  `npm run research`, and task front matter with a generated index block that a
+  test compares against the files. Proven by mutation: stripping a file's front
+  matter, adding an unindexed task, and making the parser drop what it cannot
+  read each turn a test red.
+
+- ~~`listSettlements` cannot tell "no money" from "no database"~~ — `src/store-state.js`
+  gives reads a `verified / empty / unknown` state, and `settlementPosition()`
+  uses it. Proven by mutation: reinstating the empty-array fallback turns the
+  test red.
+- ~~`npm run brief` reconstructs the position~~ — built, wired into `CLAUDE.md`
+  and `READ-FIRST.md`, exits non-zero on an unreachable store.
+
+- ~~Star filter selects against businesses~~ — removed; the search now sorts by
+  `updated` and the pool went from 25 reachable repos to 199 candidates.
+- ~~One search query returns zero~~ — deleted, and a zero-result query now warns
+  loudly instead of contributing nothing in silence.
+- ~~Candidate cap is 75 against a 1,000 pool~~ — paginates to a stated
+  `CANDIDATE_BUDGET = 120` with the pool sizes recorded in the source.
+- ~~No outreach attempt is ever counted~~ — `src/outreach-log.js`, migration
+  `034_outreach_attempts.sql`, `npm run outreach`, and a 50-attempt kill
+  criterion that can now actually fire.
+- ~~Verify the CI database is migrated~~ — proven by run
+  [34857396120](https://github.com/joyelgeorge/Taskman/actions/runs/34857396120):
+  migrations applied and `persisted: 5 new`.
+
+## Every task file, counted
+
+Generated by `npm run tasks` from the front matter in each file. The curated
+sections above are written by hand; this one exists so that nothing can quietly
+fall out of the list, which the section below warns about and which has happened.
+
+<!-- generated:tasks -->
+_9 open, 0 done, 9 task files._
+
+| Task | Status | Priority | Level |
+| --- | --- | --- | --- |
+| [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
+| [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
+| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
+| [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
+| [The Bridge: Contract compiler, shadow execution, and human gatekeeper](2026-09-16-contract-compiler-and-shadow-execution.md) | open | P2 | 4 |
+| [The Creative Engine: Orthogonal candidate generator with symbolic pruning](2026-09-16-orthogonal-hypothesis-generator.md) | open | P2 | 4 |
+| [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
+| [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
+| [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
+<!-- /generated:tasks -->
 
 ## Writing one
 

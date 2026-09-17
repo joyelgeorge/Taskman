@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isNovel, toKey, EXPLORED_TERRITORIES, VERDICT } from '../packages/core/territory/registry.js';
-import { scoreTerritory, rankTerritories } from '../packages/core/territory/scoring.js';
+import { scoreTerritory, rankTerritories, DIMENSIONS } from '../packages/core/territory/scoring.js';
 
 test('the registry records every explored lane with a verdict and a reason', () => {
   assert.ok(EXPLORED_TERRITORIES.length >= 8);
@@ -58,4 +58,55 @@ test('rankTerritories sorts best-first and drops sub-floor candidates', () => {
   const ranked = rankTerritories([weak, good]);
   assert.equal(ranked[0].title, 'a');
   assert.ok(!ranked.some((t) => t.title === 'b'), 'capped weak candidate dropped by floor');
+});
+
+// Phase 2: the ranking principle adopted 2026-09-14 — rank by distribution
+// difficulty, who will say yes without a sales conversation — moved out of
+// READ-FIRST and into the code that applies it.
+
+test('a warm lane outranks a cold one that is better on every other dimension', () => {
+  // The Tally shape: slow, needs building, crowded category — but the customer
+  // already trusts the operator.
+  const warm = { title: 'tally', scores: {
+    timeToFirstDollar: 'months', payoutReach: 'paypal_or_bank',
+    feasibilityWithAssets: 'small_build', saturation: 'crowded',
+    distribution: 'relationship_exists'
+  } };
+  // The cold shape: fast, buildable today, underserved — and nobody has agreed
+  // to talk to us. Every lane that has died here had this shape.
+  const cold = { title: 'cold', scores: {
+    timeToFirstDollar: 'days', payoutReach: 'paypal_or_bank',
+    feasibilityWithAssets: 'direct', saturation: 'underserved',
+    distribution: 'must_create_demand'
+  } };
+
+  const ranked = rankTerritories([cold, warm]);
+  assert.equal(ranked[0].title, 'tally',
+    'the old weighting ranked the cold lane first, which is how every dead lane got built');
+});
+
+test('relationship_exists is a label the scorer knows, not an unknown', () => {
+  const r = scoreTerritory({ scores: { distribution: 'relationship_exists' } });
+
+  assert.equal(r.detail.distribution.value, 1);
+  assert.notEqual(r.detail.distribution.value, 0.1, 'an unknown label scores 0.1 — this must not be one');
+});
+
+test('cold outreach caps a lane without killing it', () => {
+  const cold = scoreTerritory({ scores: {
+    timeToFirstDollar: 'days', payoutReach: 'paypal_or_bank',
+    feasibilityWithAssets: 'direct', saturation: 'underserved',
+    distribution: 'must_create_demand'
+  } });
+
+  assert.ok(cold.capped, 'must_create_demand caps the composite');
+  assert.ok(cold.score > 0.2, 'but it is not fatal — the scan lane is cold and still worth running');
+  assert.ok(cold.score <= 0.5);
+});
+
+test('distribution now outweighs every other single dimension', () => {
+  const others = Object.entries(DIMENSIONS).filter(([k]) => k !== 'distribution');
+  for (const [name, cfg] of others) {
+    assert.ok(DIMENSIONS.distribution.weight > cfg.weight, `distribution must outweigh ${name}`);
+  }
 });

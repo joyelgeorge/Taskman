@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is your app leaking secrets? — free scan</title>
+<meta name="description" content="Paste your app's URL. In seconds, see whether your Supabase service_role or other API keys are exposed in your JavaScript bundle. Free scan; unlock the exact fix for $5.">
+<style>
+  :root { --bg:#0b0e14; --card:#131824; --fg:#e6edf3; --muted:#8b98a9; --line:#232a38;
+          --bad:#ff6b6b; --warn:#ffb84d; --ok:#3fb950; --accent:#4d9fff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; }
+  .wrap { max-width:680px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:1.9rem; line-height:1.15; margin:.2em 0 .3em; }
+  .sub { color:var(--muted); font-size:1.05rem; margin:0 0 1.6em; }
+  form { display:flex; gap:8px; flex-wrap:wrap; }
+  input[type=url] { flex:1; min-width:220px; padding:14px 16px; font-size:1rem; border-radius:10px;
+                    border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  button { padding:14px 22px; font-size:1rem; font-weight:600; border:0; border-radius:10px;
+           background:var(--accent); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:progress; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:22px; }
+  .count { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--line); }
+  .count:last-child { border-bottom:0; }
+  .count .n { font-weight:700; font-size:1.15rem; }
+  .bad .n { color:var(--bad); } .warn .n { color:var(--warn); }
+  .headline { font-size:1.3rem; font-weight:700; margin:0 0 4px; }
+  .muted { color:var(--muted); font-size:.92rem; }
+  .fix { border-left:3px solid var(--accent); padding:6px 0 6px 16px; margin:16px 0; }
+  .fix h3 { margin:0 0 8px; font-size:1.05rem; }
+  .fix li { margin:4px 0; }
+  pre { background:#0a0d13; border:1px solid var(--line); border-radius:8px; padding:10px 12px; overflow-x:auto; font-size:.85rem; }
+  .unlock { text-align:center; margin-top:18px; }
+  .price { font-size:2rem; font-weight:800; }
+  #paypal { margin-top:14px; max-width:320px; margin-inline:auto; }
+  .err { color:var(--bad); margin-top:14px; }
+  .foot { color:var(--muted); font-size:.82rem; margin-top:40px; text-align:center; }
+  a { color:var(--accent); }
+  code { background:#0a0d13; padding:1px 5px; border-radius:4px; font-size:.9em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Is your app leaking secrets?</h1>
+  <p class="sub">Paste your app's URL. In seconds you'll see whether your Supabase <code>service_role</code> key or other API secrets are sitting in your JavaScript bundle, where anyone can read them — the single most common mistake AI coding tools leave behind. The scan is free.</p>
+
+  <form id="scanForm">
+    <input type="url" id="url" placeholder="https://your-app.vercel.app" required autocomplete="off">
+    <button type="submit" id="scanBtn">Scan</button>
+  </form>
+  <div id="out"></div>
+
+  <p class="foot">Read-only. We fetch only what your site already serves to any browser — no login, no access, nothing stored beyond your scan. We contact nobody.</p>
+</div>
+
+<script>
+// ── Config — set after deploying the scan server and creating the PayPal button ──
+const SCAN_ENDPOINT = window.SCAN_ENDPOINT || "https://taskman2.onrender.com"; // e.g. https://scan-xxx.onrender.com
+// No PayPal client id here on purpose: the order is created server-side and the
+// buyer is redirected to PayPal's hosted checkout, so no PayPal credential or
+// script is needed in the browser.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LABELS = {
+  'exposed-secret': ['Exposed secret key', 'bad'],
+  'missing-rls': ['Unprotected database table', 'bad'],
+  'unauthenticated-admin-route': ['Unprotected admin endpoint', 'bad'],
+  'open-cors': ['Open CORS policy', 'warn'],
+};
+const out = document.getElementById('out');
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let currentScanId = null, currentPrice = '5';
+
+document.getElementById('scanForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('scanBtn');
+  const url = document.getElementById('url').value.trim();
+  btn.disabled = true; btn.textContent = 'Scanning…'; out.innerHTML = '';
+  try {
+    const res = await fetch(SCAN_ENDPOINT + '/scan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    renderScan(data);
+  } catch (err) {
+    out.innerHTML = `<p class="err">Couldn't run the scan. ${esc(err.message)}</p>`;
+  } finally { btn.disabled = false; btn.textContent = 'Scan'; }
+});
+
+function renderScan(data) {
+  if (data.reachable === false) { out.innerHTML = `<div class="card"><p>${esc(data.message)}</p></div>`; return; }
+  currentScanId = data.scanId; currentPrice = data.priceUsd || '5';
+  const total = data.total || 0;
+  if (total === 0) {
+    out.innerHTML = `<div class="card"><p class="headline" style="color:var(--ok)">No issues found</p>
+      <p class="muted">Nothing exposed in what your site serves publicly. Nice.</p></div>`;
+    return;
+  }
+  const rows = Object.entries(data.byKind).map(([k, n]) => {
+    const [label, cls] = LABELS[k] || [k, 'warn'];
+    return `<div class="count ${cls}"><span>${esc(label)}</span><span class="n">${n}</span></div>`;
+  }).join('');
+  out.innerHTML = `
+    <div class="card">
+      <p class="headline">${total} issue${total>1?'s':''} found on your app</p>
+      <p class="muted">This is real and public right now — anyone can read it in your bundle. Below is the count; the exact fix — how to rotate safely and move it server-side — is in the full report.</p>
+      ${rows}
+      <div class="unlock">
+        <p class="muted" style="margin-bottom:2px">Unlock the full report with the exact fixes</p>
+        <div class="price">$${esc(currentPrice)}</div>
+        <div id="paypal"></div>
+      </div>
+    </div>`;
+  mountPayPal();
+}
+
+// Payment via a server-created PayPal order and a redirect to PayPal's own hosted
+// checkout — NOT the browser JS SDK, which ad blockers and privacy modes block on
+// a large share of visitors. The button asks our server to create the order, then
+// sends the buyer to PayPal; they return to this page and the report unlocks. The
+// server captures and verifies the payment before releasing anything.
+function mountPayPal() {
+  const mount = document.getElementById('paypal');
+  if (!mount) return;
+  const btnStyle = "display:inline-block;background:var(--accent);color:#fff;padding:14px 26px;border-radius:10px;border:0;font-weight:700;font-size:1.05rem;cursor:pointer";
+  mount.innerHTML = `<button id="payBtn" style="${btnStyle}">Pay $${esc(currentPrice)} &amp; unlock the fixes</button>
+    <p class="muted" style="margin-top:8px">Secure checkout on PayPal — you'll come right back here to your report.</p>`;
+  document.getElementById('payBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true; btn.textContent = 'Taking you to PayPal…';
+    try {
+      const res = await fetch(SCAN_ENDPOINT + '/checkout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scanId: currentScanId })
+      });
+      const data = await res.json();
+      if (data.approveUrl) { window.location.href = data.approveUrl; return; }
+      throw new Error(data.error || 'checkout unavailable');
+    } catch (e) {
+      // Last-resort fallback if checkout can't be created at all.
+      mount.innerHTML = `<a href="https://paypal.me/joyelgt/${encodeURIComponent(currentPrice)}" target="_blank" rel="noopener"
+        style="${btnStyle};text-decoration:none">Pay $${esc(currentPrice)} via PayPal</a>
+        <p class="muted" style="margin-top:8px">After paying, email your receipt and this page's link and we'll send your report.</p>`;
+    }
+  });
+}
+
+// When the buyer returns from PayPal, the URL carries ?id=<scan>&token=<order>.
+// Confirm the payment server-side and render the report.
+async function handlePayPalReturn() {
+  const p = new URLSearchParams(location.search);
+  const id = p.get('id'), token = p.get('token');
+  if (!id || !token) return false;
+  currentScanId = id;
+  out.innerHTML = '<div class="card"><p class="muted">Confirming your payment and unlocking your report…</p></div>';
+  try {
+    const res = await fetch(`${SCAN_ENDPOINT}/report?id=${encodeURIComponent(id)}&t=${encodeURIComponent(token)}`);
+    if (!res.ok) throw new Error(String(res.status));
+    renderReport(await res.json());
+  } catch (e) {
+    out.innerHTML = `<div class="card"><p class="err">We couldn't confirm the payment automatically. If you paid, email your PayPal receipt and this page's link and we'll send your report right away.</p></div>`;
+  }
+  return true;
+}
+
+async function unlockReport(orderId) {
+  out.querySelector('.unlock').innerHTML = '<p class="muted">Unlocking your report…</p>';
+  const res = await fetch(`${SCAN_ENDPOINT}/report?id=${encodeURIComponent(currentScanId)}&t=${encodeURIComponent(orderId)}`);
+  if (!res.ok) { out.querySelector('.unlock').innerHTML = '<p class="err">Payment received but unlock failed — email the operator with your PayPal receipt and we\'ll send it.</p>'; return; }
+  const report = await res.json();
+  renderReport(report);
+}
+
+function renderReport(report) {
+  const fixes = (report.fixes || []).map(f => `
+    <div class="fix">
+      <h3>${esc(f.title)}</h3>
+      <ul>${f.steps.map(s => s.includes(';') || s.startsWith('ALTER') || s.startsWith('CREATE')
+        ? `<pre>${esc(s)}</pre>` : `<li>${esc(s)}</li>`).join('')}</ul>
+    </div>`).join('');
+  out.innerHTML = `<div class="card">
+    <p class="headline" style="color:var(--ok)">Your full report — ${report.total} fix${report.total>1?'es':''}</p>
+    <p class="muted">Apply these and re-scan to confirm they're gone.</p>
+    ${fixes}
+  </div>`;
+}
+
+// On load: if the buyer is returning from PayPal, unlock their report.
+handlePayPalReturn();
+</script>
+</body>
+</html>

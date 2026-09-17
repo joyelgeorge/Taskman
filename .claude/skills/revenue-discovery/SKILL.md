@@ -1,6 +1,6 @@
 ---
 name: revenue-discovery
-description: Broad-spectrum monetization discovery engine. Maps, hypothesizes, and scores every possible revenue mechanism without prematurely filtering out unconventional or emerging opportunities.
+description: Use when the existing lanes are exhausted or blocked and a genuinely new way to make money is needed, before narrowing to one. Broad-spectrum monetization discovery engine. Maps, hypothesizes, and scores every possible revenue mechanism without prematurely filtering out unconventional or emerging opportunities.
 metadata:
   version: 1.0.0
   author: taskman-engine

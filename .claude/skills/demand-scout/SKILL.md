@@ -1,6 +1,6 @@
 ---
 name: demand-scout
-description: Discovers high-intent commercial demand, customer pain points, and willingness-to-pay signals across social media, forums, and developer communities.
+description: Use when deciding whether anyone actually pays for something before building it, and whenever a new lane, wedge or product idea is being considered. Discovers high-intent commercial demand, customer pain points, and willingness-to-pay signals across social media, forums, and developer communities.
 metadata:
   version: 1.0.0
   author: taskman-engine

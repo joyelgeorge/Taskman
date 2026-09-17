@@ -34,7 +34,11 @@ tried, and refuse to dress up ones we have.
    - `payoutReach`: paypal_or_bank | card_processor | crypto | closed  (only closed is fatal). Not a geography question — PayPal spans ~200 countries and bank/wire is universal, so treat reach as broad and reserve `closed` for a rail with genuinely no path in.
    - `feasibilityWithAssets`: direct | small_build | large_build | none
    - `saturation`: underserved | moderate | crowded | swarmed
-   - `distribution`: buyers_already_searching | findable | must_create_demand
+   - `distribution`: relationship_exists | buyers_already_searching | findable |
+     must_create_demand — **the primary dimension** (weight 0.35, more than any
+     other). Rank by who will say yes without a sales conversation.
+     `relationship_exists` means the operator already has permission from this
+     person; `must_create_demand` is cold outreach and caps the score.
 
 4. **Dedupe** with `isNovel` from the registry, passing `aliases` for any killed
    lane the idea resembles. A candidate that is not novel is dropped, not softened.

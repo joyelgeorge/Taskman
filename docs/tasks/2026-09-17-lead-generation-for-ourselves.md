@@ -16,11 +16,41 @@ one is push, every one requires originating contact with a stranger, and that is
 the exact thing `READ-FIRST.md` names as the constraint no lane here has ever
 cleared.
 
-So the useful question is not "a better way to find people" but **"what produces
-a conversation without originating one."** Four answers, ranked by leverage per
-unit of human interaction.
+## ⚠ Read this before the options: finding is already solved
 
-## First, a correction to the premise
+The board's **Closed** section records it, and it postdates the premise of this
+question:
+
+> ~~The primary lead engine is not running~~ — **automated**. `npm run warm-scout`
+> searches GitHub for people asking for help securing their app, persists the open
+> threads as warm leads flagged for human read, and a daily cron runs it. **A live
+> run surfaced 65 real warm-intent threads.**
+
+Verified from the tree: `scripts/warm-lead-scout.mjs` exists and is wired to
+`npm run warm-scout`; it queries `gh api search/issues`, and persists through
+`packages/core/marketing/store.js` into the leads table. It contacts nobody, by
+design.
+
+**Not verified from here:** the 65 count. Leads persist to PostgreSQL and this
+session cannot reach the store (`npm run next` reports MONEY and IN FLIGHT as
+UNKNOWN). The number is the board's claim, not a re-measurement. `npm run
+warm-scout` also cannot run in a web session — it needs `gh`, which is absent —
+so this is another runtime question, not an engine question.
+
+So the position is:
+
+| | |
+|---|---|
+| Warm leads found by a live run | **65** (per the board) |
+| Outreach attempts ever recorded | **0** |
+| Kill criterion | 50 attempts, zero paid — **has never been able to fire** |
+
+**The bottleneck is not lead generation. Leads arrive daily and nobody has
+contacted one.** A better way to find people would add to a pile that is already
+unconsumed. Everything below is therefore about *scaling* distribution later,
+and none of it is the next action.
+
+## A correction to the premise
 
 **"Email is slow" is a prediction, not a measurement.** Zero outreach attempts
 have ever been recorded in this repository — `scripts/outreach.mjs` exists and
@@ -122,18 +152,28 @@ evidence the channel is worth money to someone.
 
 ## Recommendation
 
-1. **Option 1 is the answer to the question as asked.** It is the only one that
-   makes the operator's limited appetite for human contact buy more than one
-   lead at a time, and it is the same shape as the insight that just reordered
-   the board.
-2. **Option 4 is the best thing to build**, and the asset already exists in
-   `docs/research/` — it needs writing up for an outside reader, not new work.
-3. **Do not conclude scraping failed** until it runs from a runtime with egress.
-   That is a GitHub Actions workflow, and it is small.
-4. **Send one email before deciding email is slow.**
+**The next action is not on this list.** It is to open the leads that already
+exist and contact one. Sixty-five warm threads with zero attempts against them
+means every option above would be adding supply to an unconsumed pile — the
+failure this repository is named after, arriving in the shape of a reasonable
+question about lead generation.
+
+When contact is no longer the bottleneck, the order is:
+
+1. **Option 1 — borrowed distribution.** The only one that makes the operator's
+   limited appetite for human contact buy more than one lead at a time, and the
+   same shape as the insight that just reordered the board.
+2. **Option 4 — the false-positive artifact.** The best thing to *build*, and the
+   asset already exists in `docs/research/`; it needs writing up for an outside
+   reader, not new work.
+3. **Do not conclude scraping failed** until it runs from a runtime with egress —
+   a GitHub Actions workflow, and small.
+4. **Send one message before deciding sending is slow.**
 
 ## Done looks like
 
-One named agency, platform or accountant has been approached — logged through
-`scripts/outreach.mjs`, so that for the first time in this repository's history
-the attempt count is not zero.
+One of the 65 warm threads has been replied to by the operator and logged
+through `scripts/outreach.mjs`, so that for the first time in this repository's
+history the attempt count is not zero.
+
+Not: a better lead source.

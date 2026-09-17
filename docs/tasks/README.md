@@ -206,7 +206,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_12 open, 1 done, 13 task files._
+_13 open, 1 done, 14 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -223,6 +223,7 @@ _12 open, 1 done, 13 task files._
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
 | [Access without distribution: what to do with the Tally data now](2026-09-17-access-without-distribution.md) | open | P0 | 2 |
 | [Neither lead engine can run in a Claude Code web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md) | open | P2 | 4 |
+| [Lead generation for ourselves: the options that are not email, buying, or scraping](2026-09-17-lead-generation-for-ourselves.md) | open | P1 | 2 |
 <!-- /generated:tasks -->
 
 ## Writing one

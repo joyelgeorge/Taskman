@@ -1,6 +1,6 @@
 ---
 status: blocked
-priority: P2
+priority: P3
 level: 1
 opened: 2026-09-14
 ---

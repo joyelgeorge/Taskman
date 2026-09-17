@@ -1,6 +1,6 @@
 ---
 status: blocked
-priority: P0
+priority: P2
 level: 1
 opened: 2026-09-14
 ---
@@ -9,6 +9,30 @@ opened: 2026-09-14
 
 **Priority: P0.** Raised 2026-09-14, from the operator's wedge-selection
 discussion (`taskman-repo-tasks.pdf`, Task 1).
+
+> ## ⚠ The premise was answered on 2026-09-17, and it does not hold
+>
+> The operator was asked the one question this task rested on. The answer:
+> **"Access yes, relationship no."** The data access is real. The retailer would
+> **not** act on a report from the operator.
+>
+> This task's whole claim to P0 was that *"the constraint is claimed to be
+> already satisfied"* — that the trusted relationship existed and only code was
+> missing. **It is not satisfied.** The code was built against a premise that was
+> never checked, which is the failure this repository has now had three times.
+> **Demoted P0 → P2.**
+>
+> What survives is worth more than what died. Permitted access to a real
+> retailer's live transaction data is a *rights* barrier, and the
+> 2026-09-13 research found that rights barriers are the only ones that hold
+> price while everything code-barriered races to marginal cost. Almost nobody
+> has this access. What the operator does not have is **distribution** — someone
+> who will act on the output.
+>
+> So the asset is real and the buyer is not this retailer. Two routes follow, in
+> `2026-09-17-access-without-distribution.md`. Do not build further packaging
+> (`2026-09-14-package-tally-wedge-as-repeatable-install.md`) until one of them
+> is chosen — it is stacked directly on the premise that just failed.
 
 
 ## Built, 2026-09-15 — the install-agnostic core is ready

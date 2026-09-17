@@ -19,10 +19,17 @@ that remains true however interesting the architecture is.**
 
 ### P0 — warm distribution, the constraint that has blocked every lane
 
-- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)** — *level 1*
-  The first wedge where the trusted relationship is claimed to **already exist** —
-  one real retailer, no cold outreach. **Verify the access claim before building:
-  it is one question to the operator and the entire P0 rests on it.**
+- **[Access without distribution: what to do with the Tally data now](2026-09-17-access-without-distribution.md)** — *level 2*
+  The access claim was checked on 2026-09-17. **"Access yes, relationship no"** —
+  the data is real, the retailer will not act on a report. Every previous lane
+  died for want of a trusted relationship; this one got one step further and has
+  **real permitted commercial data**, the only rights barrier this project has
+  ever held. Two routes: turn it into a verified finding, then take that to a
+  chartered accountant, who already has the trust and the data access we cannot
+  originate. **First move is one conversation, not a product.**
+- **[Tally duplicate-invoice / shrinkage detector](2026-09-14-tally-duplicate-invoice-detector.md)** — *level 1, demoted P0 → P2*
+  Detector built and mutation-tested. Its claim to P0 was that the trusted
+  relationship already existed. It does not.
 
 ### P1
 
@@ -199,14 +206,14 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_11 open, 1 done, 12 task files._
+_12 open, 1 done, 13 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
 | [The ledger guard tests presence, not verifiability](2026-09-13-ledger-guard-tests-presence-not-verifiability.md) | open | P2 | 4 |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
-| [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
-| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
+| [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P3 | 1 |
+| [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P2 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
 | [Test resets clear memory and leave PostgreSQL untouched](2026-09-14-test-resets-do-not-reset-postgresql.md) | done | P3 | 4 |
 | [The Bridge: Contract compiler, shadow execution, and human gatekeeper](2026-09-16-contract-compiler-and-shadow-execution.md) | open | P2 | 4 |
@@ -214,6 +221,7 @@ _11 open, 1 done, 12 task files._
 | [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
 | [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
+| [Access without distribution: what to do with the Tally data now](2026-09-17-access-without-distribution.md) | open | P0 | 2 |
 | [Neither lead engine can run in a Claude Code web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 

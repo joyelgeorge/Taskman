@@ -110,16 +110,21 @@ All level 4. Named as maintenance, per `deciding-the-next-step`.
   kill-criterion guard deciding whether a lane lives or dies was verified only in
   the mode where nothing persists. Also records that four "permanent" failures were
   **the wrong Node version, not a bug**. Suite is green both modes: 816/0 and 831/0.
-- **[No outreach attempt is ever counted](2026-09-12-no-outreach-attempt-has-ever-been-counted.md)**
-  Kill criteria exist and can never fire. *Tooling now exists* — `scripts/outreach.mjs`
-  logs and summarises — so what remains is that nobody has run it.
-- **[Is public GitHub the right surface?](2026-09-12-is-public-github-the-right-surface.md)**,
-  **[The primary lead engine is not running](2026-09-12-primary-lead-engine-is-not-running.md)**,
-  **[The star filter selects against businesses](2026-09-12-star-filter-selects-against-businesses.md)**,
-  **[One search query returns zero](2026-09-12-one-search-query-returns-zero.md)**,
-  **[Verify the CI database is migrated](2026-09-11-verify-ci-database-is-migrated.md)**
-  — the cold-scan funnel's own defects. All subordinate to the P2 question of
-  whether that funnel is worth running at all.
+- **No outreach attempt is ever counted** — *file closed on `main`.* Kill
+  criteria existed and could never fire. `scripts/outreach.mjs` logs and
+  summarises, and the operator reports **2 attempts now recorded**, so the
+  premise has moved: the lane is no longer untried, it is under-tried. The kill
+  criterion needs 50.
+- **The cold-scan funnel's own defects** — *closed on `main` before 2026-09-17,
+  and their files are gone.* A merge on 2026-09-17 reconstructed this section
+  from a stale branch and re-linked five deleted tasks plus one more; the links
+  404'd for a day before a link-integrity test caught them. Named here without
+  links so the history is legible: public-GitHub-as-surface, the primary lead
+  engine, the star filter, the zero-yield query, and the CI database migration.
+  The zero-yield query in particular is now closed by class rather than by
+  instance — `packages/core/marketing/demand-sources.js` measures yield per
+  query, so a dead lookup is named by `deadQueries()` instead of surviving
+  because nobody noticed.
 
 
 ## Closed

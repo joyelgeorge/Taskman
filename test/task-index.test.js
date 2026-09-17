@@ -115,3 +115,26 @@ test('the generated block in the task index matches the task files', async () =>
 
   assert.equal(inFile, fresh, 'docs/tasks/README.md is stale — run `npm run tasks`');
 });
+
+/**
+ * The index generator only validates task FILES. It never looked at the links
+ * in the prose around them, so a reference to a task that has been closed and
+ * deleted survives indefinitely and sends the next reader to a 404.
+ *
+ * Six such links were introduced on 2026-09-17 by a merge that reconstructed
+ * the maintenance section from a stale branch. Nothing caught it, because
+ * nothing was looking.
+ */
+test('every task link in the index resolves to a file that exists', async () => {
+  const { readFile, readdir } = await import('node:fs/promises');
+  const dir = new URL('../docs/tasks/', import.meta.url);
+  const readme = await readFile(new URL('README.md', dir), 'utf8');
+  const present = new Set(await readdir(dir));
+
+  const linked = [...readme.matchAll(/\((20\d{2}-\d{2}-\d{2}-[a-z0-9-]+\.md)\)/g)].map(m => m[1]);
+  assert.ok(linked.length > 0, 'the index must link to some tasks, or this test proves nothing');
+
+  const broken = linked.filter(f => !present.has(f));
+  assert.deepEqual(broken, [],
+    `the index links to task files that do not exist: ${broken.join(', ')}`);
+});

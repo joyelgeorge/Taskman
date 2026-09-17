@@ -29,6 +29,16 @@ secret sweep, auth-guard verification on privileged routes, and CORS review —
 then a **re-run after the fixes, showing the findings gone.** The proof of the
 fix is the deliverable, not the list of problems.
 
+> **Fulfilment status, 2026-09-17.** This offer made three technical promises
+> and two were unbuilt when it was written — a live case of selling ahead of the
+> product, which is the usual failure here running backwards.
+> **Now built** (`packages/core/findings/report.js`): distinct-problem counting,
+> so no count leaves without a unit, and `proveFixed()`, the re-run diff that is
+> the deliverable above. **Still unbuilt: the reachability refuter** — the claim
+> "no injection flagged in code no request reaches" is currently true only
+> because a human checked it once. Do not repeat that line to a customer until
+> it is code.
+
 **What makes it different from the free scanners:** every finding has survived a
 refutation pass. No count without a unit, no route called naked when a helper
 guards it, no injection flagged in code no request reaches. The published teardown

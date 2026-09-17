@@ -215,8 +215,13 @@ Stated plainly so the gap is visible rather than implied:
    pipeline stage with its own output; what exists is one hard-won conditional.
    The reachability refuter (F4) and the finding-time business refuter (F6) have
    no implementation at all.
-2. **R5.2 does not exist.** There is no distinct-problem count; the 70-vs-1 gap
-   is unhandled in code and was caught by a human re-audit.
+2. ~~**R5.2 does not exist.**~~ **Built 2026-09-17** —
+   `packages/core/findings/report.js`. `summarizeFindings()` collapses raw
+   findings to problems per (kind, file) and reports the inflation factor;
+   `headline()` refuses to quote a raw total alone. The flyrpro case now reads
+   as **13 problems across 13 files (71 raw findings)** instead of "71
+   criticals". Guard-verified: reporting raw findings as problems turns two
+   tests red.
 3. **R6 does not exist.** No finding carries an observation timestamp, so no
    freshness window can be enforced.
 4. **R2.1 is unmet.** Repository source is the only surface. The bundle surface
@@ -224,7 +229,12 @@ Stated plainly so the gap is visible rather than implied:
    **that does not exist** — and a session on 2026-09-17 could not run the repo
    surface at all, because cloning third-party repos is refused here while
    fetching a public bundle would not have been.
-5. **R8.2 has no implementation.** Nothing re-runs a detector to prove a fix.
+5. ~~**R8.2 has no implementation.**~~ **Built 2026-09-17** — `proveFixed()` in
+   the same module diffs a before/after scan into fixed / remaining /
+   introduced, and only an empty remainder **and** an empty introduced set reads
+   as `clean`. This is the thing the agency offer calls the deliverable, and it
+   was being sold before it existed. Guard-verified: letting `clean` ignore
+   newly introduced findings turns a test red.
 
 ## The commercial reading
 

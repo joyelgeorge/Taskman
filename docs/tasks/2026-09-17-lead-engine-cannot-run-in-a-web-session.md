@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 4
+opened: 2026-09-17
+---
+
 # Neither lead engine can run in a Claude Code web session
 
 Found 2026-09-17 trying to actually run them. Both are blocked by the

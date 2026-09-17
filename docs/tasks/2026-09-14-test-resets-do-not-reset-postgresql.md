@@ -1,3 +1,10 @@
+---
+status: done
+priority: P3
+level: 4
+opened: 2026-09-14
+---
+
 # Test resets clear memory and leave PostgreSQL untouched
 
 Found 2026-09-14 while verifying the ledger guard fix against both storage

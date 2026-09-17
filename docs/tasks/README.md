@@ -199,19 +199,22 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_9 open, 0 done, 9 task files._
+_11 open, 1 done, 12 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
+| [The ledger guard tests presence, not verifiability](2026-09-13-ledger-guard-tests-presence-not-verifiability.md) | open | P2 | 4 |
 | [The four deprioritized recovery wedges (Stripe, seats, renewals, EMI)](2026-09-14-deprioritized-recovery-wedges.md) | blocked | P3 | 1 |
 | [Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md) | blocked | P2 | 1 |
 | [Tally duplicate-invoice / shrinkage detector — the first warm-distribution wedge](2026-09-14-tally-duplicate-invoice-detector.md) | blocked | P0 | 1 |
 | [GST input-credit mismatch detector (Tally, second variant)](2026-09-14-tally-gst-input-credit-mismatch.md) | open | P1 | 1 |
+| [Test resets clear memory and leave PostgreSQL untouched](2026-09-14-test-resets-do-not-reset-postgresql.md) | done | P3 | 4 |
 | [The Bridge: Contract compiler, shadow execution, and human gatekeeper](2026-09-16-contract-compiler-and-shadow-execution.md) | open | P2 | 4 |
 | [The Creative Engine: Orthogonal candidate generator with symbolic pruning](2026-09-16-orthogonal-hypothesis-generator.md) | open | P2 | 4 |
 | [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
 | [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | blocked | P1 | 1 |
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
+| [Neither lead engine can run in a Claude Code web session](2026-09-17-lead-engine-cannot-run-in-a-web-session.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

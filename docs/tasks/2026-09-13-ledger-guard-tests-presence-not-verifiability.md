@@ -1,3 +1,10 @@
+---
+status: open
+priority: P2
+level: 4
+opened: 2026-09-13
+---
+
 # The ledger guard tests presence, not verifiability
 
 Found 2026-09-13 while tracing the $220 phantom settlement for

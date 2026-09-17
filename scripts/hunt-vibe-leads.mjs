@@ -21,16 +21,18 @@ import { auditCodebase } from '../src/codebase-audit.js';
 import { qualifyLead, BUSINESS_CODE_SIGNALS } from '../packages/core/targets/lead-qualifier.js';
 import { persistLeads } from '../packages/core/targets/lead-persistence.js';
 import { SCAN_OUTCOME, recordScanned, selectUnscanned } from '../packages/core/targets/scan-memory.js';
+import { refuteUnreachable } from '../packages/core/findings/reachability.js';
 import * as marketingStore from '../packages/core/marketing/store.js';
 import { readFileSync } from 'node:fs';
 
 const run = promisify(execFile);
 const SELLABLE = new Set(['exposed-secret', 'missing-rls', 'open-cors', 'ssrf', 'command-injection', 'path-prefix-guard']);
 const CRITICAL = new Set(['exposed-secret', 'missing-rls']);
-// Injection/traversal classes in dev/build tooling have no remote attacker — the
-// same false positives the OSS sweep learned to drop. Keep them only in app code.
-const NEEDS_SERVER = new Set(['command-injection', 'path-prefix-guard', 'ssrf']);
-const TOOLING = /(^|\/)(scripts?|bin|tools?|test|tests|__tests__|examples?|dist)\/|\.(config|test|spec)\.|(^|\/)(vite|webpack|rollup|esbuild|next|svelte|astro)\.config/i;
+// Injection/traversal classes in dev/build tooling have no remote attacker.
+// This used to be an inline path regex here; it now lives in
+// packages/core/findings/reachability.js, which also reads the taint source —
+// the flyrpro tell was never the folder, it was process.env — and returns
+// `contested` rather than guessing when the two signals disagree.
 
 async function repoMeta(repo) {
   try {
@@ -45,7 +47,12 @@ async function scanRepo(repo) {
   try {
     await run('git', ['clone', '--depth', '1', '--single-branch', `https://github.com/${repo}.git`, dir], { timeout: 60000 });
     const result = await auditCodebase(dir);
-    const findings = (result.findings || result).filter((f) => SELLABLE.has(f.kind) && !(NEEDS_SERVER.has(f.kind) && TOOLING.test(f.file)));
+    const inScope = (result.findings || result).filter((f) => SELLABLE.has(f.kind));
+    const { reportable, contested } = refuteUnreachable(inScope);
+    // Contested findings are not leads on their own — they are a question for a
+    // human — so they do not qualify a repo, but they are carried so the count
+    // a person sees is the count that survived refutation.
+    const findings = reportable;
     // Never keep a secret value, even the truncated evidence. Record class + location only.
     const safe = findings.map((f) => ({
       kind: f.kind,
@@ -57,7 +64,7 @@ async function scanRepo(repo) {
     const code = { hasPayments: BUSINESS_CODE_SIGNALS.payments.test(pkg), hasAuth: BUSINESS_CODE_SIGNALS.auth.test(pkg) };
     const meta = await repoMeta(repo);
     const qual = qualifyLead(meta, code);
-    return { repo, findings: safe, genuine: qual.genuine, qual, error: null };
+    return { repo, findings: safe, contested: contested.length, genuine: qual.genuine, qual, error: null };
   } catch (e) {
     return { repo, findings: [], error: String(e.message || e).slice(0, 80) };
   } finally {

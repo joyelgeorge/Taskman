@@ -1,4 +1,6 @@
 import { auditCodebase } from './codebase-audit.js';
+import { summarizeFindings, headline } from '../packages/core/findings/report.js';
+import { refuteUnreachable } from '../packages/core/findings/reachability.js';
 import { recordAttempt, recordSettlement, SETTLEMENT_STATUS, VERIFIED_SOURCES } from './money-ledger.js';
 import { markStreamSettled, registerStream, listStreams } from '@taskman/core';
 
@@ -41,23 +43,69 @@ export const SCAN_TIERS = Object.freeze({
 
 const PAYPAL = 'https://paypal.me/joyelgt';
 
-export function buildScanReport(findings, { preparedFor = null } = {}) {
-  const sellable = (findings || []).filter((f) => SELLABLE[f.kind]);
-  const critical = sellable.filter((f) => SELLABLE[f.kind] === 'CRITICAL').length;
-  const high = sellable.length - critical;
+export function buildScanReport(findings, { preparedFor = null, textByFile = {} } = {}) {
+  const inScope = (findings || []).filter((f) => SELLABLE[f.kind]);
+
+  // Refutation runs BEFORE anything is counted (R4.5). A count that has not
+  // survived refutation is a count of findings, not problems, and the two
+  // differed ~5x on the only batch this has been measured against.
+  const { reportable, contested, refuted } = refuteUnreachable(inScope, { textByFile });
+
+  const critical = reportable.filter((f) => SELLABLE[f.kind] === 'CRITICAL').length;
+  const high = reportable.length - critical;
+  const summary = summarizeFindings(reportable);
+
   const lines = [];
   lines.push('# AI App Security Scan Report');
   if (preparedFor) lines.push(`\nPrepared for: ${preparedFor}`);
-  lines.push(`\n**${sellable.length} confirmed issues — ${critical} critical, ${high} high.**\n`);
-  if (!sellable.length) lines.push('No issues in the covered classes were found. That is a clean result, not an empty one.\n');
-  sellable.forEach((f, i) => {
+
+  // Never the raw total alone. One unprotected schema dump emitting seventy
+  // findings is twelve files of work, and saying "70" is the lie this report
+  // exists not to tell.
+  lines.push(`\n**${headline(summary)}** ${critical} critical, ${high} high.\n`);
+  if (summary.inflation > 1) {
+    lines.push(`_The detector emits one finding per occurrence, so the raw count `
+      + `overstates the work by ${summary.inflation}x. The number above is distinct `
+      + `problems._\n`);
+  }
+  if (!reportable.length) lines.push('No issues in the covered classes were found. That is a clean result, not an empty one.\n');
+
+  reportable.forEach((f, i) => {
     lines.push(`## ${i + 1}. [${SELLABLE[f.kind]}] ${f.kind}`);
     lines.push(`- **Where:** ${f.file}:${f.line}`);
     lines.push(`- **Evidence:** ${f.evidence}`);
     lines.push(`- **Why it matters:** ${f.why}`);
     lines.push(`- **Confirm / fix:** ${f.confirm}\n`);
   });
-  return { markdown: lines.join('\n'), summary: { total: sellable.length, critical, high } };
+
+  // Shown, not hidden. A contested finding is the cheapest minute a human can
+  // spend, and a refuted one proves the report tried to disprove itself.
+  if (contested.length) {
+    lines.push(`## Needs a human eye (${contested.length})\n`);
+    lines.push('Two checks disagreed about these. They are not counted above.\n');
+    contested.forEach((f) => lines.push(`- ${f.kind} at ${f.file}:${f.line} — ${f.reachability.reason}`));
+    lines.push('');
+  }
+  if (refuted.length) {
+    lines.push(`## Checked and dismissed (${refuted.length})\n`);
+    lines.push('Flagged by the detector, refuted on inspection. Listed so nothing is quietly dropped.\n');
+    refuted.forEach((f) => lines.push(`- ${f.kind} at ${f.file}:${f.line} — ${f.reachability.reason}`));
+    lines.push('');
+  }
+
+  return {
+    markdown: lines.join('\n'),
+    summary: {
+      total: reportable.length,
+      critical,
+      high,
+      problems: summary.totalProblems,
+      rawFindings: summary.totalFindings,
+      inflation: summary.inflation,
+      contested: contested.length,
+      refuted: refuted.length
+    }
+  };
 }
 
 /**

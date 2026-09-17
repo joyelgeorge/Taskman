@@ -29,6 +29,44 @@ test('buildScanReport counts critical vs high and lists only sellable classes', 
   assert.equal(r.summary.high, 1);
 });
 
+test('an unreachable injection never reaches the customer report', () => {
+  // The flyrpro case: four of these were reported CRITICAL and none was real.
+  const r = buildScanReport([
+    { kind: 'exposed-secret', file: 'src/client.js', line: 1, evidence: 'e', why: 'w', confirm: 'c' },
+    {
+      kind: 'command-injection', file: 'scripts/import.js', line: 12,
+      evidence: 'exec(`node load.js ${process.env.TOKEN}`)', why: 'w', confirm: 'c'
+    }
+  ]);
+  assert.equal(r.summary.total, 1, 'the refuted injection is not counted');
+  assert.equal(r.summary.refuted, 1);
+  assert.doesNotMatch(r.markdown.split('## Checked and dismissed')[0], /command-injection/,
+    'it must not appear among the findings being charged for');
+  assert.match(r.markdown, /Checked and dismissed \(1\)/,
+    'but it is shown — a report that quietly drops a finding is unauditable');
+});
+
+test('the report never leads with a raw finding count', () => {
+  const rls = (i) => ({
+    kind: 'missing-rls', file: `db/schema-${i % 3}.sql`, line: i,
+    evidence: 'e', why: 'w', confirm: 'c'
+  });
+  const r = buildScanReport(Array.from({ length: 30 }, (_, i) => rls(i)));
+  assert.equal(r.summary.rawFindings, 30);
+  assert.equal(r.summary.problems, 3, '30 findings across 3 files is 3 problems');
+  assert.match(r.markdown, /3 problems across 3 files/);
+  assert.match(r.markdown, /overstates the work by 10x/);
+});
+
+test('a request-tainted injection on a request path is still charged for', () => {
+  const r = buildScanReport([{
+    kind: 'command-injection', file: 'src/api/convert.js', line: 8,
+    evidence: 'exec(`convert ${req.query.name}`)', why: 'w', confirm: 'c'
+  }]);
+  assert.equal(r.summary.total, 1, 'refutation must discriminate, not deflate');
+  assert.equal(r.summary.refuted, 0);
+});
+
 test('prepareScanOrder produces a report + PayPal link and books nothing', async () => {
   const dir = await vulnerableApp();
   try {

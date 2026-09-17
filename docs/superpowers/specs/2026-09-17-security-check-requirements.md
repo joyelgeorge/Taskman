@@ -120,6 +120,14 @@ to spend a minute. Averaging is how F3 would have shipped.
 log or message. A count that has not survived refutation is a count of findings,
 not problems, and the two differ ~5x. (F1)
 
+> **Wired 2026-09-17.** `buildScanReport` in `src/scan-fulfilment.js` — the
+> customer-facing report — now refutes before it counts, leads with distinct
+> problems, states the inflation factor when the counts differ, and lists
+> contested and refuted findings in their own sections rather than dropping
+> them. `scripts/hunt-vibe-leads.mjs` lost its inline path regex and calls the
+> shared refuter. Guard-verified: counting before refuting, and leading with the
+> raw total, each turn a test red.
+
 ## R5 — Counting
 
 **R5.1** A finding count MUST state its **unit**. "70 criticals" for one

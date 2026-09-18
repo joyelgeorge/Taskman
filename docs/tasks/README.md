@@ -29,11 +29,49 @@ that remains true however interesting the architecture is.**
 - **[GST input-credit mismatch detector](2026-09-14-tally-gst-input-credit-mismatch.md)** — *level 1*
   Listed P0 in the source discussion; demoted for a crowded category and the
   liability a filing draft carries.
+- **[GitHub Marketplace CI Action](2026-09-18-github-marketplace-ci-action.md)** — *level 1*
+  Opened 2026-09-18 from a `/revenue-discovery` pass, scored 0.75 — highest of
+  five new distribution candidates. The vibe-app-security detectors, already
+  built, pointed at a standing marketplace instead of cold outreach.
+- **[Cyber-insurance referral off real scan findings](2026-09-18-cyber-insurance-referral.md)** — *level 1*
+  Scored 0.73, but only inside an already-warm disclosure — additive to
+  vibe-app-security, not a standalone lane. Cheapest possible test of anything
+  opened today: one extra sentence in the next disclosure sent.
+- **[NPM postinstall/preinstall curl-pipe-to-bash detector](2026-09-18-npm-postinstall-supply-chain-detector.md)** — *level 4*
+  Capability, not distribution, but prioritised above its two sibling
+  detectors because a product (below) is blocked on it.
+- **[Firebase Firestore/Realtime DB open-rules detector](2026-09-18-firebase-open-rules-detector.md)** — *level 4*
+  Opened 2026-09-18 from `/expanding-the-search`. CLAUDE.md's critical finding
+  names Firebase alongside Supabase as the target market; every detector built
+  so far only covers Supabase. Closes a gap in the bet already made, not a new one.
+- **[`income_streams` has drifted from `registry.js`](2026-09-18-income-streams-drift-from-registry.md)** — *level 4*
+  Found via `/revenue-hunt`, 2026-09-18: three unevidenced `TESTING` streams
+  (crypto/hardware, not in git history at all), Algora still marked `BLOCKED`
+  there when `registry.js` and `incomeReport()` both say `KILLED`, and a
+  stale next-action that would revert the contingency-pricing pivot. Left
+  uncorrected, the next session (or the `/revenue-hunt` skill itself) trusts
+  a false "TESTING" or "shortest distance" label.
 
 ### P2 — the cold-scan funnel
 
 - **[Package the Tally wedge as a repeatable install](2026-09-14-package-tally-wedge-as-repeatable-install.md)** — *level 1*
   Blocked on the first wedge producing a settlement, not a demo.
+- **[Mobile app (APK/IPA) hardcoded-secret extraction](2026-09-18-mobile-app-secret-extraction.md)** — *level 4*
+  Opened 2026-09-18 from `/expanding-the-search`. New surface, not new
+  detection logic — existing `findExposedSecret` patterns apply once a binary
+  is unzipped. Unlike Firebase, mobile isn't in CLAUDE.md's named target
+  market — real widening into unproven territory, priced accordingly below
+  the Firebase detector.
+- **[Package pre-flight risk check — CLI + API](2026-09-18-package-preflight-risk-product.md)** — *level 1*
+  Scored 0.69. Blocked on the postinstall detector above.
+- **["Secure-by-default" Supabase/Next.js starter template](2026-09-18-secure-by-default-starter-template.md)** — *level 1*
+  Scored 0.65. Unusually cheap fulfilment (a repo, not a service) and
+  unusually easy to kill for free (publish free first, see if anyone clones it).
+- **[Next.js Server Action auth-absence detector](2026-09-18-nextjs-server-action-auth-detector.md)** — *level 4*
+  Widens vibe-app-security's scan coverage; doesn't touch its actual
+  bottleneck (reply rate on disclosures already sent).
+- **[Stripe checkout tampering / webhook-verification detector](2026-09-18-stripe-checkout-tampering-detector.md)** — *level 4*
+  Same reasoning as the Server Action detector above.
 
 ### Architecture — accumulate, don't re-derive (all level 4)
 
@@ -56,6 +94,9 @@ the revenue is zero.
 - **[The four deprioritized recovery wedges](2026-09-14-deprioritized-recovery-wedges.md)**
   Stripe recovery, unused seats, silent renewals, EMI overcharge. All buildable,
   all blocked on credibility with strangers.
+- **[Vulnerability-class rules pack for AI coding assistants](2026-09-18-ai-assistant-rules-pack.md)** — *level 1*
+  Scored 0.50, capped on distribution — no confirmed paid marketplace for
+  Cursor/Claude-skill rules files. Blocked pending that one check, not on build effort.
 
 ### Maintenance — label it as such
 
@@ -170,7 +211,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_9 open, 0 done, 9 task files._
+_20 open, 0 done, 20 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -183,6 +224,17 @@ _9 open, 0 done, 9 task files._
 | [Remove the scanner test fixture after the pay→unlock test](2026-09-16-remove-scanner-test-fixture.md) | open | P2 | 4 |
 | [Ship the self-serve scanner: endpoint, checkout, launch](2026-09-16-self-serve-scanner-plumbing.md) | open | P1 | 1 |
 | [The Rails: Typed execution DAGs and hermetic tool contracts](2026-09-16-typed-execution-dags-and-hermetic-rails.md) | open | P2 | 4 |
+| [Vulnerability-class rules pack for AI coding assistants](2026-09-18-ai-assistant-rules-pack.md) | blocked | P3 | 1 |
+| [Cyber-insurance referral off real scan findings](2026-09-18-cyber-insurance-referral.md) | open | P1 | 1 |
+| [Firebase Firestore/Realtime DB open-rules detector](2026-09-18-firebase-open-rules-detector.md) | open | P1 | 4 |
+| [GitHub Marketplace CI Action — continuous scan instead of one-off audit](2026-09-18-github-marketplace-ci-action.md) | open | P1 | 1 |
+| [`income_streams` has drifted from `packages/core/territory/registry.js`](2026-09-18-income-streams-drift-from-registry.md) | open | P1 | 4 |
+| [Mobile app (APK/IPA) hardcoded-secret extraction — new surface, not new logic](2026-09-18-mobile-app-secret-extraction.md) | open | P2 | 4 |
+| [Next.js Server Action auth-absence detector](2026-09-18-nextjs-server-action-auth-detector.md) | open | P2 | 4 |
+| [NPM postinstall/preinstall curl-pipe-to-bash detector](2026-09-18-npm-postinstall-supply-chain-detector.md) | open | P1 | 4 |
+| [Package pre-flight risk check — CLI + API product](2026-09-18-package-preflight-risk-product.md) | blocked | P2 | 1 |
+| ["Secure-by-default" Supabase/Next.js starter template](2026-09-18-secure-by-default-starter-template.md) | open | P2 | 1 |
+| [Stripe client-side price-tampering / missing-webhook-verification detector](2026-09-18-stripe-checkout-tampering-detector.md) | open | P2 | 4 |
 <!-- /generated:tasks -->
 
 ## Writing one

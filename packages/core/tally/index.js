@@ -7,7 +7,9 @@ export {
 export {
   parseCsv,
   normalizeInvoices,
-  normalizeStockAndSales
+  normalizeInvoices as normalizeTallyInvoiceRows,
+  normalizeStockAndSales,
+  normalizeStockAndSales as normalizeTallyStockRows
 } from './parser.js';
 
 export {

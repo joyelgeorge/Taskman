@@ -26,6 +26,7 @@
  */
 
 import { JOB_STAGE } from './job-spec.js';
+import { validateDag, topoSort } from './dag.js';
 import { hasVerifiableReference } from '../../../src/evidence-tier.js';
 import { recordJobRun } from '../../../src/job-run-log.js';
 import { recordSettlement } from '../../../src/money-ledger.js';
@@ -135,7 +136,105 @@ export async function runStage(job, stage, { approval = null, context = {}, log 
  * refused intervene would reach verify and charge for work no person ever
  * approved, which is the exact shape of the failure the gates exist to prevent.
  */
-export async function runJob(job, { approval = null, context = {}, log = recordJobRun, settle = recordSettlement, now = nowIso } = {}) {
+/**
+ * Run a job whose stages are declared as a Directed Acyclic Graph (DAG).
+ * Executes nodes wave-by-wave while enforcing all 4 Taskman gates.
+ */
+export async function runDagJob(job, { approval = null, context = {}, log = recordJobRun, settle = recordSettlement, now = nowIso, completed = new Set() } = {}) {
+  const dag = job.dag || {};
+  const valid = validateDag(dag);
+  if (!valid.ok) {
+    return { ok: false, job: job?.key ?? '(no key)', error: valid.error, runs: [], results: {}, stopped: 'validation', charged: false };
+  }
+
+  const results = {};
+  const runs = [];
+  let stopped = null;
+
+  for (const wave of topoSort(dag)) {
+    const waveRuns = await Promise.all(wave.map(async (name) => {
+      const node = dag[name];
+      const started = typeof now === 'function' ? now() : nowIso();
+      const stageName = node.stage || name;
+
+      if (node.idempotencyKey && completed.has(node.idempotencyKey)) {
+        return { name, skipped: true };
+      }
+
+      if ((APPROVAL_REQUIRED.has(stageName) || node.requiresApproval) && !approval) {
+        const row = { job: job?.key ?? '(no key)', rail: job?.rail ?? null, stage: stageName, outcome: STAGE_OUTCOME.REFUSED, reason: `"${stageName}" reaches a person and needs an operator approval token`, approval: null, at: started };
+        if (typeof log === 'function') await log(row);
+        return { name, outcome: STAGE_OUTCOME.REFUSED, row };
+      }
+
+      if (stageName === JOB_STAGE.CHARGE) {
+        const evidence = node.evidence || results.verify || context.evidence;
+        const refCheck = hasVerifiableReference({
+          externalRef: evidence?.externalRef, source: evidence?.source, url: evidence?.url
+        });
+        if (!refCheck.ok) {
+          const row = { job: job?.key ?? '(no key)', rail: job?.rail ?? null, stage: stageName, outcome: STAGE_OUTCOME.REFUSED, reason: `cannot charge without external reference: ${refCheck.reason}`, approval, at: started };
+          if (typeof log === 'function') await log(row);
+          return { name, outcome: STAGE_OUTCOME.REFUSED, row };
+        }
+      }
+
+      try {
+        const val = await node.run({ results, context, approval });
+        let finalVal = val;
+
+        if (stageName === JOB_STAGE.CHARGE) {
+          if (!val || !val.externalRef) {
+            const row = { job: job?.key ?? '(no key)', rail: job?.rail ?? null, stage: stageName, outcome: STAGE_OUTCOME.FAILED, reason: 'charge returned no settlement to record', approval, at: started };
+            if (typeof log === 'function') await log(row);
+            return { name, outcome: STAGE_OUTCOME.FAILED, row };
+          }
+          finalVal = await settle({ rail: job?.rail ?? null, ...val });
+        }
+
+        if (node.idempotencyKey) completed.add(node.idempotencyKey);
+        const row = { job: job?.key ?? '(no key)', rail: job?.rail ?? null, stage: stageName, outcome: STAGE_OUTCOME.OK, approval, at: started };
+        if (typeof log === 'function') await log(row);
+        return { name, outcome: STAGE_OUTCOME.OK, value: finalVal, row };
+      } catch (err) {
+        const row = { job: job?.key ?? '(no key)', rail: job?.rail ?? null, stage: stageName, outcome: STAGE_OUTCOME.FAILED, reason: String(err?.message || err), approval, at: started };
+        if (typeof log === 'function') await log(row);
+        return { name, outcome: STAGE_OUTCOME.FAILED, error: err, row };
+      }
+    }));
+
+    for (const wr of waveRuns) {
+      if (wr.row) runs.push(wr.row);
+      if (wr.skipped) continue;
+      if (wr.outcome !== STAGE_OUTCOME.OK) {
+        stopped = wr.name;
+        break;
+      }
+      results[wr.name] = wr.value;
+    }
+
+    if (stopped) break;
+  }
+
+  return {
+    ok: !stopped,
+    job: job?.key ?? '(no key)',
+    runs,
+    results,
+    stopped,
+    charged: runs.some(r => r.stage === JOB_STAGE.CHARGE && r.outcome === STAGE_OUTCOME.OK)
+  };
+}
+
+/**
+ * Run the declared stages in order, stopping at the first refusal or failure.
+ * Automatically delegates to runDagJob if job.dag is provided.
+ */
+export async function runJob(job, { approval = null, context = {}, log = recordJobRun, settle = recordSettlement, now = nowIso, completed = new Set() } = {}) {
+  if (job?.dag) {
+    return runDagJob(job, { approval, context, log, settle, now, completed });
+  }
+
   const runs = [];
   const shared = { ...context };
   let stopped = null;
@@ -165,3 +264,4 @@ export async function runJob(job, { approval = null, context = {}, log = recordJ
     charged: runs.some(r => r.stage === JOB_STAGE.CHARGE && r.outcome === STAGE_OUTCOME.OK)
   };
 }
+

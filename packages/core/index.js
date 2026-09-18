@@ -93,4 +93,8 @@ export * from './tally/index.js';
 export { validateDag, topoSort, runDag } from './jobs/dag.js';
 export { JOB_STAGE, DISTRIBUTION, isRunnableJob, assertValidJob } from './jobs/job-spec.js';
 export { compilePlanToDag, shadowExecute, describeEffects } from './bridge/compiler.js';
+export {
+  PERSPECTIVE, VERDICT_STATE, generateCandidates, pruneRefuted, scoreByAgreement, promote
+} from './creative/hypothesis.js';
+
 

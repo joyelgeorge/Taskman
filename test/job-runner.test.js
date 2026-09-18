@@ -223,3 +223,78 @@ test('a run with no injected settle cannot quietly invent a settlement', async (
   assert.equal(result.charged, false);
   assert.match(result.runs.at(-1).reason, /source must be one of/);
 });
+
+// DAG execution integration through runJob / runDagJob
+
+test('runJob automatically executes a DAG job in topological wave order', async () => {
+  const dagJob = {
+    key: 'dag-job',
+    rail: 'dag-rail',
+    dag: {
+      detect: { stage: 'detect', run: async () => 'data' },
+      enrichA: { dependsOn: ['detect'], run: async ({ results }) => `${results.detect}-A` },
+      enrichB: { dependsOn: ['detect'], run: async ({ results }) => `${results.detect}-B` },
+      verify: {
+        stage: 'verify',
+        dependsOn: ['enrichA', 'enrichB'],
+        run: async ({ results }) => ({ externalRef: 'TX-999', source: 'bank', a: results.enrichA, b: results.enrichB })
+      }
+    }
+  };
+
+  const res = await runJob(dagJob, { log: recorder().log });
+  assert.equal(res.ok, true);
+  assert.equal(res.results.detect, 'data');
+  assert.equal(res.results.enrichA, 'data-A');
+  assert.equal(res.results.enrichB, 'data-B');
+  assert.equal(res.results.verify.externalRef, 'TX-999');
+  assert.equal(res.runs.length, 4);
+});
+
+test('DAG job refuses intervene node without operator approval', async () => {
+  const dagJob = {
+    key: 'dag-gate1',
+    dag: {
+      detect: { stage: 'detect', run: async () => 'data' },
+      intervene: { stage: 'intervene', dependsOn: ['detect'], run: async () => 'sent' }
+    }
+  };
+
+  const res = await runJob(dagJob, { approval: null, log: recorder().log });
+  assert.equal(res.ok, false);
+  assert.equal(res.stopped, 'intervene');
+  const interveneRun = res.runs.find(r => r.stage === 'intervene');
+  assert.equal(interveneRun.outcome, STAGE_OUTCOME.REFUSED);
+  assert.match(interveneRun.reason, /operator approval/i);
+});
+
+test('DAG job charges and settles when verify provides evidence and approval exists', async () => {
+  let settled = false;
+  const dagJob = {
+    key: 'dag-charge',
+    rail: 'bank-rail',
+    dag: {
+      verify: {
+        stage: 'verify',
+        run: async () => ({ externalRef: 'UPI-7771', source: 'bank' })
+      },
+      charge: {
+        stage: 'charge',
+        dependsOn: ['verify'],
+        run: async () => ({ source: 'bank', externalRef: 'UPI-7771', grossCents: 25000, currency: 'INR' })
+      }
+    }
+  };
+
+  const res = await runJob(dagJob, {
+    approval: 'operator:joyel',
+    log: recorder().log,
+    settle: async (s) => { settled = true; return { id: 'settle-99', ...s }; }
+  });
+
+  assert.equal(res.ok, true);
+  assert.equal(res.charged, true);
+  assert.equal(settled, true);
+  assert.equal(res.results.charge.id, 'settle-99');
+});
+

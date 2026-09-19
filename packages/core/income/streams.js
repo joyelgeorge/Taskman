@@ -87,9 +87,15 @@ export async function registerStream({
   };
 
   if (!databaseEnabled) {
-    // Never clobber a state the system has already moved on.
+    // Mirrors the DB branch's ON CONFLICT below: title/mechanism/requires/nextAction
+    // may refresh on a re-seed, but state/stateReason/evidence/testCostHours/proofCents/
+    // unblockedBy/origin never clobber what the evidence has already moved.
     const existing = mem.streams.find(s => s.streamKey === streamKey);
-    if (existing) return normalize(existing);
+    if (existing) {
+      const updated = { ...existing, title, mechanism, requires, nextAction };
+      mem.streams.upsert(updated, updated);
+      return normalize(updated);
+    }
     mem.streams.upsert(row, row);
     return normalize(row);
   }
@@ -100,7 +106,7 @@ export async function registerStream({
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14,$15)
     ON CONFLICT (stream_key) DO UPDATE SET
       title = EXCLUDED.title, mechanism = EXCLUDED.mechanism, requires = EXCLUDED.requires,
-      updated_at = now()
+      next_action = EXCLUDED.next_action, updated_at = now()
     RETURNING *
   `, [streamKey, title, mechanism, requires, nextAction, unblockedBy,
       state, stateReason, testCostHours, proofCents, JSON.stringify(evidence),

@@ -44,13 +44,6 @@ that remains true however interesting the architecture is.**
   Opened 2026-09-18 from `/expanding-the-search`. CLAUDE.md's critical finding
   names Firebase alongside Supabase as the target market; every detector built
   so far only covers Supabase. Closes a gap in the bet already made, not a new one.
-- **[`income_streams` has drifted from `registry.js`](2026-09-18-income-streams-drift-from-registry.md)** — *level 4*
-  Found via `/revenue-hunt`, 2026-09-18: three unevidenced `TESTING` streams
-  (crypto/hardware, not in git history at all), Algora still marked `BLOCKED`
-  there when `registry.js` and `incomeReport()` both say `KILLED`, and a
-  stale next-action that would revert the contingency-pricing pivot. Left
-  uncorrected, the next session (or the `/revenue-hunt` skill itself) trusts
-  a false "TESTING" or "shortest distance" label.
 
 ### P2 — the cold-scan funnel
 
@@ -102,6 +95,22 @@ the revenue is zero.
 
 
 ## Closed
+
+- ~~`income_streams` had drifted from `registry.js`~~ — corrected 2026-09-19.
+  `defi-flashloan-arbitrage` (alias of the already-`KILLED` `defi-arbitrage`)
+  and `github-paid-bounties` (disagreed with `registry.js`'s Algora `KILLED`
+  verdict) moved to `DISPROVEN`; `decentralized-gpu-inference` and
+  `depin-bandwidth-sharing` moved to `HYPOTHESIS` pending real evidence, since
+  demoting an unevidenced claim isn't the same as disproving it.
+  `payout-audit-direct`'s `mechanism`/`requires`/`nextAction` corrected to the
+  live PayPal-contingency reality and moved `BLOCKED` → `TESTING`. Along the
+  way, fixed the actual bug that let the drift happen:
+  `registerStream()`'s re-seed path refreshed `mechanism`/`requires` but not
+  `nextAction` (DB mode) and refreshed nothing at all (memory mode) — both
+  now consistently refresh `title`/`mechanism`/`requires`/`nextAction` while
+  still protecting `state`/`stateReason`/`evidence`, with a test covering it
+  (`packages/core/test/income.test.js`). The `revenue-hunt` skill's Lane B
+  section corrected to say Algora is killed rather than an active lane.
 
 - ~~Wedges needing a licensed human~~ — closed out of the active queue. It is a
   kill-note (healthcare, legal, manufacturing, construction — detection tractable,
@@ -211,7 +220,7 @@ sections above are written by hand; this one exists so that nothing can quietly
 fall out of the list, which the section below warns about and which has happened.
 
 <!-- generated:tasks -->
-_20 open, 0 done, 20 task files._
+_19 open, 0 done, 19 task files._
 
 | Task | Status | Priority | Level |
 | --- | --- | --- | --- |
@@ -228,7 +237,6 @@ _20 open, 0 done, 20 task files._
 | [Cyber-insurance referral off real scan findings](2026-09-18-cyber-insurance-referral.md) | open | P1 | 1 |
 | [Firebase Firestore/Realtime DB open-rules detector](2026-09-18-firebase-open-rules-detector.md) | open | P1 | 4 |
 | [GitHub Marketplace CI Action — continuous scan instead of one-off audit](2026-09-18-github-marketplace-ci-action.md) | open | P1 | 1 |
-| [`income_streams` has drifted from `packages/core/territory/registry.js`](2026-09-18-income-streams-drift-from-registry.md) | open | P1 | 4 |
 | [Mobile app (APK/IPA) hardcoded-secret extraction — new surface, not new logic](2026-09-18-mobile-app-secret-extraction.md) | open | P2 | 4 |
 | [Next.js Server Action auth-absence detector](2026-09-18-nextjs-server-action-auth-detector.md) | open | P2 | 4 |
 | [NPM postinstall/preinstall curl-pipe-to-bash detector](2026-09-18-npm-postinstall-supply-chain-detector.md) | open | P1 | 4 |

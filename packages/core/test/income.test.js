@@ -68,6 +68,23 @@ test('re-seeding never overwrites a state the evidence already moved', async () 
   assert.equal(found.state, STREAM_STATES.DISPROVEN, 'a disproven stream must not be resurrected by a re-seed');
 });
 
+test('re-seeding refreshes the descriptive fields, including nextAction', async () => {
+  // A prior gap: mechanism/requires refreshed on re-seed but nextAction did not,
+  // so a corrected description and its stale next action could disagree with
+  // each other indefinitely (found via a live income_streams drift, 2026-09-19).
+  await reset();
+  await registerStream(stream());
+  await setStreamState('s1', STREAM_STATES.DISPROVEN, { reason: 'measured zero volume' });
+  await registerStream(stream({
+    mechanism: 'Corrected mechanism.', requires: 'Corrected requirement.', nextAction: 'Corrected next step.'
+  }));
+  const [found] = await listStreams({});
+  assert.equal(found.mechanism, 'Corrected mechanism.');
+  assert.equal(found.requires, 'Corrected requirement.');
+  assert.equal(found.nextAction, 'Corrected next step.');
+  assert.equal(found.state, STREAM_STATES.DISPROVEN, 'refreshing descriptions must still not resurrect a moved state');
+});
+
 test('the portfolio never offers a human-blocked stream as the next action', async () => {
   await reset();
   await registerStream(stream({ streamKey: 'blocked', unblockedBy: 'human', testCostHours: 1 }));

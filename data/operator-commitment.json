@@ -1,0 +1,53 @@
+{
+  "_readme": "The operator's single commitment. Read by src/operator-guards.js, printed by `npm run next` and `npm run guard`. Edit the dates and states if they are wrong, but do not remove the killCriteria or ifThen blocks: an empty exit is how lanes live forever. Research: docs/OPERATOR-GUARDS.md.",
+  "committedOn": "2026-09-16",
+  "reviewOn": "2026-12-15",
+  "status": "active",
+  "primary": "self-serve-scanner",
+  "background": ["ephemeral-attention-dataset"],
+  "why": "The only lane where a stranger can find the product, pay, and receive delivery with no per-customer conversation. Live since 2026-09-16; its own launch note lists two remaining steps, both human.",
+  "killCriteria": [
+    {
+      "date": "2026-09-23",
+      "state": "One real end-to-end test purchase through the live paywall, and one public launch post published.",
+      "ifMissed": "Nothing else is started until both are done. These are the ignition steps, not optional polish."
+    },
+    {
+      "date": "2026-10-16",
+      "state": "At least one paid unlock from someone the operator does not know.",
+      "ifMissed": "One change to placement or price, one more launch surface. Do not open a new lane."
+    },
+    {
+      "date": "2026-12-15",
+      "state": "At least 10 paid unlocks, or one paid fix engagement, recorded in settlements.",
+      "ifMissed": "Mark the lane DISPROVEN with the evidence, then choose the next lane through the intake filter. Quitting on this date is the plan working, not failing."
+    }
+  ],
+  "ifThen": [
+    {
+      "if": "I get an idea for a new lane, product or income stream",
+      "then": "Add one line to docs/operator/parking-lot.md and close the file. No research, no repo, no tasks until the review date.",
+      "minutes": 2
+    },
+    {
+      "if": "`npm run next` shows an overdue human step",
+      "then": "Do that step in the first work block of the day, before opening the editor.",
+      "minutes": 30
+    },
+    {
+      "if": "Anyone replies, asks a question, or asks for materials",
+      "then": "Send a reply within 24 hours using the handle-the-reply skill, even if the reply is two lines.",
+      "minutes": 20
+    },
+    {
+      "if": "I feel the pull to build more infrastructure",
+      "then": "Say which settlement row it produces. If none, write it down as maintenance and do the band 1 or 2 action instead.",
+      "minutes": 1
+    },
+    {
+      "if": "A lane would put my own money at risk (trading, crypto, DeFi)",
+      "then": "Run it through `npm run guard -- lane` with a capital cap. It is parked while this commitment is active.",
+      "minutes": 5
+    }
+  ]
+}

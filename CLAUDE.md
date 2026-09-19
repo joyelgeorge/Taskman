@@ -12,6 +12,10 @@ Taskman is an autonomous revenue, telemetry, and execution engine designed with 
    available, say so in one sentence, then do what they asked.
 3. When the user says **"revenue"**, that means: find the missing skill on the
    path to real revenue and add it to this repo. Not analyse, not report.
+4. **Operator guards.** If `npm run next` shows an OVERDUE commitment criterion,
+   invoke `clearing-human-step-debt` before any band 3 or 4 work. If anyone —
+   the operator or you — proposes a new lane, idea or income stream, invoke
+   `new-lane-intake-filter` before it gets code, a task, or a row.
 
 The pipeline skills load themselves from their triggers. The ones that need a
 deliberate call are `deciding-the-next-step` at session start and
@@ -28,6 +32,17 @@ has not been code for some time.
 Work that is found but deliberately not done goes in `docs/tasks/` rather than
 blocking whoever found it. Two sessions share this working tree; if another
 session is mid-edit in a file you need, park a task and carry on.
+
+## 🧭 OPERATOR GUARDS — `docs/OPERATOR-GUARDS.md`
+
+The rest of this file guards the lanes against the market. That document guards
+them against the operator's own recorded pattern: a new lane opens whenever the
+current one needs a human step. The operator agreed to these guards on
+2026-09-16. They are enforced by `src/operator-guards.js`, configured in
+`data/operator-commitment.json` (one primary lane, state-and-date kill criteria,
+if-then plans), and parked ideas go to `docs/operator/parking-lot.md`. Treat
+them like the triage gates: not optional, and not reasoned around because a
+particular idea looks unusually good.
 
 ## What this work is (and is not)
 
@@ -131,6 +146,11 @@ npm run job -- list
 # Run the wired lane. Without --approve it stops at intervene, by design.
 npm run job -- run vibe-app-security --repos owner/name
 
+# The operator's commitment, human-step debt, and lane load
+npm run guard
+# Run a proposed lane through the seven intake filters (exit 0 admit, 2 park, 1 reject)
+npm run guard -- lane /tmp/lane.json
+
 # Reconstruct the verified position — run this FIRST in any session.
 # Exits non-zero if a store could not be read; never substitutes a zero.
 npm run brief
@@ -160,6 +180,8 @@ firebase deploy --only hosting
 - `self-serve-revenue-lane`: earn without contacting anyone — a freemium product where the customer scans their own app and pays to unlock the fixes. Use when outreach is the bottleneck.
 - `brainstorming-revenue-moves`: generate money-making options without filtering, then score on distribution, fulfilment, rail and price. Use when a lane is waiting or dead.
 - `deciding-the-next-step`: run `npm run next`, then pick by what the action produces — not by what is easiest to start. Waiting is a valid answer and usually the right one.
+- `new-lane-intake-filter`: any new lane, idea, wedge or trading/crypto proposal goes through `npm run guard -- lane` before anything is built. Most ideas are parked, by design.
+- `clearing-human-step-debt`: when a lane waits on the operator, shrink the step to under ten minutes, hand it over as an if-then plan, then wait — never route around it.
 
 **The revenue pipeline, in order. Every step downstream of a lead has a skill;
 this is where the project has always stalled.**
